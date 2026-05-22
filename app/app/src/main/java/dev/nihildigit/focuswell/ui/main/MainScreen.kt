@@ -571,43 +571,41 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = MaterialTheme.shapes.extraLarge,
-    modifier = Modifier.fillMaxWidth(),
+  Box(
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .heightIn(min = 202.dp),
   ) {
-    Box {
-      HourglassDrawing(
-        modifier = Modifier.matchParentSize(),
-        tone = MaterialTheme.colorScheme.tertiary,
-      )
-      Column(
-        modifier = Modifier.padding(18.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
-      ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-          Text(
-            "Start focus to earn reserve, or spend leisure with one tap.",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-          )
+    HourglassDrawing(
+      modifier = Modifier.matchParentSize(),
+      tone = MaterialTheme.colorScheme.tertiary,
+    )
+    Column(
+      modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
+      verticalArrangement = Arrangement.spacedBy(18.dp),
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(horizontal = 2.dp)) {
+        Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "Start focus to earn reserve, or spend leisure with one tap.",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
+          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-          Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
-            Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-          }
-          FilledTonalButton(
-            onClick = onStartLeisure,
-            enabled = leisureEnabled,
-            modifier = Modifier.weight(1f).height(68.dp),
-          ) {
-            Icon(Icons.Rounded.Timer, contentDescription = null)
-            Spacer(Modifier.width(8.dp))
-            Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
-          }
+        FilledTonalButton(
+          onClick = onStartLeisure,
+          enabled = leisureEnabled,
+          modifier = Modifier.weight(1f).height(68.dp),
+        ) {
+          Icon(Icons.Rounded.Timer, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
       }
     }
@@ -617,51 +615,51 @@ private fun IdleTimerSurface(
 @Composable
 private fun HourglassDrawing(modifier: Modifier = Modifier, tone: Color) {
   Canvas(modifier = modifier) {
-    val right = size.width + 18.dp.toPx()
-    val bottom = size.height + 10.dp.toPx()
-    val width = 112.dp.toPx()
-    val height = 118.dp.toPx()
+    val right = size.width + 4.dp.toPx()
+    val bottom = size.height - 4.dp.toPx()
+    val width = 100.dp.toPx()
+    val height = 108.dp.toPx()
     val left = right - width
     val top = bottom - height
     val neck = Offset(left + width * 0.5f, top + height * 0.52f)
     val frame =
       Path().apply {
         moveTo(left + 20.dp.toPx(), top + 8.dp.toPx())
-        cubicTo(left + 36.dp.toPx(), top + 38.dp.toPx(), left + 48.dp.toPx(), top + 48.dp.toPx(), neck.x, neck.y)
-        cubicTo(left + 66.dp.toPx(), top + 68.dp.toPx(), left + 78.dp.toPx(), top + 86.dp.toPx(), right - 18.dp.toPx(), bottom - 12.dp.toPx())
+        cubicTo(left + 34.dp.toPx(), top + 34.dp.toPx(), left + 46.dp.toPx(), top + 45.dp.toPx(), neck.x, neck.y)
+        cubicTo(left + 62.dp.toPx(), top + 64.dp.toPx(), left + 74.dp.toPx(), top + 82.dp.toPx(), right - 16.dp.toPx(), bottom - 10.dp.toPx())
         moveTo(right - 20.dp.toPx(), top + 8.dp.toPx())
-        cubicTo(left + 76.dp.toPx(), top + 38.dp.toPx(), left + 64.dp.toPx(), top + 48.dp.toPx(), neck.x, neck.y)
-        cubicTo(left + 46.dp.toPx(), top + 68.dp.toPx(), left + 34.dp.toPx(), top + 86.dp.toPx(), left + 18.dp.toPx(), bottom - 12.dp.toPx())
+        cubicTo(left + 74.dp.toPx(), top + 34.dp.toPx(), left + 62.dp.toPx(), top + 45.dp.toPx(), neck.x, neck.y)
+        cubicTo(left + 46.dp.toPx(), top + 64.dp.toPx(), left + 34.dp.toPx(), top + 82.dp.toPx(), left + 16.dp.toPx(), bottom - 10.dp.toPx())
       }
-    drawPath(path = frame, color = tone.copy(alpha = 0.14f), style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
+    drawPath(path = frame, color = tone.copy(alpha = 0.12f), style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
     drawLine(
-      color = tone.copy(alpha = 0.18f),
+      color = tone.copy(alpha = 0.14f),
       start = Offset(left + 24.dp.toPx(), top + 21.dp.toPx()),
       end = Offset(right - 24.dp.toPx(), top + 21.dp.toPx()),
       strokeWidth = 4.dp.toPx(),
       cap = StrokeCap.Round,
     )
     drawLine(
-      color = tone.copy(alpha = 0.16f),
+      color = tone.copy(alpha = 0.13f),
       start = Offset(left + 22.dp.toPx(), bottom - 24.dp.toPx()),
       end = Offset(right - 22.dp.toPx(), bottom - 24.dp.toPx()),
       strokeWidth = 5.dp.toPx(),
       cap = StrokeCap.Round,
     )
     drawLine(
-      color = tone.copy(alpha = 0.2f),
-      start = Offset(neck.x, neck.y - 13.dp.toPx()),
-      end = Offset(neck.x, neck.y + 14.dp.toPx()),
+      color = tone.copy(alpha = 0.18f),
+      start = Offset(neck.x, neck.y - 12.dp.toPx()),
+      end = Offset(neck.x, neck.y + 13.dp.toPx()),
       strokeWidth = 3.dp.toPx(),
       cap = StrokeCap.Round,
     )
     drawArc(
-      color = tone.copy(alpha = 0.18f),
+      color = tone.copy(alpha = 0.16f),
       startAngle = 198f,
       sweepAngle = 144f,
       useCenter = false,
-      topLeft = Offset(left + 32.dp.toPx(), bottom - 45.dp.toPx()),
-      size = Size(54.dp.toPx(), 20.dp.toPx()),
+      topLeft = Offset(left + 30.dp.toPx(), bottom - 43.dp.toPx()),
+      size = Size(50.dp.toPx(), 18.dp.toPx()),
       style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
     )
   }

@@ -221,6 +221,8 @@ Balance must not reuse the Today leisure well card. It should use compact ledger
 
 Idle Today may use a separate sandglass motif to suggest readiness and pending action. Keep it in the background and away from button labels.
 
+The idle action area should not be a card by default. Treat it as an action dock: title, short copy, and two large buttons on the page surface, with the sandglass motif as a low-contrast background mark.
+
 Daily trackers should read as the day's reset rail: a compact progress line plus scannable tracker tiles. Avoid plain card stacks and avoid row layouts that force tracker names to break into unreadable fragments.
 
 ## Motion Strategy
