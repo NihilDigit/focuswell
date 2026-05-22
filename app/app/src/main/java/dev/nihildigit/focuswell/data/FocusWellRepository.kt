@@ -20,6 +20,7 @@ import org.json.JSONObject
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
+import java.time.LocalTime
 
 class FocusWellRepository(context: Context) {
   private val prefs = context.getSharedPreferences("focuswell-store", Context.MODE_PRIVATE)
@@ -27,6 +28,7 @@ class FocusWellRepository(context: Context) {
   val state: StateFlow<FocusWellUiState> = _state
 
   init {
+    rollDailyState()
     ensureDailyGrant()
   }
 
@@ -36,6 +38,25 @@ class FocusWellRepository(context: Context) {
         trackers =
           state.trackers.map {
             if (it.id == id && it.ruleTagName == null) it.copy(completed = !it.completed) else it
+          }
+      )
+    }
+  }
+
+  fun setWakeTime(value: String) {
+    val parsed = runCatching { LocalTime.parse(value.trim()) }.getOrNull() ?: return
+    mutate { state ->
+      state.copy(
+        trackers =
+          state.trackers.map {
+            if (it.id == "wake") {
+              it.copy(
+                wakeTime = parsed.toString(),
+                completed = !parsed.isAfter(LocalTime.of(9, 0)),
+              )
+            } else {
+              it
+            }
           }
       )
     }
@@ -184,6 +205,7 @@ class FocusWellRepository(context: Context) {
           endedAt = now,
           activeDurationMinutes = activeDuration.toMillis() / 60_000.0,
           earnedMinutes = earned,
+          dailyDate = TimeAccounting.dailyDate(now).toString(),
         )
       val entry =
         LedgerEntry(
@@ -224,6 +246,7 @@ class FocusWellRepository(context: Context) {
           endedAt = now,
           elapsedMinutes = elapsed,
           costMinutes = cost,
+          dailyDate = TimeAccounting.dailyDate(now).toString(),
         )
       val entry =
         LedgerEntry(
@@ -257,6 +280,7 @@ class FocusWellRepository(context: Context) {
   fun clearAllData() {
     prefs.edit().clear().apply()
     _state.value = seedState()
+    rollDailyState()
     ensureDailyGrant()
   }
 
@@ -266,6 +290,7 @@ class FocusWellRepository(context: Context) {
     val imported = runCatching { jsonToState(JSONObject(raw)) }.getOrNull() ?: return false
     _state.value = imported
     saveState(imported)
+    rollDailyState()
     ensureDailyGrant()
     return true
   }
@@ -359,6 +384,24 @@ class FocusWellRepository(context: Context) {
     }
   }
 
+  private fun rollDailyState() {
+    mutate { state ->
+      val today = TimeAccounting.dailyDate(Instant.now()).toString()
+      if (state.dailyDate == today) return@mutate state
+      state.copy(
+        dailyDate = today,
+        trackers =
+          state.trackers.map {
+            if (it.ruleTagName == null) {
+              it.copy(completed = false, wakeTime = null)
+            } else {
+              it.copy(completed = false, progressLabel = "0m / ${it.ruleTargetMinutes?.roundTarget() ?: ""}")
+            }
+          },
+      )
+    }
+  }
+
   private fun mutate(transform: (FocusWellUiState) -> FocusWellUiState) {
     _state.update { current ->
       transform(current).withComputedTrackers().also { saveState(it) }
@@ -377,6 +420,7 @@ class FocusWellRepository(context: Context) {
   private fun seedState(): FocusWellUiState =
     FocusWellUiState(
       reserveMinutes = 0.0,
+      dailyDate = TimeAccounting.dailyDate(Instant.now()).toString(),
       tags = defaultTags,
       trackers = defaultTrackers,
       focusRecords = emptyList(),
@@ -389,6 +433,7 @@ class FocusWellRepository(context: Context) {
   private fun stateToJson(state: FocusWellUiState): JSONObject =
     JSONObject()
       .put("reserveMinutes", state.reserveMinutes)
+      .put("dailyDate", state.dailyDate)
       .put("activeMode", activeModeToJson(state.activeMode))
       .put("tags", JSONArray(state.tags.map(::tagToJson)))
       .put("trackers", JSONArray(state.trackers.map(::trackerToJson)))
@@ -399,6 +444,7 @@ class FocusWellRepository(context: Context) {
   private fun jsonToState(json: JSONObject): FocusWellUiState =
     FocusWellUiState(
       reserveMinutes = json.optDouble("reserveMinutes", 0.0),
+      dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(Instant.now()).toString()),
       activeMode = jsonToActiveMode(json.optJSONObject("activeMode")),
       tags = json.optJSONArray("tags")?.mapObjects(::jsonToTag).orEmpty().ifEmpty { defaultTags },
       trackers =
@@ -477,6 +523,7 @@ class FocusWellRepository(context: Context) {
       .put("progressLabel", tracker.progressLabel)
       .put("ruleTagName", tracker.ruleTagName)
       .put("ruleTargetMinutes", tracker.ruleTargetMinutes)
+      .put("wakeTime", tracker.wakeTime)
       .put("archivedAt", tracker.archivedAt?.toString())
 
   private fun jsonToTracker(json: JSONObject): DailyTracker =
@@ -487,6 +534,7 @@ class FocusWellRepository(context: Context) {
       progressLabel = json.optStringOrNull("progressLabel"),
       ruleTagName = json.optStringOrNull("ruleTagName"),
       ruleTargetMinutes = if (json.has("ruleTargetMinutes") && !json.isNull("ruleTargetMinutes")) json.optDouble("ruleTargetMinutes") else null,
+      wakeTime = json.optStringOrNull("wakeTime"),
       archivedAt = json.optNullableInstant("archivedAt"),
     )
 
@@ -522,6 +570,7 @@ class FocusWellRepository(context: Context) {
       .put("endedAt", record.endedAt.toString())
       .put("activeDurationMinutes", record.activeDurationMinutes)
       .put("earnedMinutes", record.earnedMinutes)
+      .put("dailyDate", record.dailyDate)
       .put("deletedAt", record.deletedAt?.toString())
 
   private fun jsonToFocusRecord(json: JSONObject): FocusRecord =
@@ -537,6 +586,7 @@ class FocusWellRepository(context: Context) {
       endedAt = json.optInstant("endedAt"),
       activeDurationMinutes = json.optDouble("activeDurationMinutes"),
       earnedMinutes = json.optDouble("earnedMinutes"),
+      dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(json.optInstant("endedAt")).toString()),
       deletedAt = json.optNullableInstant("deletedAt"),
     )
 
@@ -547,6 +597,7 @@ class FocusWellRepository(context: Context) {
       .put("endedAt", record.endedAt.toString())
       .put("elapsedMinutes", record.elapsedMinutes)
       .put("costMinutes", record.costMinutes)
+      .put("dailyDate", record.dailyDate)
       .put("deletedAt", record.deletedAt?.toString())
 
   private fun jsonToLeisureRecord(json: JSONObject): LeisureRecord =
@@ -556,6 +607,7 @@ class FocusWellRepository(context: Context) {
       endedAt = json.optInstant("endedAt"),
       elapsedMinutes = json.optDouble("elapsedMinutes"),
       costMinutes = json.optDouble("costMinutes"),
+      dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(json.optInstant("endedAt")).toString()),
       deletedAt = json.optNullableInstant("deletedAt"),
     )
 
@@ -574,7 +626,7 @@ class FocusWellRepository(context: Context) {
     List(length()) { index -> transform(getJSONObject(index)) }
 
   private fun FocusWellUiState.withComputedTrackers(): FocusWellUiState {
-    val activeFocusRecords = focusRecords.filter { it.deletedAt == null }
+    val activeFocusRecords = focusRecords.filter { it.deletedAt == null && it.dailyDate == dailyDate }
     val computed =
       trackers.map { tracker ->
         val tagName = tracker.ruleTagName

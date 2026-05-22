@@ -21,6 +21,7 @@ data class DailyTracker(
   val progressLabel: String? = null,
   val ruleTagName: String? = null,
   val ruleTargetMinutes: Double? = null,
+  val wakeTime: String? = null,
   val archivedAt: Instant? = null,
 )
 
@@ -69,6 +70,7 @@ data class FocusRecord(
   val endedAt: Instant,
   val activeDurationMinutes: Double,
   val earnedMinutes: Double,
+  val dailyDate: String,
   val deletedAt: Instant? = null,
 )
 
@@ -78,6 +80,7 @@ data class LeisureRecord(
   val endedAt: Instant,
   val elapsedMinutes: Double,
   val costMinutes: Double,
+  val dailyDate: String,
   val deletedAt: Instant? = null,
 )
 
@@ -91,6 +94,7 @@ enum class Destination(val label: String) {
 data class FocusWellUiState(
   val destination: Destination = Destination.Today,
   val reserveMinutes: Double = 0.0,
+  val dailyDate: String = "",
   val activeMode: ActiveMode = ActiveMode.None,
   val tags: List<TagConfig> = defaultTags,
   val trackers: List<DailyTracker> = defaultTrackers,

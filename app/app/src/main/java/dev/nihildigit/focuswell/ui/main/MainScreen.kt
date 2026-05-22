@@ -93,6 +93,7 @@ fun MainScreen(
     state = state,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
+    onSetWakeTime = viewModel::setWakeTime,
     onStartFocus = viewModel::startFocus,
     onPauseFocus = viewModel::pauseFocus,
     onResumeFocus = viewModel::resumeFocus,
@@ -125,6 +126,7 @@ internal fun MainScreen(
   state: FocusWellUiState,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
+  onSetWakeTime: (String) -> Unit,
   onStartFocus: (String, SessionType, String) -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
@@ -180,6 +182,7 @@ internal fun MainScreen(
           TodayScreen(
             state = state,
             onToggleTracker = onToggleTracker,
+            onSetWakeTime = onSetWakeTime,
             onStartFocusClick = { showFocusSheet = true },
             onStartLeisure = onStartLeisure,
             onPauseFocus = onPauseFocus,
@@ -249,6 +252,7 @@ internal fun MainScreen(
 private fun TodayScreen(
   state: FocusWellUiState,
   onToggleTracker: (String) -> Unit,
+  onSetWakeTime: (String) -> Unit,
   onStartFocusClick: () -> Unit,
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
@@ -300,6 +304,7 @@ private fun TodayScreen(
       TrackerGrid(
         trackers = state.trackers.filter { it.archivedAt == null },
         onToggleTracker = onToggleTracker,
+        onSetWakeTime = onSetWakeTime,
       )
     }
   }
@@ -499,7 +504,13 @@ private fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> 
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun TrackerGrid(trackers: List<DailyTracker>, onToggleTracker: (String) -> Unit) {
+private fun TrackerGrid(
+  trackers: List<DailyTracker>,
+  onToggleTracker: (String) -> Unit,
+  onSetWakeTime: (String) -> Unit,
+) {
+  var wakeDialog by remember { mutableStateOf(false) }
+  var wakeValue by remember { mutableStateOf("09:00") }
   Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
     Text("Daily", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
     FlowRow(
@@ -514,14 +525,47 @@ private fun TrackerGrid(trackers: List<DailyTracker>, onToggleTracker: (String) 
           label = {
             Column(modifier = Modifier.width(136.dp)) {
               Text(tracker.label)
+              tracker.wakeTime?.let {
+                Text(it, style = MaterialTheme.typography.labelSmall)
+              }
               tracker.progressLabel?.let {
                 Text(it, style = MaterialTheme.typography.labelSmall)
               }
             }
           },
         )
+        if (tracker.id == "wake") {
+          TextButton(onClick = { wakeDialog = true }) {
+            Text("Time")
+          }
+        }
       }
     }
+  }
+  if (wakeDialog) {
+    AlertDialog(
+      onDismissRequest = { wakeDialog = false },
+      title = { Text("Wake time") },
+      text = {
+        OutlinedTextField(
+          value = wakeValue,
+          onValueChange = { wakeValue = it },
+          label = { Text("HH:mm") },
+          singleLine = true,
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            wakeDialog = false
+            onSetWakeTime(wakeValue)
+          }
+        ) {
+          Text("Save")
+        }
+      },
+      dismissButton = { TextButton(onClick = { wakeDialog = false }) { Text("Cancel") } },
+    )
   }
 }
 
@@ -1028,6 +1072,7 @@ private fun MainScreenPreview() {
       state = FocusWellUiState(),
       onDestination = {},
       onToggleTracker = {},
+      onSetWakeTime = {},
       onStartFocus = { _, _, _ -> },
       onPauseFocus = {},
       onResumeFocus = {},

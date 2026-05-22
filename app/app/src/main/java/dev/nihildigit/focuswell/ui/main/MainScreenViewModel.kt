@@ -39,6 +39,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun toggleTracker(id: String) = repository.toggleTracker(id)
 
+  fun setWakeTime(value: String) = repository.setWakeTime(value)
+
   fun startFocus(task: String, type: SessionType, tagId: String) =
     repository.startFocus(task, type, tagId)
 
