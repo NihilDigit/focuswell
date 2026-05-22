@@ -18,6 +18,7 @@ export function createReminderService(): ReminderService {
     process.env.QSTASH_NEXT_SIGNING_KEY
       ? new RestQStashClient(
           process.env.QSTASH_TOKEN,
+          process.env.QSTASH_BASE_URL ?? "https://qstash.upstash.io",
           process.env.QSTASH_CALLBACK_URL,
           process.env.QSTASH_CURRENT_SIGNING_KEY,
           process.env.QSTASH_NEXT_SIGNING_KEY,

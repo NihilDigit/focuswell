@@ -22,13 +22,14 @@ export class DisabledQStashClient implements QStashClient {
 export class RestQStashClient implements QStashClient {
   constructor(
     private readonly token: string,
+    private readonly baseUrl: string,
     private readonly callbackUrl: string,
     private readonly currentSigningKey: string,
     private readonly nextSigningKey: string,
   ) {}
 
   async publish(payload: ReminderPayload, dueAtUtc: string): Promise<{ messageId: string }> {
-    const response = await fetch(`https://qstash.upstash.io/v2/publish/${encodeURIComponent(this.callbackUrl)}`, {
+    const response = await fetch(`${this.baseUrl}/v2/publish/${this.callbackUrl}`, {
       method: "POST",
       headers: {
         authorization: `Bearer ${this.token}`,
@@ -47,7 +48,7 @@ export class RestQStashClient implements QStashClient {
   }
 
   async cancel(messageId: string): Promise<void> {
-    const response = await fetch(`https://qstash.upstash.io/v2/messages/${encodeURIComponent(messageId)}`, {
+    const response = await fetch(`${this.baseUrl}/v2/messages/${encodeURIComponent(messageId)}`, {
       method: "DELETE",
       headers: { authorization: `Bearer ${this.token}` },
     });
