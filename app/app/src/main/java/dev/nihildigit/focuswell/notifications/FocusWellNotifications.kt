@@ -41,7 +41,7 @@ fun postFocusWellNotification(
   if (!canPostNotifications(context)) return
   val notification =
     NotificationCompat.Builder(context, FOCUSWELL_CHANNEL_ID)
-      .setSmallIcon(R.drawable.ic_launcher_foreground)
+      .setSmallIcon(R.drawable.ic_launcher_monochrome)
       .setContentTitle(title)
       .setContentText(body)
       .setStyle(NotificationCompat.BigTextStyle().bigText(body))
