@@ -31,7 +31,7 @@ sealed interface ActiveMode {
   data class Focus(
     val task: String,
     val type: SessionType,
-    val tag: TagConfig,
+    val tag: TagConfig?,
     val startedAt: Instant,
     val paused: Boolean = false,
     val pausedAt: Instant? = null,
@@ -63,7 +63,7 @@ data class FocusRecord(
   val task: String,
   val result: String,
   val type: SessionType,
-  val tagName: String,
+  val tagName: String?,
   val tagMultiplier: Double,
   val typeRate: Double,
   val startedAt: Instant,

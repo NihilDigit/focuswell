@@ -52,7 +52,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun setWakeTime(value: String) = repository.setWakeTime(value)
 
-  fun startFocus(task: String, type: SessionType, tagId: String) {
+  fun startFocus(task: String, type: SessionType, tagId: String?) {
     repository.startFocus(task, type, tagId)
     val sessionId = "focus-${System.currentTimeMillis()}"
     focusReminderSessionId = sessionId

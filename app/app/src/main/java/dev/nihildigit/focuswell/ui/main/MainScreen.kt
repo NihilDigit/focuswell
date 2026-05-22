@@ -127,7 +127,7 @@ internal fun MainScreen(
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
   onSetWakeTime: (String) -> Unit,
-  onStartFocus: (String, SessionType, String) -> Unit,
+  onStartFocus: (String, SessionType, String?) -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
   onEndFocus: (String) -> Unit,
@@ -366,14 +366,14 @@ private fun ActiveFocusSurface(
       .minusMillis(focus.pausedDurationMillis + currentPauseMillis)
       .coerceAtLeast(Duration.ZERO)
   TimerOrganism(
-    label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag.multiplier)}x",
+    label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x",
     time = formatDuration(elapsed),
     tone = MaterialTheme.colorScheme.primary,
   )
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text(focus.task, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     Text(
-      "${focus.type.label} · ${focus.tag.name}",
+      "${focus.type.label} · ${focus.tag?.name ?: "No tag"}",
       color = MaterialTheme.colorScheme.onSurfaceVariant,
     )
   }
@@ -657,7 +657,7 @@ private fun FocusRecordRow(
   CalmPanel {
     Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("${record.type.label} · ${record.tagName}", fontWeight = FontWeight.Bold)
+        Text("${record.type.label} · ${record.tagName ?: "Untagged"}", fontWeight = FontWeight.Bold)
         Text(record.task)
         Text(record.result, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("${record.activeDurationMinutes.roundToInt()} min · ${signedMinutes(record.earnedMinutes)}")
@@ -880,13 +880,13 @@ private fun SettingsScreen(
 private fun StartFocusSheet(
   state: FocusWellUiState,
   onDismiss: () -> Unit,
-  onStart: (String, SessionType, String) -> Unit,
+  onStart: (String, SessionType, String?) -> Unit,
 ) {
   var task by remember { mutableStateOf("") }
   var type by remember { mutableStateOf(SessionType.Input) }
   val activeTags = state.tags.filter { it.archivedAt == null }.ifEmpty { state.tags }
-  var tagId by remember { mutableStateOf(activeTags.first().id) }
-  val tag = activeTags.firstOrNull { it.id == tagId } ?: activeTags.first()
+  var tagId by remember { mutableStateOf<String?>(null) }
+  val tag = tagId?.let { selectedId -> activeTags.firstOrNull { it.id == selectedId } }
 
   ModalBottomSheet(onDismissRequest = onDismiss) {
     Column(
@@ -913,6 +913,11 @@ private fun StartFocusSheet(
         }
       }
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        FilterChip(
+          selected = tagId == null,
+          onClick = { tagId = null },
+          label = { Text("No tag") },
+        )
         activeTags.forEach { tag ->
           FilterChip(
             selected = tagId == tag.id,
@@ -922,7 +927,7 @@ private fun StartFocusSheet(
         }
       }
       Text(
-        "${type.label} · ${tag.name} · earns ${effectiveRate(type, tag.multiplier)}x real time",
+        "${type.label} · ${tag?.name ?: "No tag"} · earns ${effectiveRate(type, tag?.multiplier ?: 1.0)}x real time",
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
       Button(

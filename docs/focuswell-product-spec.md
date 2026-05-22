@@ -78,7 +78,7 @@ Required at start:
 
 - Task
 - Type
-- Tag
+- Tag optional
 
 Required at end:
 
@@ -123,7 +123,8 @@ math: multiplier 2.0
 408:  multiplier 1.5
 ```
 
-Tags are editable. More tags can be added when needed.
+Tags are editable. More tags can be added when needed. A focus session may also
+be untagged; untagged focus uses a neutral `1.0` multiplier.
 
 ### Earning Formula
 
@@ -341,8 +342,8 @@ Suggested session snapshots:
 
 - Type name
 - Type rate
-- Tag name
-- Tag multiplier
+- Tag name, if selected
+- Tag multiplier, or `1.0` when untagged
 - Earned minutes
 
 If `math` changes from `2.0` to `1.5`, old sessions keep their original earned
@@ -370,8 +371,8 @@ task
 result
 type: input | output
 typeRateSnapshot
-tagId
-tagNameSnapshot
+tagId optional
+tagNameSnapshot optional
 tagMultiplierSnapshot
 startedAt
 endedAt

@@ -131,11 +131,11 @@ class FocusWellRepository(context: Context) {
     }
   }
 
-  fun startFocus(task: String, type: SessionType, tagId: String) {
+  fun startFocus(task: String, type: SessionType, tagId: String?) {
     val trimmed = task.trim()
     if (trimmed.isEmpty()) return
     mutate { state ->
-      val tag = state.tags.firstOrNull { it.id == tagId } ?: state.tags.first()
+      val tag = tagId?.let { selectedId -> state.tags.firstOrNull { it.id == selectedId } }
       state.copy(
         activeMode =
           ActiveMode.Focus(
@@ -190,7 +190,7 @@ class FocusWellRepository(context: Context) {
         TimeAccounting.focusEarnedMinutes(
           activeDuration = activeDuration,
           type = focus.type,
-          tagMultiplier = focus.tag.multiplier,
+          tagMultiplier = focus.tag?.multiplier ?: 1.0,
         )
       val record =
         FocusRecord(
@@ -198,8 +198,8 @@ class FocusWellRepository(context: Context) {
           task = focus.task,
           result = result.ifBlank { "As planned" },
           type = focus.type,
-          tagName = focus.tag.name,
-          tagMultiplier = focus.tag.multiplier,
+          tagName = focus.tag?.name,
+          tagMultiplier = focus.tag?.multiplier ?: 1.0,
           typeRate = focus.type.rate,
           startedAt = focus.startedAt,
           endedAt = now,
@@ -210,7 +210,7 @@ class FocusWellRepository(context: Context) {
       val entry =
         LedgerEntry(
           id = "ledger-${record.id}",
-          title = "Focus · ${focus.type.label} ${focus.tag.name}",
+          title = "Focus · ${focus.type.label}${focus.tag?.let { " ${it.name}" } ?: ""}",
           deltaMinutes = earned,
           createdAt = now,
           note = record.result,
@@ -464,7 +464,7 @@ class FocusWellRepository(context: Context) {
           .put("kind", "focus")
           .put("task", mode.task)
           .put("type", mode.type.name)
-          .put("tag", tagToJson(mode.tag))
+          .put("tag", mode.tag?.let(::tagToJson))
           .put("startedAt", mode.startedAt.toString())
           .put("paused", mode.paused)
           .put("pausedAt", mode.pausedAt?.toString())
@@ -486,7 +486,7 @@ class FocusWellRepository(context: Context) {
         ActiveMode.Focus(
           task = json.optString("task"),
           type = runCatching { SessionType.valueOf(json.optString("type")) }.getOrDefault(SessionType.Input),
-          tag = json.optJSONObject("tag")?.let(::jsonToTag) ?: defaultTags.first(),
+          tag = json.optJSONObject("tag")?.let(::jsonToTag),
           startedAt = json.optInstant("startedAt"),
           paused = json.optBoolean("paused"),
           pausedAt = json.optNullableInstant("pausedAt"),
@@ -579,7 +579,7 @@ class FocusWellRepository(context: Context) {
       task = json.optString("task"),
       result = json.optString("result"),
       type = runCatching { SessionType.valueOf(json.optString("type")) }.getOrDefault(SessionType.Input),
-      tagName = json.optString("tagName"),
+      tagName = json.optStringOrNull("tagName"),
       tagMultiplier = json.optDouble("tagMultiplier", 1.0),
       typeRate = json.optDouble("typeRate", 0.5),
       startedAt = json.optInstant("startedAt"),
@@ -636,7 +636,7 @@ class FocusWellRepository(context: Context) {
         } else {
           val minutes =
             activeFocusRecords
-              .filter { it.tagName.equals(tagName, ignoreCase = true) }
+              .filter { it.tagName?.equals(tagName, ignoreCase = true) == true }
               .sumOf { it.activeDurationMinutes }
           tracker.copy(
             completed = minutes >= target,
