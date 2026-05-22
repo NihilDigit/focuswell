@@ -19,6 +19,9 @@ data class DailyTracker(
   val label: String,
   val completed: Boolean,
   val progressLabel: String? = null,
+  val ruleTagName: String? = null,
+  val ruleTargetMinutes: Double? = null,
+  val archivedAt: Instant? = null,
 )
 
 sealed interface ActiveMode {
@@ -30,6 +33,8 @@ sealed interface ActiveMode {
     val tag: TagConfig,
     val startedAt: Instant,
     val paused: Boolean = false,
+    val pausedAt: Instant? = null,
+    val pausedDurationMillis: Long = 0,
   ) : ActiveMode
 
   data class Leisure(
@@ -39,6 +44,8 @@ sealed interface ActiveMode {
   data class WindDown(
     val startedAt: Instant,
   ) : ActiveMode
+
+  data object Depleted : ActiveMode
 }
 
 data class LedgerEntry(
@@ -46,6 +53,32 @@ data class LedgerEntry(
   val title: String,
   val deltaMinutes: Double,
   val createdAt: Instant,
+  val note: String? = null,
+  val sourceId: String? = null,
+)
+
+data class FocusRecord(
+  val id: String,
+  val task: String,
+  val result: String,
+  val type: SessionType,
+  val tagName: String,
+  val tagMultiplier: Double,
+  val typeRate: Double,
+  val startedAt: Instant,
+  val endedAt: Instant,
+  val activeDurationMinutes: Double,
+  val earnedMinutes: Double,
+  val deletedAt: Instant? = null,
+)
+
+data class LeisureRecord(
+  val id: String,
+  val startedAt: Instant,
+  val endedAt: Instant,
+  val elapsedMinutes: Double,
+  val costMinutes: Double,
+  val deletedAt: Instant? = null,
 )
 
 enum class Destination(val label: String) {
@@ -57,19 +90,15 @@ enum class Destination(val label: String) {
 
 data class FocusWellUiState(
   val destination: Destination = Destination.Today,
-  val reserveMinutes: Double = 60.0,
+  val reserveMinutes: Double = 0.0,
   val activeMode: ActiveMode = ActiveMode.None,
   val tags: List<TagConfig> = defaultTags,
   val trackers: List<DailyTracker> = defaultTrackers,
-  val ledger: List<LedgerEntry> =
-    listOf(
-      LedgerEntry(
-        id = "daily-grant",
-        title = "Daily grant",
-        deltaMinutes = 60.0,
-        createdAt = Instant.now(),
-      )
-    ),
+  val focusRecords: List<FocusRecord> = emptyList(),
+  val leisureRecords: List<LeisureRecord> = emptyList(),
+  val ledger: List<LedgerEntry> = emptyList(),
+  val exportText: String? = null,
+  val importError: String? = null,
 )
 
 val defaultTags =
@@ -84,6 +113,20 @@ val defaultTrackers =
     DailyTracker(id = "wake", label = "Wake by 9", completed = false),
     DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false),
     DailyTracker(id = "codewars", label = "CodeWars", completed = false),
-    DailyTracker(id = "math-3h", label = "Math", completed = false, progressLabel = "0m / 3h"),
-    DailyTracker(id = "408-3h", label = "408", completed = false, progressLabel = "0m / 3h"),
+    DailyTracker(
+      id = "math-3h",
+      label = "Math",
+      completed = false,
+      progressLabel = "0m / 3h",
+      ruleTagName = "math",
+      ruleTargetMinutes = 180.0,
+    ),
+    DailyTracker(
+      id = "408-3h",
+      label = "408",
+      completed = false,
+      progressLabel = "0m / 3h",
+      ruleTagName = "408",
+      ruleTargetMinutes = 180.0,
+    ),
   )

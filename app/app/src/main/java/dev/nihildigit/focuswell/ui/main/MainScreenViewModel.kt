@@ -1,127 +1,104 @@
 package dev.nihildigit.focuswell.ui.main
 
-import androidx.lifecycle.ViewModel
-import dev.nihildigit.focuswell.domain.ActiveMode
+import android.app.Application
+import androidx.lifecycle.AndroidViewModel
+import androidx.lifecycle.viewModelScope
+import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
-import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.SessionType
-import dev.nihildigit.focuswell.domain.TimeAccounting
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.update
-import java.time.Duration
-import java.time.Instant
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.stateIn
 
-class MainScreenViewModel : ViewModel() {
-  private val _uiState = MutableStateFlow(FocusWellUiState())
-  val uiState: StateFlow<FocusWellUiState> = _uiState
+class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
+  private val repository = FocusWellRepository(application)
+  private val destination = MutableStateFlow(Destination.Today)
+  private val exportText = MutableStateFlow<String?>(null)
+  private val importError = MutableStateFlow<String?>(null)
+
+  val uiState: StateFlow<FocusWellUiState> =
+    combine(repository.state, destination, exportText, importError) {
+        state,
+        selectedDestination,
+        export,
+        importError ->
+        state.copy(
+          destination = selectedDestination,
+          exportText = export,
+          importError = importError,
+        )
+      }
+      .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), FocusWellUiState())
 
   fun selectDestination(destination: Destination) {
-    _uiState.update { it.copy(destination = destination) }
+    this.destination.value = destination
   }
 
-  fun toggleTracker(id: String) {
-    _uiState.update { state ->
-      state.copy(
-        trackers =
-          state.trackers.map {
-            if (it.id == id && it.progressLabel == null) it.copy(completed = !it.completed) else it
-          }
-      )
-    }
+  fun toggleTracker(id: String) = repository.toggleTracker(id)
+
+  fun startFocus(task: String, type: SessionType, tagId: String) =
+    repository.startFocus(task, type, tagId)
+
+  fun pauseFocus() = repository.pauseFocus()
+
+  fun resumeFocus() = repository.resumeFocus()
+
+  fun endFocus(result: String) = repository.endFocus(result)
+
+  fun startLeisure() = repository.startLeisure()
+
+  fun endLeisure() = repository.endLeisure()
+
+  fun startWindDown() = repository.startWindDown()
+
+  fun endWindDown() = repository.endWindDown()
+
+  fun endDepleted() = repository.endDepleted()
+
+  fun exportJson() {
+    exportText.value = repository.exportJson()
   }
 
-  fun startFocus(task: String, type: SessionType, tagId: String) {
-    val trimmed = task.trim()
-    if (trimmed.isEmpty()) return
-    _uiState.update { state ->
-      val tag = state.tags.firstOrNull { it.id == tagId } ?: state.tags.first()
-      state.copy(
-        activeMode =
-          ActiveMode.Focus(
-            task = trimmed,
-            type = type,
-            tag = tag,
-            startedAt = Instant.now(),
-          )
-      )
-    }
+  fun dismissExport() {
+    exportText.value = null
   }
 
-  fun pauseFocus() {
-    _uiState.update { state ->
-      val focus = state.activeMode as? ActiveMode.Focus ?: return@update state
-      state.copy(activeMode = focus.copy(paused = true))
-    }
+  fun importJson(raw: String) {
+    importError.value =
+      if (repository.importJson(raw)) {
+        null
+      } else {
+        "Import failed. Check that the JSON came from FocusWell export."
+      }
   }
 
-  fun resumeFocus() {
-    _uiState.update { state ->
-      val focus = state.activeMode as? ActiveMode.Focus ?: return@update state
-      state.copy(activeMode = focus.copy(paused = false))
-    }
+  fun dismissImportError() {
+    importError.value = null
   }
 
-  fun endFocus(result: String) {
-    _uiState.update { state ->
-      val focus = state.activeMode as? ActiveMode.Focus ?: return@update state
-      val now = Instant.now()
-      val earned =
-        TimeAccounting.focusEarnedMinutes(
-          activeDuration = Duration.between(focus.startedAt, now),
-          type = focus.type,
-          tagMultiplier = focus.tag.multiplier,
-        )
-      val entry =
-        LedgerEntry(
-          id = "focus-${now.toEpochMilli()}",
-          title = "Focus · ${focus.type.label} ${focus.tag.name}",
-          deltaMinutes = earned,
-          createdAt = now,
-        )
-      state.copy(
-        reserveMinutes = state.reserveMinutes + earned,
-        activeMode = ActiveMode.None,
-        ledger = listOf(entry) + state.ledger,
-      )
-    }
+  fun clearAllData() {
+    repository.clearAllData()
+    exportText.value = null
   }
 
-  fun startLeisure() {
-    _uiState.update { state ->
-      if (state.reserveMinutes <= 0.0) state
-      else state.copy(activeMode = ActiveMode.Leisure(startedAt = Instant.now()))
-    }
-  }
+  fun deleteFocusRecord(id: String) = repository.deleteFocusRecord(id)
 
-  fun endLeisure() {
-    _uiState.update { state ->
-      val leisure = state.activeMode as? ActiveMode.Leisure ?: return@update state
-      val now = Instant.now()
-      val cost =
-        TimeAccounting.leisureCostMinutes(startedAt = leisure.startedAt, endedAt = now)
-          .coerceAtMost(state.reserveMinutes)
-      val entry =
-        LedgerEntry(
-          id = "leisure-${now.toEpochMilli()}",
-          title = "Leisure",
-          deltaMinutes = -cost,
-          createdAt = now,
-        )
-      state.copy(
-        reserveMinutes = state.reserveMinutes - cost,
-        activeMode = ActiveMode.None,
-        ledger = listOf(entry) + state.ledger,
-      )
-    }
-  }
+  fun updateFocusRecord(id: String, result: String, activeMinutes: Double) =
+    repository.updateFocusRecord(id, result, activeMinutes)
 
-  fun startWindDown() {
-    _uiState.update { it.copy(activeMode = ActiveMode.WindDown(startedAt = Instant.now())) }
-  }
+  fun deleteLeisureRecord(id: String) = repository.deleteLeisureRecord(id)
 
-  fun endWindDown() {
-    _uiState.update { it.copy(activeMode = ActiveMode.None) }
-  }
+  fun addTag(name: String, multiplier: Double) = repository.addTag(name, multiplier)
+
+  fun archiveTag(id: String) = repository.archiveTag(id)
+
+  fun addBooleanTracker(label: String) = repository.addBooleanTracker(label)
+
+  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double) =
+    repository.addRuleTracker(label, tagName, targetMinutes)
+
+  fun archiveTracker(id: String) = repository.archiveTracker(id)
 }
