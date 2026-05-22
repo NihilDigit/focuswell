@@ -448,20 +448,22 @@ private fun ReserveWellDrawing(
     val waterAlpha = 0.34f + fill * 0.26f
     val waterLine =
       Path().apply {
-        val steps = 24
+        val steps = 28
         repeat(steps + 1) { index ->
-          val x = rim.left + 34.dp.toPx() + (rim.width - 68.dp.toPx()) * index / steps
-          val crest = sin(phase + index * 0.66f) * 3.2.dp.toPx()
+          val x = rim.left + 27.dp.toPx() + (rim.width - 54.dp.toPx()) * index / steps
+          val crest =
+            sin(phase + index * 0.58f) * 2.8.dp.toPx() +
+              sin(phase * 1.6f + index * 1.08f) * 1.1.dp.toPx()
           val y = waterCenterY + crest
           if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
       }
-    val glintLine =
+    val echoLine =
       Path().apply {
-        val steps = 12
+        val steps = 18
         repeat(steps + 1) { index ->
-          val x = rim.left + 48.dp.toPx() + (rim.width * 0.28f) * index / steps
-          val crest = sin(phase + index * 0.76f) * 1.6.dp.toPx()
+          val x = rim.left + 46.dp.toPx() + (rim.width - 92.dp.toPx()) * index / steps
+          val crest = sin(phase * 0.82f + index * 0.62f) * 1.4.dp.toPx()
           val y = waterCenterY - 8.dp.toPx() + crest
           if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
@@ -503,24 +505,15 @@ private fun ReserveWellDrawing(
       size = Size(rim.width - 34.dp.toPx(), rim.height - 22.dp.toPx()),
       style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
     )
-    drawArc(
-      color = colorScheme.tertiary.copy(alpha = waterAlpha * 0.42f),
-      startAngle = 202f,
-      sweepAngle = 136f,
-      useCenter = false,
-      topLeft = Offset(rim.left + 28.dp.toPx(), waterCenterY - 15.dp.toPx()),
-      size = Size(rim.width - 56.dp.toPx(), 28.dp.toPx()),
-      style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round),
+    drawPath(
+      path = echoLine,
+      color = colorScheme.surface.copy(alpha = 0.16f * shimmer),
+      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
     )
     drawPath(
       path = waterLine,
       color = colorScheme.tertiary.copy(alpha = waterAlpha),
-      style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
-    )
-    drawPath(
-      path = glintLine,
-      color = colorScheme.surface.copy(alpha = 0.22f * shimmer),
-      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+      style = Stroke(width = 3.6.dp.toPx(), cap = StrokeCap.Round),
     )
   }
 }
