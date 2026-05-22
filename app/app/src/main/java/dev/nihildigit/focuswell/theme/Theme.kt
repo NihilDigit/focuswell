@@ -3,37 +3,79 @@ package dev.nihildigit.focuswell.theme
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Shapes
 import androidx.compose.material3.darkColorScheme
 import androidx.compose.material3.dynamicDarkColorScheme
 import androidx.compose.material3.dynamicLightColorScheme
 import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 
-private val DarkColorScheme = darkColorScheme(primary = Purple80, secondary = PurpleGrey80, tertiary = Pink80)
+private val DarkColorScheme =
+  darkColorScheme(
+    primary = Pine80,
+    onPrimary = Pine20,
+    primaryContainer = Color(0xFF1A4F35),
+    onPrimaryContainer = Color(0xFFE6F6EA),
+    secondary = Slate80,
+    onSecondary = Slate20,
+    secondaryContainer = Color(0xFF344253),
+    onSecondaryContainer = Color(0xFFEAF1F8),
+    tertiary = Amber80,
+    onTertiary = Amber20,
+    tertiaryContainer = Color(0xFF604100),
+    onTertiaryContainer = Color(0xFFFFECC4),
+    background = FocusBackgroundDark,
+    onBackground = Color(0xFFE3E9E1),
+    surface = FocusSurfaceDark,
+    onSurface = Color(0xFFE3E9E1),
+    surfaceVariant = FocusSurfaceVariantDark,
+    onSurfaceVariant = Color(0xFFC3CEC0),
+    surfaceContainer = FocusSurfaceVariantDark,
+    surfaceContainerHigh = Color(0xFF2F3B30),
+  )
 
 private val LightColorScheme =
   lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40,
-
-    /* Other default colors to override
-    background = Color(0xFFFFFBFE),
-    surface = Color(0xFFFFFBFE),
+    primary = Pine40,
     onPrimary = Color.White,
+    secondary = Slate40,
     onSecondary = Color.White,
+    tertiary = Amber40,
     onTertiary = Color.White,
-    onBackground = Color(0xFF1C1B1F),
-    onSurface = Color(0xFF1C1B1F),
-    */
+    background = FocusBackgroundLight,
+    onBackground = Color(0xFF182018),
+    surface = FocusSurfaceLight,
+    onSurface = Color(0xFF182018),
+    surfaceVariant = FocusSurfaceVariantLight,
+    onSurfaceVariant = Color(0xFF4E5A4D),
+    surfaceContainer = Color(0xFFEEF5EC),
+    surfaceContainerHigh = Color(0xFFE4EEE2),
+    primaryContainer = Color(0xFFCDEED9),
+    onPrimaryContainer = Color(0xFF0D3A25),
+    secondaryContainer = Color(0xFFDCE6F0),
+    onSecondaryContainer = Color(0xFF273344),
+    tertiaryContainer = Color(0xFFFFDFA3),
+    onTertiaryContainer = Color(0xFF422D00),
+  )
+
+private val FocusShapes =
+  Shapes(
+    extraSmall = RoundedCornerShape(10.dp),
+    small = RoundedCornerShape(14.dp),
+    medium = RoundedCornerShape(20.dp),
+    large = RoundedCornerShape(28.dp),
+    extraLarge = RoundedCornerShape(36.dp),
   )
 
 @Composable
 fun FocusWellTheme(
   darkTheme: Boolean = isSystemInDarkTheme(),
   // Dynamic color is available on Android 12+
-  dynamicColor: Boolean = true,
+  dynamicColor: Boolean = false,
   content: @Composable () -> Unit,
 ) {
   val colorScheme =
@@ -46,5 +88,5 @@ fun FocusWellTheme(
       else -> LightColorScheme
     }
 
-  MaterialTheme(colorScheme = colorScheme, typography = Typography, content = content)
+  MaterialTheme(colorScheme = colorScheme, typography = Typography, shapes = FocusShapes, content = content)
 }

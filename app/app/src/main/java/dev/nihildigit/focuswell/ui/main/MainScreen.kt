@@ -4,6 +4,7 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -30,9 +32,12 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.ElevatedButton
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
+import androidx.compose.material3.FilledTonalButton
+import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
@@ -46,6 +51,20 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.Label
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Download
+import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.Pause
+import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Stop
+import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -161,7 +180,7 @@ internal fun MainScreen(
           NavigationBarItem(
             selected = state.destination == destination,
             onClick = { onDestination(destination) },
-            icon = { DestinationDot(selected = state.destination == destination) },
+            icon = { DestinationIcon(destination = destination, selected = state.destination == destination) },
             label = { Text(destination.label) },
           )
         }
@@ -312,15 +331,46 @@ private fun TodayScreen(
 
 @Composable
 private fun ReserveHeader(reserveMinutes: Double) {
-  val label =
+  val headline =
     when {
+      reserveMinutes < 30 -> "Low reserve"
       reserveMinutes < 60 -> "${reserveMinutes.roundToInt()} min left"
-      reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h available"
-      else -> "Reserve is sufficient"
+      reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h banked"
+      else -> "Enough for tonight"
     }
-  Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-    Text(label, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
-    Text("Ready when you are", color = MaterialTheme.colorScheme.onSurfaceVariant)
+  val supporting =
+    when {
+      reserveMinutes < 30 -> "Focus can refill the buffer."
+      reserveMinutes < 60 -> "Keep leisure intentional."
+      else -> "Ready when you are."
+    }
+  Surface(
+    color = MaterialTheme.colorScheme.primaryContainer,
+    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    shape = MaterialTheme.shapes.extraLarge,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(22.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
+        Text("Leisure reserve", style = MaterialTheme.typography.labelLarge)
+        Text(headline, style = MaterialTheme.typography.headlineMedium)
+        Text(supporting, style = MaterialTheme.typography.bodyMedium)
+      }
+      Surface(
+        color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
+        shape = CircleShape,
+      ) {
+        Text(
+          "${reserveMinutes.roundToInt()}m",
+          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+          style = MaterialTheme.typography.titleMedium,
+        )
+      }
+    }
   }
 }
 
@@ -330,17 +380,28 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
-  TimerOrganism(label = "FocusWell", time = "00:00", tone = MaterialTheme.colorScheme.primary)
-  Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-    Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(56.dp)) {
-      Text("Start Focus")
-    }
-    ElevatedButton(
-      onClick = onStartLeisure,
-      enabled = leisureEnabled,
-      modifier = Modifier.weight(1f).height(56.dp),
-    ) {
-      Text("Start Leisure")
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    TimerOrganism(
+      label = "Ready",
+      time = "00:00",
+      tone = MaterialTheme.colorScheme.primary,
+      progress = 0.18f,
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+      Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(60.dp)) {
+        Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("Start Focus")
+      }
+      FilledTonalButton(
+        onClick = onStartLeisure,
+        enabled = leisureEnabled,
+        modifier = Modifier.weight(1f).height(60.dp),
+      ) {
+        Icon(Icons.Rounded.Timer, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("Leisure")
+      }
     }
   }
 }
@@ -365,30 +426,39 @@ private fun ActiveFocusSurface(
     Duration.between(focus.startedAt, now)
       .minusMillis(focus.pausedDurationMillis + currentPauseMillis)
       .coerceAtLeast(Duration.ZERO)
-  TimerOrganism(
-    label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x",
-    time = formatDuration(elapsed),
-    tone = MaterialTheme.colorScheme.primary,
-  )
-  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-    Text(focus.task, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-    Text(
-      "${focus.type.label} · ${focus.tag?.name ?: "No tag"}",
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    TimerOrganism(
+      label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x",
+      time = formatDuration(elapsed),
+      tone = MaterialTheme.colorScheme.primary,
+      progress = 0.78f,
     )
-  }
-  Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-    if (focus.paused) {
-      Button(onClick = onResumeFocus, modifier = Modifier.weight(1f).height(52.dp)) {
-        Text("Resume")
-      }
-    } else {
-      OutlinedButton(onClick = onPauseFocus, modifier = Modifier.weight(1f).height(52.dp)) {
-        Text("Pause")
-      }
+    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+      Text(focus.task, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+      Text(
+        "${focus.type.label} · ${focus.tag?.name ?: "No tag"}",
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
     }
-    Button(onClick = { showEnd = true }, modifier = Modifier.weight(1f).height(52.dp)) {
-      Text("End")
+    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+      if (focus.paused) {
+        Button(onClick = onResumeFocus, modifier = Modifier.weight(1f).height(52.dp)) {
+          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Resume")
+        }
+      } else {
+        OutlinedButton(onClick = onPauseFocus, modifier = Modifier.weight(1f).height(52.dp)) {
+          Icon(Icons.Rounded.Pause, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Pause")
+        }
+      }
+      Button(onClick = { showEnd = true }, modifier = Modifier.weight(1f).height(52.dp)) {
+        Icon(Icons.Rounded.Stop, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
+        Text("End")
+      }
     }
   }
 
@@ -471,12 +541,30 @@ private fun ActiveLeisureSurface(
     DepletedSurface(onEndLeisure = onEndLeisure, onStartWindDown = onStartWindDown)
     return
   }
-  TimerOrganism(label = "Remaining", time = formatDuration(remaining), tone = MaterialTheme.colorScheme.tertiary)
-  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-    Text("Elapsed", color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(formatDuration(elapsed), fontWeight = FontWeight.SemiBold)
+  val progress = if (reserveMinutes <= 0.0) 0f else (liveRemainingMinutes / reserveMinutes).toFloat().coerceIn(0f, 1f)
+  TimerOrganism(
+    label = "Remaining",
+    time = formatDuration(remaining),
+    tone = MaterialTheme.colorScheme.tertiary,
+    progress = progress,
+  )
+  Surface(
+    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
+    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+    shape = MaterialTheme.shapes.large,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+    ) {
+      Text("Elapsed", color = MaterialTheme.colorScheme.onSurfaceVariant)
+      Text(formatDuration(elapsed), fontWeight = FontWeight.SemiBold)
+    }
   }
   Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+    Icon(Icons.Rounded.Stop, contentDescription = null)
+    Spacer(Modifier.width(8.dp))
     Text("End Leisure")
   }
 }
@@ -487,8 +575,14 @@ private fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Uni
     Text("Balance used up", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     Text("Another 60 min arrives at 04:00.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(12.dp))
-    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth()) { Text("End Leisure") }
+    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth()) {
+      Icon(Icons.Rounded.Stop, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
+      Text("End Leisure")
+    }
     OutlinedButton(onClick = onStartWindDown, modifier = Modifier.fillMaxWidth()) {
+      Icon(Icons.Rounded.Bedtime, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
       Text("Start Wind-down")
     }
   }
@@ -497,9 +591,13 @@ private fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Uni
 @Composable
 private fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> Unit) {
   val elapsed = Duration.between(windDown.startedAt, rememberNow()).coerceAtLeast(Duration.ZERO)
-  TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary)
+  TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary, progress = 0.45f)
   Text("No earning. No spending.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-  Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp)) { Text("End") }
+  Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+    Icon(Icons.Rounded.Stop, contentDescription = null)
+    Spacer(Modifier.width(8.dp))
+    Text("End")
+  }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -511,31 +609,21 @@ private fun TrackerGrid(
 ) {
   var wakeDialog by remember { mutableStateOf(false) }
   var wakeValue by remember { mutableStateOf("09:00") }
-  Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-    Text("Daily", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    SectionHeader(title = "Daily", subtitle = "Small checks, reset at 04:00")
     FlowRow(
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalArrangement = Arrangement.spacedBy(10.dp),
       maxItemsInEachRow = 2,
     ) {
       trackers.forEach { tracker ->
-        FilterChip(
-          selected = tracker.completed,
+        TrackerPill(
+          tracker = tracker,
           onClick = { onToggleTracker(tracker.id) },
-          label = {
-            Column(modifier = Modifier.width(136.dp)) {
-              Text(tracker.label)
-              tracker.wakeTime?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall)
-              }
-              tracker.progressLabel?.let {
-                Text(it, style = MaterialTheme.typography.labelSmall)
-              }
-            }
-          },
+          modifier = Modifier.width(166.dp),
         )
         if (tracker.id == "wake") {
-          TextButton(onClick = { wakeDialog = true }) {
+          TextButton(onClick = { wakeDialog = true }, modifier = Modifier.height(48.dp)) {
             Text("Time")
           }
         }
@@ -570,6 +658,43 @@ private fun TrackerGrid(
 }
 
 @Composable
+private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val container =
+    if (tracker.completed) MaterialTheme.colorScheme.secondaryContainer
+    else MaterialTheme.colorScheme.surfaceContainer
+  val content =
+    if (tracker.completed) MaterialTheme.colorScheme.onSecondaryContainer
+    else MaterialTheme.colorScheme.onSurface
+  Surface(
+    onClick = onClick,
+    color = container,
+    contentColor = content,
+    shape = MaterialTheme.shapes.large,
+    modifier = modifier.heightIn(min = 72.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(14.dp),
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Icon(
+        if (tracker.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+        contentDescription = null,
+        tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
+      )
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(tracker.label, style = MaterialTheme.typography.titleMedium)
+        Text(
+          tracker.wakeTime ?: tracker.progressLabel ?: if (tracker.completed) "Done" else "Open",
+          style = MaterialTheme.typography.labelSmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
+  }
+}
+
+@Composable
 private fun ReserveScreen(state: FocusWellUiState) {
   LazyColumn(
     contentPadding = PaddingValues(20.dp),
@@ -578,8 +703,12 @@ private fun ReserveScreen(state: FocusWellUiState) {
     item { ReserveHeader(state.reserveMinutes) }
     item {
       CalmPanel {
-        Text("Today", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Net ${signedMinutes(state.ledger.sumOf { it.deltaMinutes })}")
+        SectionHeader(title = "Ledger", subtitle = "Most recent balance changes")
+        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+          Text("Net movement", color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(signedMinutes(state.ledger.sumOf { it.deltaMinutes }), fontWeight = FontWeight.Bold)
+        }
       }
     }
     items(state.ledger) { LedgerRow(it) }
@@ -598,9 +727,9 @@ private fun RecordsScreen(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    item { Text("Records", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+    item { SectionHeader(title = "Records", subtitle = "Edit history without rewriting the past") }
     item {
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Focus", "Leisure", "Trackers", "Tags").forEach { label ->
           FilterChip(selected = tab == label, onClick = { tab = label }, label = { Text(label) })
         }
@@ -628,7 +757,7 @@ private fun RecordsScreen(
       "Trackers" -> {
         items(state.trackers.filter { it.archivedAt == null }, key = { it.id }) { tracker ->
           CalmPanel {
-            Text(tracker.label, fontWeight = FontWeight.SemiBold)
+            Text(tracker.label, style = MaterialTheme.typography.titleMedium)
             Text(tracker.progressLabel ?: if (tracker.completed) "Done" else "Open")
           }
         }
@@ -636,8 +765,14 @@ private fun RecordsScreen(
       "Tags" -> {
         items(state.tags.filter { it.archivedAt == null }, key = { it.id }) { tag ->
           CalmPanel {
-            Text(tag.name, fontWeight = FontWeight.SemiBold)
-            Text("${tag.multiplier}x")
+            Row(
+              modifier = Modifier.fillMaxWidth(),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(tag.name, style = MaterialTheme.typography.titleMedium)
+              AssistChip(onClick = {}, label = { Text("${tag.multiplier}x") })
+            }
           }
         }
       }
@@ -662,9 +797,15 @@ private fun FocusRecordRow(
         Text(record.result, color = MaterialTheme.colorScheme.onSurfaceVariant)
         Text("${record.activeDurationMinutes.roundToInt()} min · ${signedMinutes(record.earnedMinutes)}")
       }
-      TextButton(onClick = onDelete) { Text("Delete") }
+      IconButton(onClick = onDelete) {
+        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+      }
     }
-    TextButton(onClick = { editing = true }) { Text("Edit") }
+    TextButton(onClick = { editing = true }) {
+      Icon(Icons.Rounded.Edit, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
+      Text("Edit")
+    }
   }
   if (editing) {
     val newMinutes = minutes.toDoubleOrNull() ?: record.activeDurationMinutes
@@ -705,7 +846,9 @@ private fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit) {
         Text("${record.elapsedMinutes.roundToInt()} min elapsed")
         Text("${signedMinutes(-record.costMinutes)} cost", color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
-      TextButton(onClick = onDelete) { Text("Delete") }
+      IconButton(onClick = onDelete) {
+        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+      }
     }
   }
 }
@@ -755,7 +898,11 @@ private fun SettingsScreen(
         state.tags.filter { it.archivedAt == null }.forEach {
           Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text("${it.name} ${it.multiplier}x")
-            TextButton(onClick = { onArchiveTag(it.id) }) { Text("Archive") }
+            TextButton(onClick = { onArchiveTag(it.id) }) {
+              Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null)
+              Spacer(Modifier.width(8.dp))
+              Text("Archive")
+            }
           }
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -769,6 +916,8 @@ private fun SettingsScreen(
             tagMultiplier = "1.0"
           }
         ) {
+          Icon(Icons.Rounded.Add, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
           Text("Add tag")
         }
       }
@@ -779,7 +928,11 @@ private fun SettingsScreen(
         state.trackers.filter { it.archivedAt == null }.forEach {
           Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(it.label)
-            TextButton(onClick = { onArchiveTracker(it.id) }) { Text("Archive") }
+            TextButton(onClick = { onArchiveTracker(it.id) }) {
+              Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null)
+              Spacer(Modifier.width(8.dp))
+              Text("Archive")
+            }
           }
         }
         OutlinedTextField(
@@ -794,6 +947,8 @@ private fun SettingsScreen(
             trackerLabel = ""
           }
         ) {
+          Icon(Icons.Rounded.Add, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
           Text("Add boolean tracker")
         }
         OutlinedTextField(
@@ -812,6 +967,8 @@ private fun SettingsScreen(
             ruleLabel = ""
           }
         ) {
+          Icon(Icons.Rounded.Add, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
           Text("Add rule tracker")
         }
       }
@@ -819,9 +976,21 @@ private fun SettingsScreen(
     item {
       CalmPanel {
         Text("Data", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        TextButton(onClick = onExportJson) { Text("Export JSON") }
-        TextButton(onClick = { showImport = true }) { Text("Import JSON") }
-        TextButton(onClick = { confirmClear = true }) { Text("Clear all data") }
+        TextButton(onClick = onExportJson) {
+          Icon(Icons.Rounded.Download, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Export JSON")
+        }
+        TextButton(onClick = { showImport = true }) {
+          Icon(Icons.Rounded.Upload, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Import JSON")
+        }
+        TextButton(onClick = { confirmClear = true }) {
+          Icon(Icons.Rounded.Delete, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Clear all data")
+        }
       }
     }
   }
@@ -935,6 +1104,8 @@ private fun StartFocusSheet(
         onClick = { onStart(task, type, tagId) },
         modifier = Modifier.fillMaxWidth().height(56.dp),
       ) {
+        Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+        Spacer(Modifier.width(8.dp))
         Text("Start")
       }
       Spacer(Modifier.height(12.dp))
@@ -943,13 +1114,19 @@ private fun StartFocusSheet(
 }
 
 @Composable
-private fun TimerOrganism(label: String, time: String, tone: Color) {
+private fun TimerOrganism(
+  label: String,
+  time: String,
+  tone: Color,
+  progress: Float,
+) {
   Box(
     modifier =
       Modifier
         .fillMaxWidth()
         .aspectRatio(1.25f)
-        .background(MaterialTheme.colorScheme.surfaceContainerHigh, RoundedCornerShape(36.dp))
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge)
+        .border(1.dp, tone.copy(alpha = 0.16f), MaterialTheme.shapes.extraLarge)
         .padding(24.dp),
     contentAlignment = Alignment.Center,
   ) {
@@ -966,15 +1143,15 @@ private fun TimerOrganism(label: String, time: String, tone: Color) {
       drawArc(
         color = tone,
         startAngle = -90f,
-        sweepAngle = 245f,
+        sweepAngle = 360f * progress.coerceIn(0f, 1f),
         useCenter = false,
         style = Stroke(width = 28.dp.toPx(), cap = StrokeCap.Round),
         size = Size(size.minDimension, size.minDimension),
         topLeft = Offset((size.width - size.minDimension) / 2, 0f),
       )
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-      Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+      AssistChip(onClick = {}, label = { Text(label) })
       Text(
         time,
         fontSize = 54.sp,
@@ -1007,7 +1184,7 @@ private fun LedgerRow(entry: LedgerEntry) {
 private fun CalmPanel(content: @Composable ColumnScope.() -> Unit) {
   Card(
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    shape = RoundedCornerShape(22.dp),
+    shape = MaterialTheme.shapes.large,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1017,15 +1194,28 @@ private fun CalmPanel(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
-private fun DestinationDot(selected: Boolean) {
-  Box(
-    modifier =
-      Modifier
-        .size(if (selected) 12.dp else 8.dp)
-        .background(
-          if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
-          CircleShape,
-        )
+private fun SectionHeader(title: String, subtitle: String? = null) {
+  Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+    Text(title, style = MaterialTheme.typography.titleLarge)
+    subtitle?.let {
+      Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+  }
+}
+
+@Composable
+private fun DestinationIcon(destination: Destination, selected: Boolean) {
+  val icon =
+    when (destination) {
+      Destination.Today -> Icons.Rounded.Timer
+      Destination.Reserve -> Icons.Rounded.PlayArrow
+      Destination.Records -> Icons.Rounded.Edit
+      Destination.Settings -> Icons.AutoMirrored.Rounded.Label
+    }
+  Icon(
+    imageVector = icon,
+    contentDescription = null,
+    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
   )
 }
 
