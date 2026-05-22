@@ -124,6 +124,7 @@ import java.time.Instant
 import kotlin.math.PI
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 fun MainScreen(
@@ -444,30 +445,53 @@ private fun ReserveWellDrawing(
         right - 8.dp.toPx(),
         top + 72.dp.toPx(),
       )
-    val waterCenterY = rim.center.y + (0.5f - fill) * 24.dp.toPx()
+    val waterCenterY = rim.center.y + (0.5f - fill) * 20.dp.toPx()
     val waterAlpha = 0.34f + fill * 0.26f
-    val waterLine =
-      Path().apply {
-        val steps = 28
+    fun boundedWavePath(
+      centerY: Float,
+      horizontalInset: Float,
+      amplitude: Float,
+      cycles: Float,
+      phaseOffset: Float,
+      steps: Int,
+    ): Path {
+      val rx = rim.width / 2f - horizontalInset
+      val ry = rim.height / 2f - 8.dp.toPx()
+      val normalizedY = ((centerY - rim.center.y) / ry).coerceIn(-0.86f, 0.86f)
+      val halfChord = (rx * sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f))).coerceAtLeast(16.dp.toPx())
+      val startX = rim.center.x - halfChord
+      val endX = rim.center.x + halfChord
+      return Path().apply {
         repeat(steps + 1) { index ->
-          val x = rim.left + 27.dp.toPx() + (rim.width - 54.dp.toPx()) * index / steps
+          val t = index / steps.toFloat()
+          val edgeFade = sin((PI * t).toFloat()).coerceAtLeast(0.18f)
           val crest =
-            sin(phase + index * 0.58f) * 2.8.dp.toPx() +
-              sin(phase * 1.6f + index * 1.08f) * 1.1.dp.toPx()
-          val y = waterCenterY + crest
+            sin((PI * 2).toFloat() * cycles * t + phase + phaseOffset) * amplitude +
+              sin((PI * 2).toFloat() * (cycles * 0.55f) * t - phase * 0.7f + phaseOffset) * amplitude * 0.32f
+          val x = startX + (endX - startX) * t
+          val y = centerY + crest * edgeFade
           if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
       }
+    }
+    val waterLine =
+      boundedWavePath(
+        centerY = waterCenterY,
+        horizontalInset = 32.dp.toPx(),
+        amplitude = 3.dp.toPx(),
+        cycles = 2.25f,
+        phaseOffset = 0f,
+        steps = 36,
+      )
     val echoLine =
-      Path().apply {
-        val steps = 18
-        repeat(steps + 1) { index ->
-          val x = rim.left + 46.dp.toPx() + (rim.width - 92.dp.toPx()) * index / steps
-          val crest = sin(phase * 0.82f + index * 0.62f) * 1.4.dp.toPx()
-          val y = waterCenterY - 8.dp.toPx() + crest
-          if (index == 0) moveTo(x, y) else lineTo(x, y)
-        }
-      }
+      boundedWavePath(
+        centerY = waterCenterY - 8.dp.toPx(),
+        horizontalInset = 44.dp.toPx(),
+        amplitude = 1.45.dp.toPx(),
+        cycles = 1.4f,
+        phaseOffset = 1.3f,
+        steps = 24,
+      )
 
     drawArc(
       color = colorScheme.surface.copy(alpha = 0.28f),
