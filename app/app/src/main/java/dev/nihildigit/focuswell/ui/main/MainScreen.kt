@@ -3,9 +3,15 @@ package dev.nihildigit.focuswell.ui.main
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -87,9 +93,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -113,7 +123,9 @@ import dev.nihildigit.focuswell.theme.FocusWellTheme
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import kotlin.math.PI
 import kotlin.math.roundToInt
+import kotlin.math.sin
 
 @Composable
 fun MainScreen(
@@ -344,6 +356,24 @@ private fun TodayScreen(
 
 @Composable
 private fun ReserveHeader(reserveMinutes: Double) {
+  val fillTarget = (reserveMinutes / 180.0).coerceIn(0.08, 1.0).toFloat()
+  val fill by animateFloatAsState(
+    targetValue = fillTarget,
+    animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioNoBouncy),
+    label = "well-fill",
+  )
+  val shimmerTarget = if (reserveMinutes > 0.0) 1f else 0f
+  val shimmer by animateFloatAsState(
+    targetValue = shimmerTarget,
+    animationSpec = tween(durationMillis = 300),
+    label = "well-shimmer",
+  )
+  val wavePhase by rememberInfiniteTransition(label = "well-wave").animateFloat(
+    initialValue = 0f,
+    targetValue = (PI * 2).toFloat(),
+    animationSpec = infiniteRepeatable(animation = tween(durationMillis = 3600, easing = LinearEasing)),
+    label = "well-wave-phase",
+  )
   val headline =
     when {
       reserveMinutes < 30 -> "Low reserve"
@@ -363,19 +393,28 @@ private fun ReserveHeader(reserveMinutes: Double) {
     shape = MaterialTheme.shapes.extraLarge,
     modifier = Modifier.fillMaxWidth(),
   ) {
-    Row(
-      modifier = Modifier.padding(22.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-        Text("Leisure balance", style = MaterialTheme.typography.labelLarge)
+    Box(modifier = Modifier.height(254.dp)) {
+      ReserveWellDrawing(
+        fill = fill,
+        phase = wavePhase,
+        shimmer = shimmer,
+        modifier = Modifier.matchParentSize(),
+      )
+      Column(
+        verticalArrangement = Arrangement.spacedBy(7.dp),
+        modifier =
+          Modifier
+            .align(Alignment.CenterStart)
+            .padding(start = 22.dp, top = 22.dp, end = 94.dp, bottom = 22.dp),
+      ) {
+        Text("Leisure well", style = MaterialTheme.typography.labelLarge)
         Text(headline, style = MaterialTheme.typography.displayMedium)
-        Text(supporting, style = MaterialTheme.typography.bodyMedium)
+        Text(supporting, style = MaterialTheme.typography.bodyLarge)
       }
       Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         shape = CircleShape,
+        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, bottom = 46.dp),
       ) {
         Text(
           "${reserveMinutes.roundToInt()}m",
@@ -384,6 +423,154 @@ private fun ReserveHeader(reserveMinutes: Double) {
         )
       }
     }
+  }
+}
+
+@Composable
+private fun ReserveWellDrawing(
+  fill: Float,
+  phase: Float,
+  shimmer: Float,
+  modifier: Modifier = Modifier,
+) {
+  val colorScheme = MaterialTheme.colorScheme
+  Canvas(modifier = modifier) {
+    val glyphWidth = 190.dp.toPx()
+    val glyphHeight = 154.dp.toPx()
+    val left = size.width - glyphWidth + 8.dp.toPx()
+    val top = size.height * 0.32f
+    val right = left + glyphWidth
+    val centerX = left + glyphWidth * 0.52f
+    val rimCenterY = top + 40.dp.toPx()
+    val outerRim = Rect(left, top, right, top + 78.dp.toPx())
+    val middleRim =
+      Rect(
+        left + 18.dp.toPx(),
+        top + 12.dp.toPx(),
+        right - 18.dp.toPx(),
+        top + 66.dp.toPx(),
+      )
+    val innerRim =
+      Rect(
+        left + 42.dp.toPx(),
+        top + 25.dp.toPx(),
+        right - 42.dp.toPx(),
+        top + 55.dp.toPx(),
+      )
+    val bottomY = top + glyphHeight
+    val waterBase = innerRim.bottom - (innerRim.height * fill * 0.82f)
+    val waterPath =
+      Path().apply {
+        moveTo(innerRim.left, waterBase)
+        val steps = 20
+        repeat(steps + 1) { index ->
+          val x = innerRim.left + innerRim.width * index / steps
+          val crest = sin(phase + index * 0.74f) * 3.dp.toPx()
+          lineTo(x, waterBase + crest)
+        }
+        lineTo(innerRim.right, innerRim.bottom)
+        lineTo(innerRim.left, innerRim.bottom)
+        close()
+      }
+    val innerMask = Path().apply { addOval(innerRim) }
+
+    drawOval(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.07f),
+      topLeft = Offset(left + 6.dp.toPx(), bottomY - 28.dp.toPx()),
+      size = Size(glyphWidth - 12.dp.toPx(), 44.dp.toPx()),
+    )
+    drawLine(
+      color = colorScheme.surface.copy(alpha = 0.26f),
+      start = Offset(centerX, middleRim.bottom - 2.dp.toPx()),
+      end = Offset(centerX, bottomY - 10.dp.toPx()),
+      strokeWidth = 6.dp.toPx(),
+      cap = StrokeCap.Round,
+    )
+    drawLine(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
+      start = Offset(centerX + 13.dp.toPx(), middleRim.bottom + 10.dp.toPx()),
+      end = Offset(centerX + 13.dp.toPx(), bottomY - 24.dp.toPx()),
+      strokeWidth = 2.dp.toPx(),
+      cap = StrokeCap.Round,
+    )
+    repeat(3) { index ->
+      val tickY = middleRim.bottom + (index + 1) * 22.dp.toPx()
+      drawLine(
+        color = colorScheme.surface.copy(alpha = 0.22f),
+        start = Offset(centerX + 7.dp.toPx(), tickY),
+        end = Offset(centerX + 30.dp.toPx(), tickY - 5.dp.toPx()),
+        strokeWidth = 3.dp.toPx(),
+        cap = StrokeCap.Round,
+      )
+    }
+    drawOval(
+      brush =
+        Brush.radialGradient(
+          colors =
+            listOf(
+              colorScheme.surface.copy(alpha = 0.94f),
+              colorScheme.primary.copy(alpha = 0.28f),
+              colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
+            ),
+          center = Offset(centerX, rimCenterY),
+          radius = glyphWidth * 0.58f,
+        ),
+      topLeft = Offset(outerRim.left, outerRim.top),
+      size = Size(outerRim.width, outerRim.height),
+    )
+    drawOval(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.16f),
+      topLeft = Offset(middleRim.left, middleRim.top),
+      size = Size(middleRim.width, middleRim.height),
+      style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawOval(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.3f),
+      topLeft = Offset(innerRim.left, innerRim.top),
+      size = Size(innerRim.width, innerRim.height),
+    )
+    clipPath(innerMask) {
+      drawOval(
+        color = colorScheme.surface.copy(alpha = 0.38f),
+        topLeft = Offset(innerRim.left, innerRim.top),
+        size = Size(innerRim.width, innerRim.height),
+      )
+      drawPath(
+        path = waterPath,
+        brush =
+          Brush.verticalGradient(
+            colors =
+              listOf(
+                colorScheme.tertiary.copy(alpha = 0.9f),
+                colorScheme.primary.copy(alpha = 0.7f),
+              ),
+            startY = waterBase,
+            endY = innerRim.bottom,
+          ),
+      )
+      drawOval(
+        color = colorScheme.surface.copy(alpha = 0.16f * shimmer),
+        topLeft = Offset(innerRim.left + 18.dp.toPx(), innerRim.top + 9.dp.toPx()),
+        size = Size(innerRim.width * 0.42f, innerRim.height * 0.34f),
+      )
+    }
+    drawOval(
+      color = colorScheme.surface.copy(alpha = 0.34f),
+      topLeft = Offset(outerRim.left + 9.dp.toPx(), outerRim.top + 7.dp.toPx()),
+      size = Size(outerRim.width - 18.dp.toPx(), outerRim.height - 14.dp.toPx()),
+      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawOval(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
+      topLeft = Offset(innerRim.left, innerRim.top),
+      size = Size(innerRim.width, innerRim.height),
+      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawCircle(
+      color = colorScheme.tertiary.copy(alpha = 0.38f),
+      radius = 6.dp.toPx(),
+      center = Offset(centerX, bottomY - 10.dp.toPx()),
+    )
   }
 }
 

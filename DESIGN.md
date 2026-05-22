@@ -201,6 +201,22 @@ Shape morphing should be tied to interaction or state:
 
 Do not use unusual shapes as decoration on accounting screens.
 
+## FocusWell Motif
+
+The product should carry a visible `well` motif on Today, but it should read as a state symbol rather than an illustration.
+
+Use the motif for:
+
+- Current leisure reserve.
+- Active reserve changes.
+- Depleted or wind-down transitions.
+
+The motif can use custom drawing, animated water, depth lines, ripples, and shape morphing. Keep it symbolic: concentric openings, waterline, depth, and reflection are preferable to a literal bucket, tank, or decorative scene.
+
+The motif must not compete with the primary number. The reserve amount and next action stay readable first; the well gives the state a memorable physical model second.
+
+Do not use the motif in Balance or History rows. Those screens must remain auditable.
+
 ## Motion Strategy
 
 Motion should show state, not perform.
