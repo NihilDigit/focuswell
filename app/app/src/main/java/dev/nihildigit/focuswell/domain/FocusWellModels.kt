@@ -86,8 +86,8 @@ data class LeisureRecord(
 
 enum class Destination(val label: String) {
   Today("Today"),
-  Reserve("Reserve"),
-  Records("Records"),
+  Reserve("Balance"),
+  Records("History"),
   Settings("Settings"),
 }
 

@@ -5,6 +5,8 @@ import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -19,6 +21,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
@@ -38,6 +41,7 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.NavigationBar
@@ -51,19 +55,24 @@ import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.rounded.Label
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
+import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material.icons.rounded.Today
 import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -356,7 +365,7 @@ private fun ReserveHeader(reserveMinutes: Double) {
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-        Text("Leisure reserve", style = MaterialTheme.typography.labelLarge)
+        Text("Leisure balance", style = MaterialTheme.typography.labelLarge)
         Text(headline, style = MaterialTheme.typography.headlineMedium)
         Text(supporting, style = MaterialTheme.typography.bodyMedium)
       }
@@ -380,27 +389,38 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    TimerOrganism(
-      label = "Ready",
-      time = "00:00",
-      tone = MaterialTheme.colorScheme.primary,
-      progress = 0.18f,
-    )
-    Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-      Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(60.dp)) {
-        Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text("Start Focus")
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = MaterialTheme.shapes.extraLarge,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(
+      modifier = Modifier.padding(18.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "Start focus to earn reserve, or spend leisure with one tap.",
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
-      FilledTonalButton(
-        onClick = onStartLeisure,
-        enabled = leisureEnabled,
-        modifier = Modifier.weight(1f).height(60.dp),
-      ) {
-        Icon(Icons.Rounded.Timer, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text("Leisure")
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(64.dp)) {
+          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Focus")
+        }
+        FilledTonalButton(
+          onClick = onStartLeisure,
+          enabled = leisureEnabled,
+          modifier = Modifier.weight(1f).height(64.dp),
+        ) {
+          Icon(Icons.Rounded.Timer, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Leisure")
+        }
       }
     }
   }
@@ -431,7 +451,6 @@ private fun ActiveFocusSurface(
       label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x",
       time = formatDuration(elapsed),
       tone = MaterialTheme.colorScheme.primary,
-      progress = 0.78f,
     )
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
       Text(focus.task, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -591,7 +610,7 @@ private fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Uni
 @Composable
 private fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> Unit) {
   val elapsed = Duration.between(windDown.startedAt, rememberNow()).coerceAtLeast(Duration.ZERO)
-  TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary, progress = 0.45f)
+  TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary)
   Text("No earning. No spending.", color = MaterialTheme.colorScheme.onSurfaceVariant)
   Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp)) {
     Icon(Icons.Rounded.Stop, contentDescription = null)
@@ -611,21 +630,17 @@ private fun TrackerGrid(
   var wakeValue by remember { mutableStateOf("09:00") }
   Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
     SectionHeader(title = "Daily", subtitle = "Small checks, reset at 04:00")
-    FlowRow(
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
-      verticalArrangement = Arrangement.spacedBy(10.dp),
-      maxItemsInEachRow = 2,
-    ) {
-      trackers.forEach { tracker ->
-        TrackerPill(
-          tracker = tracker,
-          onClick = { onToggleTracker(tracker.id) },
-          modifier = Modifier.width(166.dp),
-        )
-        if (tracker.id == "wake") {
-          TextButton(onClick = { wakeDialog = true }, modifier = Modifier.height(48.dp)) {
-            Text("Time")
-          }
+    trackers.chunked(2).forEach { rowTrackers ->
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+        rowTrackers.forEach { tracker ->
+          TrackerPill(
+            tracker = tracker,
+            onClick = { if (tracker.id == "wake") wakeDialog = true else onToggleTracker(tracker.id) },
+            modifier = Modifier.weight(1f),
+          )
+        }
+        if (rowTrackers.size == 1) {
+          Spacer(modifier = Modifier.weight(1f))
         }
       }
     }
@@ -659,6 +674,7 @@ private fun TrackerGrid(
 
 @Composable
 private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
   val container =
     if (tracker.completed) MaterialTheme.colorScheme.secondaryContainer
     else MaterialTheme.colorScheme.surfaceContainer
@@ -667,6 +683,7 @@ private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Mo
     else MaterialTheme.colorScheme.onSurface
   Surface(
     onClick = onClick,
+    enabled = !isRuleTracker,
     color = container,
     contentColor = content,
     shape = MaterialTheme.shapes.large,
@@ -678,17 +695,27 @@ private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Mo
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
-        if (tracker.completed) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+        when {
+          isRuleTracker -> Icons.Rounded.Timer
+          tracker.completed -> Icons.Rounded.CheckCircle
+          else -> Icons.Rounded.RadioButtonUnchecked
+        },
         contentDescription = null,
         tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
       )
-      Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium)
         Text(
-          tracker.wakeTime ?: tracker.progressLabel ?: if (tracker.completed) "Done" else "Open",
+          trackerStatusText(tracker),
           style = MaterialTheme.typography.labelSmall,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
+        if (isRuleTracker) {
+          LinearProgressIndicator(
+            progress = { trackerProgress(tracker) },
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
       }
     }
   }
@@ -727,7 +754,7 @@ private fun RecordsScreen(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
-    item { SectionHeader(title = "Records", subtitle = "Edit history without rewriting the past") }
+    item { SectionHeader(title = "History", subtitle = "Edit past sessions without rewriting the ledger") }
     item {
       FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         listOf("Focus", "Leisure", "Trackers", "Tags").forEach { label ->
@@ -771,7 +798,7 @@ private fun RecordsScreen(
               verticalAlignment = Alignment.CenterVertically,
             ) {
               Text(tag.name, style = MaterialTheme.typography.titleMedium)
-              AssistChip(onClick = {}, label = { Text("${tag.multiplier}x") })
+              StatusBadge("${tag.multiplier}x", MaterialTheme.colorScheme.secondary)
             }
           }
         }
@@ -899,7 +926,7 @@ private fun SettingsScreen(
           Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text("${it.name} ${it.multiplier}x")
             TextButton(onClick = { onArchiveTag(it.id) }) {
-              Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null)
+              Icon(Icons.Rounded.Archive, contentDescription = null)
               Spacer(Modifier.width(8.dp))
               Text("Archive")
             }
@@ -929,7 +956,7 @@ private fun SettingsScreen(
           Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
             Text(it.label)
             TextButton(onClick = { onArchiveTracker(it.id) }) {
-              Icon(Icons.AutoMirrored.Rounded.Label, contentDescription = null)
+              Icon(Icons.Rounded.Archive, contentDescription = null)
               Spacer(Modifier.width(8.dp))
               Text("Archive")
             }
@@ -1056,10 +1083,15 @@ private fun StartFocusSheet(
   val activeTags = state.tags.filter { it.archivedAt == null }.ifEmpty { state.tags }
   var tagId by remember { mutableStateOf<String?>(null) }
   val tag = tagId?.let { selectedId -> activeTags.firstOrNull { it.id == selectedId } }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
 
-  ModalBottomSheet(onDismissRequest = onDismiss) {
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(
-      modifier = Modifier.padding(horizontal = 20.dp, vertical = 12.dp),
+      modifier =
+        Modifier
+          .padding(horizontal = 20.dp, vertical = 12.dp)
+          .imePadding()
+          .verticalScroll(rememberScrollState()),
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Text("Start Focus", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -1108,7 +1140,7 @@ private fun StartFocusSheet(
         Spacer(Modifier.width(8.dp))
         Text("Start")
       }
-      Spacer(Modifier.height(12.dp))
+      Spacer(Modifier.height(16.dp))
     }
   }
 }
@@ -1118,7 +1150,7 @@ private fun TimerOrganism(
   label: String,
   time: String,
   tone: Color,
-  progress: Float,
+  progress: Float? = null,
 ) {
   Box(
     modifier =
@@ -1130,28 +1162,30 @@ private fun TimerOrganism(
         .padding(24.dp),
     contentAlignment = Alignment.Center,
   ) {
-    Canvas(modifier = Modifier.size(210.dp)) {
-      drawArc(
-        color = tone.copy(alpha = 0.16f),
-        startAngle = -90f,
-        sweepAngle = 360f,
-        useCenter = false,
-        style = Stroke(width = 28.dp.toPx(), cap = StrokeCap.Round),
-        size = Size(size.minDimension, size.minDimension),
-        topLeft = Offset((size.width - size.minDimension) / 2, 0f),
-      )
-      drawArc(
-        color = tone,
-        startAngle = -90f,
-        sweepAngle = 360f * progress.coerceIn(0f, 1f),
-        useCenter = false,
-        style = Stroke(width = 28.dp.toPx(), cap = StrokeCap.Round),
-        size = Size(size.minDimension, size.minDimension),
-        topLeft = Offset((size.width - size.minDimension) / 2, 0f),
-      )
+    progress?.let { actualProgress ->
+      Canvas(modifier = Modifier.size(210.dp)) {
+        drawArc(
+          color = tone.copy(alpha = 0.16f),
+          startAngle = -90f,
+          sweepAngle = 360f,
+          useCenter = false,
+          style = Stroke(width = 28.dp.toPx(), cap = StrokeCap.Round),
+          size = Size(size.minDimension, size.minDimension),
+          topLeft = Offset((size.width - size.minDimension) / 2, 0f),
+        )
+        drawArc(
+          color = tone,
+          startAngle = -90f,
+          sweepAngle = 360f * actualProgress.coerceIn(0f, 1f),
+          useCenter = false,
+          style = Stroke(width = 28.dp.toPx(), cap = StrokeCap.Round),
+          size = Size(size.minDimension, size.minDimension),
+          topLeft = Offset((size.width - size.minDimension) / 2, 0f),
+        )
+      }
     }
     Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-      AssistChip(onClick = {}, label = { Text(label) })
+      StatusBadge(label, tone)
       Text(
         time,
         fontSize = 54.sp,
@@ -1163,19 +1197,51 @@ private fun TimerOrganism(
 }
 
 @Composable
+private fun StatusBadge(text: String, tone: Color, modifier: Modifier = Modifier) {
+  Surface(
+    color = tone.copy(alpha = 0.12f),
+    contentColor = tone,
+    shape = CircleShape,
+    modifier = modifier,
+  ) {
+    Text(
+      text,
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+      style = MaterialTheme.typography.labelLarge,
+    )
+  }
+}
+
+@Composable
 private fun LedgerRow(entry: LedgerEntry) {
   Surface(
-    shape = RoundedCornerShape(18.dp),
+    shape = RoundedCornerShape(16.dp),
     color = MaterialTheme.colorScheme.surfaceContainer,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Row(
       modifier = Modifier.padding(16.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Text(entry.title, fontWeight = FontWeight.SemiBold)
-      Text(signedMinutes(entry.deltaMinutes), fontWeight = FontWeight.Bold)
+      Text(
+        signedMinutes(entry.deltaMinutes),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color =
+          when {
+            entry.deltaMinutes > 0.0 -> MaterialTheme.colorScheme.primary
+            entry.deltaMinutes < 0.0 -> MaterialTheme.colorScheme.tertiary
+            else -> MaterialTheme.colorScheme.onSurfaceVariant
+          },
+        modifier = Modifier.width(86.dp),
+      )
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(entry.title, fontWeight = FontWeight.SemiBold)
+        entry.note?.let {
+          Text(it, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+        }
+      }
     }
   }
 }
@@ -1207,10 +1273,10 @@ private fun SectionHeader(title: String, subtitle: String? = null) {
 private fun DestinationIcon(destination: Destination, selected: Boolean) {
   val icon =
     when (destination) {
-      Destination.Today -> Icons.Rounded.Timer
-      Destination.Reserve -> Icons.Rounded.PlayArrow
-      Destination.Records -> Icons.Rounded.Edit
-      Destination.Settings -> Icons.AutoMirrored.Rounded.Label
+      Destination.Today -> Icons.Rounded.Today
+      Destination.Reserve -> Icons.Rounded.AccountBalanceWallet
+      Destination.Records -> Icons.Rounded.History
+      Destination.Settings -> Icons.Rounded.Settings
     }
   Icon(
     imageVector = icon,
@@ -1249,7 +1315,41 @@ private fun effectiveRate(type: SessionType, tagMultiplier: Double): String {
 
 private fun signedMinutes(minutes: Double): String {
   val rounded = minutes.roundToInt()
-  return if (rounded >= 0) "+$rounded min" else "$rounded min"
+  return when {
+    rounded > 0 -> "+$rounded min"
+    rounded < 0 -> "$rounded min"
+    else -> "0 min"
+  }
+}
+
+private fun trackerProgress(tracker: DailyTracker): Float {
+  if (tracker.completed) return 1f
+  val label = tracker.progressLabel ?: return 0f
+  val parts = label.split("/")
+  if (parts.size != 2) return 0f
+  val current = parseDurationMinutes(parts[0])
+  val target = parseDurationMinutes(parts[1])
+  if (target <= 0.0) return 0f
+  return (current / target).toFloat().coerceIn(0f, 1f)
+}
+
+private fun trackerStatusText(tracker: DailyTracker): String {
+  return tracker.wakeTime
+    ?: tracker.progressLabel
+    ?: when {
+      tracker.id == "wake" -> "Set time"
+      tracker.completed -> "Done"
+      else -> "Open"
+    }
+}
+
+private fun parseDurationMinutes(text: String): Double {
+  val trimmed = text.trim()
+  var total = 0.0
+  Regex("""(\d+(?:\.\d+)?)\s*h""").find(trimmed)?.let { total += it.groupValues[1].toDoubleOrNull()?.times(60.0) ?: 0.0 }
+  Regex("""(\d+(?:\.\d+)?)\s*m""").find(trimmed)?.let { total += it.groupValues[1].toDoubleOrNull() ?: 0.0 }
+  if (total > 0.0) return total
+  return trimmed.toDoubleOrNull() ?: 0.0
 }
 
 private fun Double.formatOne(): String = "%.1f".format(this)
