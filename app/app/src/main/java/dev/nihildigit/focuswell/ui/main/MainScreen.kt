@@ -571,16 +571,15 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
+  val focusShape = RoundedCornerShape(topStart = 34.dp, topEnd = 20.dp, bottomEnd = 30.dp, bottomStart = 34.dp)
+  val leisureShape = RoundedCornerShape(topStart = 20.dp, topEnd = 34.dp, bottomEnd = 34.dp, bottomStart = 30.dp)
+
   Box(
     modifier =
       Modifier
         .fillMaxWidth()
-        .heightIn(min = 202.dp),
+        .heightIn(min = 166.dp),
   ) {
-    HourglassDrawing(
-      modifier = Modifier.matchParentSize(),
-      tone = MaterialTheme.colorScheme.tertiary,
-    )
     Column(
       modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
       verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -592,8 +591,12 @@ private fun IdleTimerSurface(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        Button(
+          onClick = onStartFocusClick,
+          modifier = Modifier.weight(1f).height(68.dp),
+          shape = focusShape,
+        ) {
           Icon(Icons.Rounded.PlayArrow, contentDescription = null)
           Spacer(Modifier.width(8.dp))
           Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
@@ -602,6 +605,7 @@ private fun IdleTimerSurface(
           onClick = onStartLeisure,
           enabled = leisureEnabled,
           modifier = Modifier.weight(1f).height(68.dp),
+          shape = leisureShape,
         ) {
           Icon(Icons.Rounded.Timer, contentDescription = null)
           Spacer(Modifier.width(8.dp))
@@ -609,59 +613,6 @@ private fun IdleTimerSurface(
         }
       }
     }
-  }
-}
-
-@Composable
-private fun HourglassDrawing(modifier: Modifier = Modifier, tone: Color) {
-  Canvas(modifier = modifier) {
-    val right = size.width + 4.dp.toPx()
-    val bottom = size.height - 4.dp.toPx()
-    val width = 100.dp.toPx()
-    val height = 108.dp.toPx()
-    val left = right - width
-    val top = bottom - height
-    val neck = Offset(left + width * 0.5f, top + height * 0.52f)
-    val frame =
-      Path().apply {
-        moveTo(left + 20.dp.toPx(), top + 8.dp.toPx())
-        cubicTo(left + 34.dp.toPx(), top + 34.dp.toPx(), left + 46.dp.toPx(), top + 45.dp.toPx(), neck.x, neck.y)
-        cubicTo(left + 62.dp.toPx(), top + 64.dp.toPx(), left + 74.dp.toPx(), top + 82.dp.toPx(), right - 16.dp.toPx(), bottom - 10.dp.toPx())
-        moveTo(right - 20.dp.toPx(), top + 8.dp.toPx())
-        cubicTo(left + 74.dp.toPx(), top + 34.dp.toPx(), left + 62.dp.toPx(), top + 45.dp.toPx(), neck.x, neck.y)
-        cubicTo(left + 46.dp.toPx(), top + 64.dp.toPx(), left + 34.dp.toPx(), top + 82.dp.toPx(), left + 16.dp.toPx(), bottom - 10.dp.toPx())
-      }
-    drawPath(path = frame, color = tone.copy(alpha = 0.12f), style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
-    drawLine(
-      color = tone.copy(alpha = 0.14f),
-      start = Offset(left + 24.dp.toPx(), top + 21.dp.toPx()),
-      end = Offset(right - 24.dp.toPx(), top + 21.dp.toPx()),
-      strokeWidth = 4.dp.toPx(),
-      cap = StrokeCap.Round,
-    )
-    drawLine(
-      color = tone.copy(alpha = 0.13f),
-      start = Offset(left + 22.dp.toPx(), bottom - 24.dp.toPx()),
-      end = Offset(right - 22.dp.toPx(), bottom - 24.dp.toPx()),
-      strokeWidth = 5.dp.toPx(),
-      cap = StrokeCap.Round,
-    )
-    drawLine(
-      color = tone.copy(alpha = 0.18f),
-      start = Offset(neck.x, neck.y - 12.dp.toPx()),
-      end = Offset(neck.x, neck.y + 13.dp.toPx()),
-      strokeWidth = 3.dp.toPx(),
-      cap = StrokeCap.Round,
-    )
-    drawArc(
-      color = tone.copy(alpha = 0.16f),
-      startAngle = 198f,
-      sweepAngle = 144f,
-      useCenter = false,
-      topLeft = Offset(left + 30.dp.toPx(), bottom - 43.dp.toPx()),
-      size = Size(50.dp.toPx(), 18.dp.toPx()),
-      style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
-    )
   }
 }
 
