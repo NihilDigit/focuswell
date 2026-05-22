@@ -2,6 +2,10 @@ package dev.nihildigit.focuswell.ui.main
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -89,9 +93,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
@@ -366,7 +370,7 @@ private fun ReserveHeader(reserveMinutes: Double) {
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
         Text("Leisure balance", style = MaterialTheme.typography.labelLarge)
-        Text(headline, style = MaterialTheme.typography.headlineMedium)
+        Text(headline, style = MaterialTheme.typography.displayMedium)
         Text(supporting, style = MaterialTheme.typography.bodyMedium)
       }
       Surface(
@@ -376,7 +380,7 @@ private fun ReserveHeader(reserveMinutes: Double) {
         Text(
           "${reserveMinutes.roundToInt()}m",
           modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-          style = MaterialTheme.typography.titleMedium,
+          style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
         )
       }
     }
@@ -407,19 +411,19 @@ private fun IdleTimerSurface(
         )
       }
       Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(64.dp)) {
+        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
           Icon(Icons.Rounded.PlayArrow, contentDescription = null)
           Spacer(Modifier.width(8.dp))
-          Text("Focus")
+          Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
         FilledTonalButton(
           onClick = onStartLeisure,
           enabled = leisureEnabled,
-          modifier = Modifier.weight(1f).height(64.dp),
+          modifier = Modifier.weight(1f).height(68.dp),
         ) {
           Icon(Icons.Rounded.Timer, contentDescription = null)
           Spacer(Modifier.width(8.dp))
-          Text("Leisure")
+          Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
       }
     }
@@ -675,18 +679,29 @@ private fun TrackerGrid(
 @Composable
 private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
   val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
-  val container =
+  val targetContainer =
     if (tracker.completed) MaterialTheme.colorScheme.secondaryContainer
     else MaterialTheme.colorScheme.surfaceContainer
-  val content =
+  val container by animateColorAsState(
+    targetValue = targetContainer,
+    animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+    label = "tracker-container",
+  )
+  val targetContent =
     if (tracker.completed) MaterialTheme.colorScheme.onSecondaryContainer
     else MaterialTheme.colorScheme.onSurface
+  val content by animateColorAsState(targetValue = targetContent, label = "tracker-content")
+  val corner by animateDpAsState(
+    targetValue = if (tracker.completed) 30.dp else 24.dp,
+    animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
+    label = "tracker-corner",
+  )
   Surface(
     onClick = onClick,
     enabled = !isRuleTracker,
     color = container,
     contentColor = content,
-    shape = MaterialTheme.shapes.large,
+    shape = RoundedCornerShape(corner),
     modifier = modifier.heightIn(min = 72.dp),
   ) {
     Row(
@@ -702,12 +717,13 @@ private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Mo
         },
         contentDescription = null,
         tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
+        modifier = Modifier.size(30.dp),
       )
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium)
         Text(
           trackerStatusText(tracker),
-          style = MaterialTheme.typography.labelSmall,
+          style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         if (isRuleTracker) {
@@ -886,6 +902,45 @@ private fun EmptyRecordText(text: String) {
 }
 
 @Composable
+private fun SettingsInfoRow(label: String, value: String) {
+  Row(
+    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(
+      value,
+      style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+      fontWeight = FontWeight.Bold,
+    )
+  }
+}
+
+@Composable
+private fun SettingsListRow(
+  title: String,
+  supporting: String,
+  onArchive: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+    verticalAlignment = Alignment.CenterVertically,
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  ) {
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    TextButton(onClick = onArchive, modifier = Modifier.width(132.dp)) {
+      Icon(Icons.Rounded.Archive, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
+      Text("Archive")
+    }
+  }
+}
+
+@Composable
 private fun SettingsScreen(
   state: FocusWellUiState,
   onExportJson: () -> Unit,
@@ -910,27 +965,24 @@ private fun SettingsScreen(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    item { Text("Settings", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold) }
+    item { Text("Settings", style = MaterialTheme.typography.headlineLarge) }
     item {
       CalmPanel {
-        Text("Rules", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
-        Text("Daily grant: 60 min")
-        Text("Day boundary: 04:00")
-        Text("Sleep protection: 01:00 · 2x")
+        Text("Rules", style = MaterialTheme.typography.headlineSmall)
+        SettingsInfoRow(label = "Daily grant", value = "60 min")
+        SettingsInfoRow(label = "Day boundary", value = "04:00")
+        SettingsInfoRow(label = "Sleep protection", value = "01:00 · 2x")
       }
     }
     item {
       CalmPanel {
-        Text("Tags", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Tags", style = MaterialTheme.typography.headlineSmall)
         state.tags.filter { it.archivedAt == null }.forEach {
-          Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text("${it.name} ${it.multiplier}x")
-            TextButton(onClick = { onArchiveTag(it.id) }) {
-              Icon(Icons.Rounded.Archive, contentDescription = null)
-              Spacer(Modifier.width(8.dp))
-              Text("Archive")
-            }
-          }
+          SettingsListRow(
+            title = it.name,
+            supporting = "${it.multiplier.formatThree()}x multiplier",
+            onArchive = { onArchiveTag(it.id) },
+          )
         }
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
           OutlinedTextField(value = tagName, onValueChange = { tagName = it }, label = { Text("Tag") }, modifier = Modifier.weight(1f))
@@ -951,16 +1003,13 @@ private fun SettingsScreen(
     }
     item {
       CalmPanel {
-        Text("Trackers", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Trackers", style = MaterialTheme.typography.headlineSmall)
         state.trackers.filter { it.archivedAt == null }.forEach {
-          Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-            Text(it.label)
-            TextButton(onClick = { onArchiveTracker(it.id) }) {
-              Icon(Icons.Rounded.Archive, contentDescription = null)
-              Spacer(Modifier.width(8.dp))
-              Text("Archive")
-            }
-          }
+          SettingsListRow(
+            title = it.label,
+            supporting = it.progressLabel ?: it.wakeTime ?: if (it.ruleTagName != null) "Rule tracker" else "Boolean tracker",
+            onArchive = { onArchiveTracker(it.id) },
+          )
         }
         OutlinedTextField(
           value = trackerLabel,
@@ -1002,7 +1051,7 @@ private fun SettingsScreen(
     }
     item {
       CalmPanel {
-        Text("Data", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold)
+        Text("Data", style = MaterialTheme.typography.headlineSmall)
         TextButton(onClick = onExportJson) {
           Icon(Icons.Rounded.Download, contentDescription = null)
           Spacer(Modifier.width(8.dp))
@@ -1188,8 +1237,7 @@ private fun TimerOrganism(
       StatusBadge(label, tone)
       Text(
         time,
-        fontSize = 54.sp,
-        fontWeight = FontWeight.Black,
+        style = MaterialTheme.typography.displayLarge.copy(fontFamily = FontFamily.Monospace),
         textAlign = TextAlign.Center,
       )
     }
@@ -1198,8 +1246,9 @@ private fun TimerOrganism(
 
 @Composable
 private fun StatusBadge(text: String, tone: Color, modifier: Modifier = Modifier) {
+  val container by animateColorAsState(targetValue = tone.copy(alpha = 0.14f), label = "badge-container")
   Surface(
-    color = tone.copy(alpha = 0.12f),
+    color = container,
     contentColor = tone,
     shape = CircleShape,
     modifier = modifier,
