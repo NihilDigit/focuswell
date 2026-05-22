@@ -7,6 +7,7 @@ import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.reminders.ReminderClient
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
@@ -15,6 +16,7 @@ import kotlinx.coroutines.flow.stateIn
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
+  private val reminders = ReminderClient(application)
   private val destination = MutableStateFlow(Destination.Today)
   private val exportText = MutableStateFlow<String?>(null)
   private val importError = MutableStateFlow<String?>(null)
@@ -83,6 +85,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun clearAllData() {
     repository.clearAllData()
+    reminders.rotateIdentity()
     exportText.value = null
   }
 
