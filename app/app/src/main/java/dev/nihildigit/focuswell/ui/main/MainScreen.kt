@@ -122,9 +122,9 @@ import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.PI
-import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 @Composable
 fun MainScreen(
@@ -447,64 +447,76 @@ private fun ReserveWellDrawing(
       )
     val waterCenterY = rim.center.y + (0.5f - fill) * 20.dp.toPx()
     val waterAlpha = 0.46f + fill * 0.28f
-    fun ripplePath(
-      centerY: Float,
+    fun disturbancePath(
+      centerXRatio: Float,
+      centerYOffset: Float,
+      width: Float,
       amplitude: Float,
-      radiusScale: Float,
-      startDegrees: Float,
-      sweepDegrees: Float,
+      cycles: Float,
       phaseOffset: Float,
       steps: Int,
     ): Path {
-      val rx = rim.width * 0.34f * radiusScale
-      val ry = rim.height * 0.2f * radiusScale
-      val startRadians = (PI / 180.0 * startDegrees).toFloat()
-      val sweepRadians = (PI / 180.0 * sweepDegrees).toFloat()
+      val centerY = waterCenterY + centerYOffset
+      val rx = rim.width / 2f - 24.dp.toPx()
+      val ry = rim.height / 2f - 11.dp.toPx()
+      val normalizedY = ((centerY - rim.center.y) / ry).coerceIn(-0.84f, 0.84f)
+      val halfChord = (rx * sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f))).coerceAtLeast(width / 2f)
+      val desiredCenter = rim.center.x + (centerXRatio - 0.5f) * halfChord * 2f
+      val centerX = desiredCenter.coerceIn(rim.center.x - halfChord + width / 2f, rim.center.x + halfChord - width / 2f)
+      val startX = centerX - width / 2f
       return Path().apply {
         repeat(steps + 1) { index ->
           val t = index / steps.toFloat()
-          val theta = startRadians + sweepRadians * t
           val edgeFade = sin((PI * t).toFloat()).coerceAtLeast(0f)
-          val wobble =
-            (sin(theta * 2.7f + phase + phaseOffset) * 0.72f +
-              sin(theta * 5.1f - phase * 0.6f + phaseOffset) * 0.28f) *
+          val localPhase = (PI * 2).toFloat() * cycles * t + phase * 0.9f + phaseOffset
+          val crest =
+            (sin(localPhase) * 0.82f + sin(localPhase * 1.9f + phaseOffset) * 0.18f) *
               amplitude *
               edgeFade
-          val x = rim.center.x + cos(theta) * (rx + wobble)
-          val y = centerY + sin(theta) * (ry + wobble * 0.45f)
+          val x = startX + width * t
+          val y = centerY + crest
           if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
       }
     }
-    val wavelets =
+    val disturbances =
       listOf(
-        ripplePath(
-          centerY = waterCenterY + 4.dp.toPx(),
-          amplitude = 2.8.dp.toPx(),
-          radiusScale = 1.0f,
-          startDegrees = 194f,
-          sweepDegrees = 142f,
-          phaseOffset = 0.2f,
-          steps = 28,
-        ) to waterAlpha,
-        ripplePath(
-          centerY = waterCenterY + 1.dp.toPx(),
-          amplitude = 1.8.dp.toPx(),
-          radiusScale = 0.72f,
-          startDegrees = 206f,
-          sweepDegrees = 112f,
-          phaseOffset = 1.6f,
+        disturbancePath(
+          centerXRatio = 0.3f,
+          centerYOffset = 1.dp.toPx(),
+          width = 34.dp.toPx(),
+          amplitude = 3.1.dp.toPx(),
+          cycles = 1.85f,
+          phaseOffset = 0.3f,
           steps = 22,
-        ) to (waterAlpha * 0.66f),
-        ripplePath(
-          centerY = waterCenterY - 3.dp.toPx(),
-          amplitude = 1.15.dp.toPx(),
-          radiusScale = 0.46f,
-          startDegrees = 218f,
-          sweepDegrees = 82f,
-          phaseOffset = 2.7f,
-          steps = 18,
+        ) to waterAlpha,
+        disturbancePath(
+          centerXRatio = 0.56f,
+          centerYOffset = -5.dp.toPx(),
+          width = 24.dp.toPx(),
+          amplitude = 1.6.dp.toPx(),
+          cycles = 1.4f,
+          phaseOffset = 2.1f,
+          steps = 16,
         ) to (0.22f * shimmer),
+        disturbancePath(
+          centerXRatio = 0.72f,
+          centerYOffset = 4.dp.toPx(),
+          width = 30.dp.toPx(),
+          amplitude = 2.6.dp.toPx(),
+          cycles = 1.7f,
+          phaseOffset = 4.0f,
+          steps = 20,
+        ) to (waterAlpha * 0.9f),
+        disturbancePath(
+          centerXRatio = 0.48f,
+          centerYOffset = 7.dp.toPx(),
+          width = 22.dp.toPx(),
+          amplitude = 1.25.dp.toPx(),
+          cycles = 1.2f,
+          phaseOffset = 5.4f,
+          steps = 14,
+        ) to (waterAlpha * 0.46f),
       )
 
     drawArc(
@@ -543,11 +555,11 @@ private fun ReserveWellDrawing(
       size = Size(rim.width - 34.dp.toPx(), rim.height - 22.dp.toPx()),
       style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
     )
-    wavelets.forEachIndexed { index, (path, alpha) ->
+    disturbances.forEachIndexed { index, (path, alpha) ->
       drawPath(
         path = path,
-        color = if (index == 2) colorScheme.surface.copy(alpha = alpha) else colorScheme.tertiary.copy(alpha = alpha),
-        style = Stroke(width = if (index == 2) 1.8.dp.toPx() else 3.3.dp.toPx(), cap = StrokeCap.Round),
+        color = if (index == 1) colorScheme.surface.copy(alpha = alpha) else colorScheme.tertiary.copy(alpha = alpha),
+        style = Stroke(width = if (index == 1) 1.7.dp.toPx() else 3.dp.toPx(), cap = StrokeCap.Round),
       )
     }
   }
@@ -565,34 +577,93 @@ private fun IdleTimerSurface(
     shape = MaterialTheme.shapes.extraLarge,
     modifier = Modifier.fillMaxWidth(),
   ) {
-    Column(
-      modifier = Modifier.padding(18.dp),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(
-          "Start focus to earn reserve, or spend leisure with one tap.",
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
-          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    Box {
+      HourglassDrawing(
+        modifier = Modifier.matchParentSize(),
+        tone = MaterialTheme.colorScheme.tertiary,
+      )
+      Column(
+        modifier = Modifier.padding(18.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
+      ) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+          Text(
+            "Start focus to earn reserve, or spend leisure with one tap.",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
         }
-        FilledTonalButton(
-          onClick = onStartLeisure,
-          enabled = leisureEnabled,
-          modifier = Modifier.weight(1f).height(68.dp),
-        ) {
-          Icon(Icons.Rounded.Timer, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+          Button(onClick = onStartFocusClick, modifier = Modifier.weight(1f).height(68.dp)) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          }
+          FilledTonalButton(
+            onClick = onStartLeisure,
+            enabled = leisureEnabled,
+            modifier = Modifier.weight(1f).height(68.dp),
+          ) {
+            Icon(Icons.Rounded.Timer, contentDescription = null)
+            Spacer(Modifier.width(8.dp))
+            Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          }
         }
       }
     }
+  }
+}
+
+@Composable
+private fun HourglassDrawing(modifier: Modifier = Modifier, tone: Color) {
+  Canvas(modifier = modifier) {
+    val right = size.width + 18.dp.toPx()
+    val bottom = size.height + 10.dp.toPx()
+    val width = 112.dp.toPx()
+    val height = 118.dp.toPx()
+    val left = right - width
+    val top = bottom - height
+    val neck = Offset(left + width * 0.5f, top + height * 0.52f)
+    val frame =
+      Path().apply {
+        moveTo(left + 20.dp.toPx(), top + 8.dp.toPx())
+        cubicTo(left + 36.dp.toPx(), top + 38.dp.toPx(), left + 48.dp.toPx(), top + 48.dp.toPx(), neck.x, neck.y)
+        cubicTo(left + 66.dp.toPx(), top + 68.dp.toPx(), left + 78.dp.toPx(), top + 86.dp.toPx(), right - 18.dp.toPx(), bottom - 12.dp.toPx())
+        moveTo(right - 20.dp.toPx(), top + 8.dp.toPx())
+        cubicTo(left + 76.dp.toPx(), top + 38.dp.toPx(), left + 64.dp.toPx(), top + 48.dp.toPx(), neck.x, neck.y)
+        cubicTo(left + 46.dp.toPx(), top + 68.dp.toPx(), left + 34.dp.toPx(), top + 86.dp.toPx(), left + 18.dp.toPx(), bottom - 12.dp.toPx())
+      }
+    drawPath(path = frame, color = tone.copy(alpha = 0.14f), style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round))
+    drawLine(
+      color = tone.copy(alpha = 0.18f),
+      start = Offset(left + 24.dp.toPx(), top + 21.dp.toPx()),
+      end = Offset(right - 24.dp.toPx(), top + 21.dp.toPx()),
+      strokeWidth = 4.dp.toPx(),
+      cap = StrokeCap.Round,
+    )
+    drawLine(
+      color = tone.copy(alpha = 0.16f),
+      start = Offset(left + 22.dp.toPx(), bottom - 24.dp.toPx()),
+      end = Offset(right - 22.dp.toPx(), bottom - 24.dp.toPx()),
+      strokeWidth = 5.dp.toPx(),
+      cap = StrokeCap.Round,
+    )
+    drawLine(
+      color = tone.copy(alpha = 0.2f),
+      start = Offset(neck.x, neck.y - 13.dp.toPx()),
+      end = Offset(neck.x, neck.y + 14.dp.toPx()),
+      strokeWidth = 3.dp.toPx(),
+      cap = StrokeCap.Round,
+    )
+    drawArc(
+      color = tone.copy(alpha = 0.18f),
+      startAngle = 198f,
+      sweepAngle = 144f,
+      useCenter = false,
+      topLeft = Offset(left + 32.dp.toPx(), bottom - 45.dp.toPx()),
+      size = Size(54.dp.toPx(), 20.dp.toPx()),
+      style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
+    )
   }
 }
 
@@ -798,19 +869,63 @@ private fun TrackerGrid(
 ) {
   var wakeDialog by remember { mutableStateOf(false) }
   var wakeValue by remember { mutableStateOf("09:00") }
-  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-    SectionHeader(title = "Daily", subtitle = "Small checks, reset at 04:00")
-    trackers.chunked(2).forEach { rowTrackers ->
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-        rowTrackers.forEach { tracker ->
-          TrackerPill(
-            tracker = tracker,
-            onClick = { if (tracker.id == "wake") wakeDialog = true else onToggleTracker(tracker.id) },
-            modifier = Modifier.weight(1f),
+  val secondary = MaterialTheme.colorScheme.secondary
+  val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = MaterialTheme.shapes.extraLarge,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.Bottom,
+      ) {
+        Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Text("Daily", style = MaterialTheme.typography.headlineSmall)
+          Text("Resets at 04:00", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Text(
+          "${trackers.count { it.completed }}/${trackers.size}",
+          style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
+        val centerY = size.height / 2f
+        drawLine(
+          color = onSurfaceVariant.copy(alpha = 0.22f),
+          start = Offset(7.dp.toPx(), centerY),
+          end = Offset(size.width - 7.dp.toPx(), centerY),
+          strokeWidth = 2.dp.toPx(),
+          cap = StrokeCap.Round,
+        )
+        val count = trackers.size.coerceAtLeast(1)
+        trackers.forEachIndexed { index, tracker ->
+          val x = if (count == 1) size.width / 2f else 7.dp.toPx() + (size.width - 14.dp.toPx()) * index / (count - 1)
+          drawCircle(
+            color =
+              if (tracker.completed) secondary
+              else onSurfaceVariant.copy(alpha = 0.32f),
+            radius = if (tracker.completed) 4.5.dp.toPx() else 3.5.dp.toPx(),
+            center = Offset(x, centerY),
           )
         }
-        if (rowTrackers.size == 1) {
-          Spacer(modifier = Modifier.weight(1f))
+      }
+      trackers.chunked(2).forEach { rowTrackers ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+          rowTrackers.forEach { tracker ->
+            DailyTrackerTile(
+              tracker = tracker,
+              onClick = { if (tracker.id == "wake") wakeDialog = true else onToggleTracker(tracker.id) },
+              modifier = Modifier.weight(1f),
+            )
+          }
+          if (rowTrackers.size == 1) {
+            Spacer(modifier = Modifier.weight(1f))
+          }
         }
       }
     }
@@ -839,6 +954,50 @@ private fun TrackerGrid(
       },
       dismissButton = { TextButton(onClick = { wakeDialog = false }) { Text("Cancel") } },
     )
+  }
+}
+
+@Composable
+private fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
+  val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
+  val container =
+    if (tracker.completed) MaterialTheme.colorScheme.secondaryContainer
+    else MaterialTheme.colorScheme.surfaceContainerHigh
+  val content =
+    if (tracker.completed) MaterialTheme.colorScheme.onSecondaryContainer
+    else MaterialTheme.colorScheme.onSurface
+  Surface(
+    onClick = onClick,
+    enabled = !isRuleTracker,
+    color = container,
+    contentColor = content,
+    shape = RoundedCornerShape(22.dp),
+    modifier = modifier.heightIn(min = 106.dp),
+  ) {
+    Column(
+      modifier = Modifier.padding(14.dp),
+      verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+      Icon(
+        when {
+          isRuleTracker -> Icons.Rounded.Timer
+          tracker.completed -> Icons.Rounded.CheckCircle
+          else -> Icons.Rounded.RadioButtonUnchecked
+        },
+        contentDescription = null,
+        tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
+        modifier = Modifier.size(30.dp),
+      )
+      Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 2)
+      Text(
+        trackerStatusText(tracker),
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+      if (isRuleTracker) {
+        LinearProgressIndicator(progress = { trackerProgress(tracker) }, modifier = Modifier.fillMaxWidth())
+      }
+    }
   }
 }
 
@@ -909,7 +1068,7 @@ private fun ReserveScreen(state: FocusWellUiState) {
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    item { ReserveHeader(state.reserveMinutes) }
+    item { BalanceSummary(state.reserveMinutes, state.ledger.sumOf { it.deltaMinutes }) }
     item {
       CalmPanel {
         SectionHeader(title = "Ledger", subtitle = "Most recent balance changes")
@@ -921,6 +1080,38 @@ private fun ReserveScreen(state: FocusWellUiState) {
       }
     }
     items(state.ledger) { LedgerRow(it) }
+  }
+}
+
+@Composable
+private fun BalanceSummary(reserveMinutes: Double, netMovement: Double) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = MaterialTheme.shapes.large,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(18.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.weight(1f)) {
+        Text("Balance", style = MaterialTheme.typography.headlineSmall)
+        Text("Auditable leisure account", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(
+          "${reserveMinutes.roundToInt()} min",
+          style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FontFamily.Monospace),
+        )
+        Text(
+          "net ${signedMinutes(netMovement)}",
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+    }
   }
 }
 

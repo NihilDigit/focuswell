@@ -217,6 +217,12 @@ The motif must not compete with the primary number. The reserve amount and next 
 
 Do not use the motif in Balance or History rows. Those screens must remain auditable.
 
+Balance must not reuse the Today leisure well card. It should use compact ledger-style summary surfaces with amount-first accounting.
+
+Idle Today may use a separate sandglass motif to suggest readiness and pending action. Keep it in the background and away from button labels.
+
+Daily trackers should read as the day's reset rail: a compact progress line plus scannable tracker tiles. Avoid plain card stacks and avoid row layouts that force tracker names to break into unreadable fragments.
+
 ## Motion Strategy
 
 Motion should show state, not perform.
