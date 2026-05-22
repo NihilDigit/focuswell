@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "375600591035",
+    "project_id": "focuswell-dc4ec",
+    "storage_bucket": "focuswell-dc4ec.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:375600591035:android:07981a880ac189ebb4799e",
+        "android_client_info": {
+          "package_name": "dev.nihildigit.focuswell"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyACnlz711TODioZuqHmx3jxT5d_JlSgckU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -13,6 +13,7 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.launch
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
@@ -20,6 +21,14 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val destination = MutableStateFlow(Destination.Today)
   private val exportText = MutableStateFlow<String?>(null)
   private val importError = MutableStateFlow<String?>(null)
+  private var focusReminderSessionId: String? = null
+  private var leisureReminderSessionId: String? = null
+
+  init {
+    viewModelScope.launch {
+      runCatching { reminders.refreshFcmRegistration() }
+    }
+  }
 
   val uiState: StateFlow<FocusWellUiState> =
     combine(repository.state, destination, exportText, importError) {
@@ -43,18 +52,44 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun setWakeTime(value: String) = repository.setWakeTime(value)
 
-  fun startFocus(task: String, type: SessionType, tagId: String) =
+  fun startFocus(task: String, type: SessionType, tagId: String) {
     repository.startFocus(task, type, tagId)
+    val sessionId = "focus-${System.currentTimeMillis()}"
+    focusReminderSessionId = sessionId
+    viewModelScope.launch {
+      runCatching { reminders.scheduleFocusStaleReminder(sessionId, revision = 1) }
+    }
+  }
 
   fun pauseFocus() = repository.pauseFocus()
 
   fun resumeFocus() = repository.resumeFocus()
 
-  fun endFocus(result: String) = repository.endFocus(result)
+  fun endFocus(result: String) {
+    repository.endFocus(result)
+    focusReminderSessionId?.let { sessionId ->
+      viewModelScope.launch { runCatching { reminders.cancelSession(sessionId) } }
+    }
+    focusReminderSessionId = null
+  }
 
-  fun startLeisure() = repository.startLeisure()
+  fun startLeisure() {
+    val reserveMinutes = uiState.value.reserveMinutes
+    repository.startLeisure()
+    val sessionId = "leisure-${System.currentTimeMillis()}"
+    leisureReminderSessionId = sessionId
+    viewModelScope.launch {
+      runCatching { reminders.scheduleLeisureReminders(sessionId, revision = 1, reserveMinutes = reserveMinutes) }
+    }
+  }
 
-  fun endLeisure() = repository.endLeisure()
+  fun endLeisure() {
+    repository.endLeisure()
+    leisureReminderSessionId?.let { sessionId ->
+      viewModelScope.launch { runCatching { reminders.cancelSession(sessionId) } }
+    }
+    leisureReminderSessionId = null
+  }
 
   fun startWindDown() = repository.startWindDown()
 

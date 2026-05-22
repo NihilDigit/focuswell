@@ -8,5 +8,5 @@
     "exactOptionalPropertyTypes": true,
     "skipLibCheck": true
   },
-  "include": ["src/**/*.ts"]
+  "include": ["index.ts", "src/**/*.ts", "scripts/**/*.ts"]
 }

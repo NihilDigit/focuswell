@@ -103,6 +103,10 @@ export class ReminderService {
     return result;
   }
 
+  async verifyQStash(signature: string | null, body: string, url: string): Promise<boolean> {
+    return this.qstash.verify(signature, body, url);
+  }
+
   private async authorize(deviceId: string, installSecret: string): Promise<Device> {
     const device = await this.store.getDevice(deviceId);
     if (!device) throw new Error("device-not-found");

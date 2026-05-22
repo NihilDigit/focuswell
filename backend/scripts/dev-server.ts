@@ -3,8 +3,8 @@ import {
   parseRegisterDevice,
   parseReminderPayload,
   parseSchedulePlan,
-} from "./http";
-import { createReminderService } from "./runtime";
+} from "../src/http";
+import { createReminderService } from "../src/runtime";
 
 const service = createReminderService();
 

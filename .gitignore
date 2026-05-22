@@ -1,7 +1,5 @@
-node_modules/
-
-.vercel
 *-adminsdk*.json
 serviceAccountKey.json
 .env
+.env.*
 !.env.example

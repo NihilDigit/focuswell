@@ -2,8 +2,9 @@
   "name": "focuswell-reminders",
   "private": true,
   "type": "module",
+  "main": "index.ts",
   "scripts": {
-    "dev": "bun run src/server.ts",
+    "dev": "bun run scripts/dev-server.ts",
     "check": "tsc --noEmit"
   },
   "devDependencies": {
