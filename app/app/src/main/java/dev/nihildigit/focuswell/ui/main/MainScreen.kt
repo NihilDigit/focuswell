@@ -95,11 +95,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
-import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -414,7 +412,7 @@ private fun ReserveHeader(reserveMinutes: Double) {
       Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
         shape = CircleShape,
-        modifier = Modifier.align(Alignment.CenterEnd).padding(end = 12.dp, bottom = 46.dp),
+        modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 22.dp),
       ) {
         Text(
           "${reserveMinutes.roundToInt()}m",
@@ -435,110 +433,65 @@ private fun ReserveWellDrawing(
 ) {
   val colorScheme = MaterialTheme.colorScheme
   Canvas(modifier = modifier) {
-    val glyphWidth = 190.dp.toPx()
-    val left = size.width - glyphWidth + 8.dp.toPx()
-    val top = size.height * 0.32f
+    val glyphWidth = 150.dp.toPx()
+    val left = size.width - 118.dp.toPx()
+    val top = size.height - 82.dp.toPx()
     val right = left + glyphWidth
-    val centerX = left + glyphWidth * 0.52f
-    val rimCenterY = top + 40.dp.toPx()
-    val outerRim = Rect(left, top, right, top + 78.dp.toPx())
-    val middleRim =
+    val rim =
       Rect(
-        left + 18.dp.toPx(),
-        top + 12.dp.toPx(),
-        right - 18.dp.toPx(),
-        top + 66.dp.toPx(),
+        left + 8.dp.toPx(),
+        top + 10.dp.toPx(),
+        right - 8.dp.toPx(),
+        top + 72.dp.toPx(),
       )
-    val innerRim =
-      Rect(
-        left + 42.dp.toPx(),
-        top + 25.dp.toPx(),
-        right - 42.dp.toPx(),
-        top + 55.dp.toPx(),
-      )
-    val waterBase = innerRim.bottom - (innerRim.height * fill * 0.82f)
-    val waterPath =
+    val waterCenterY = rim.center.y + (0.5f - fill) * 8.dp.toPx()
+    val waterLine =
       Path().apply {
-        moveTo(innerRim.left, waterBase)
-        val steps = 20
+        val steps = 24
         repeat(steps + 1) { index ->
-          val x = innerRim.left + innerRim.width * index / steps
-          val crest = sin(phase + index * 0.74f) * 3.dp.toPx()
-          lineTo(x, waterBase + crest)
+          val x = rim.left + 34.dp.toPx() + (rim.width - 68.dp.toPx()) * index / steps
+          val crest = sin(phase + index * 0.66f) * 3.2.dp.toPx()
+          val y = waterCenterY + crest
+          if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
-        lineTo(innerRim.right, innerRim.bottom)
-        lineTo(innerRim.left, innerRim.bottom)
-        close()
       }
-    val innerMask = Path().apply { addOval(innerRim) }
+    val glintLine =
+      Path().apply {
+        val steps = 12
+        repeat(steps + 1) { index ->
+          val x = rim.left + 48.dp.toPx() + (rim.width * 0.28f) * index / steps
+          val crest = sin(phase + index * 0.76f) * 1.6.dp.toPx()
+          val y = waterCenterY - 8.dp.toPx() + crest
+          if (index == 0) moveTo(x, y) else lineTo(x, y)
+        }
+      }
 
     drawOval(
-      brush =
-        Brush.radialGradient(
-          colors =
-            listOf(
-              colorScheme.surface.copy(alpha = 0.94f),
-              colorScheme.primary.copy(alpha = 0.28f),
-              colorScheme.onPrimaryContainer.copy(alpha = 0.12f),
-            ),
-          center = Offset(centerX, rimCenterY),
-          radius = glyphWidth * 0.58f,
-        ),
-      topLeft = Offset(outerRim.left, outerRim.top),
-      size = Size(outerRim.width, outerRim.height),
-    )
-    drawOval(
-      color = colorScheme.surface.copy(alpha = 0.18f),
-      topLeft = Offset(outerRim.left + 4.dp.toPx(), outerRim.top + 4.dp.toPx()),
-      size = Size(outerRim.width - 8.dp.toPx(), outerRim.height - 8.dp.toPx()),
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.1f),
+      topLeft = Offset(rim.left + 8.dp.toPx(), rim.top + 9.dp.toPx()),
+      size = Size(rim.width, rim.height),
       style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
     )
     drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.16f),
-      topLeft = Offset(middleRim.left, middleRim.top),
-      size = Size(middleRim.width, middleRim.height),
+      color = colorScheme.surface.copy(alpha = 0.3f),
+      topLeft = Offset(rim.left, rim.top),
+      size = Size(rim.width, rim.height),
+      style = Stroke(width = 13.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawOval(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
+      topLeft = Offset(rim.left, rim.top),
+      size = Size(rim.width, rim.height),
+      style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawPath(
+      path = waterLine,
+      color = colorScheme.tertiary.copy(alpha = 0.72f),
       style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
     )
-    drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.3f),
-      topLeft = Offset(innerRim.left, innerRim.top),
-      size = Size(innerRim.width, innerRim.height),
-    )
-    clipPath(innerMask) {
-      drawOval(
-        color = colorScheme.surface.copy(alpha = 0.38f),
-        topLeft = Offset(innerRim.left, innerRim.top),
-        size = Size(innerRim.width, innerRim.height),
-      )
-      drawPath(
-        path = waterPath,
-        brush =
-          Brush.verticalGradient(
-            colors =
-              listOf(
-                colorScheme.tertiary.copy(alpha = 0.9f),
-                colorScheme.primary.copy(alpha = 0.7f),
-              ),
-            startY = waterBase,
-            endY = innerRim.bottom,
-          ),
-      )
-      drawOval(
-        color = colorScheme.surface.copy(alpha = 0.16f * shimmer),
-        topLeft = Offset(innerRim.left + 18.dp.toPx(), innerRim.top + 9.dp.toPx()),
-        size = Size(innerRim.width * 0.42f, innerRim.height * 0.34f),
-      )
-    }
-    drawOval(
-      color = colorScheme.surface.copy(alpha = 0.34f),
-      topLeft = Offset(outerRim.left + 9.dp.toPx(), outerRim.top + 7.dp.toPx()),
-      size = Size(outerRim.width - 18.dp.toPx(), outerRim.height - 14.dp.toPx()),
-      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-    )
-    drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.22f),
-      topLeft = Offset(innerRim.left, innerRim.top),
-      size = Size(innerRim.width, innerRim.height),
+    drawPath(
+      path = glintLine,
+      color = colorScheme.surface.copy(alpha = 0.22f * shimmer),
       style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
     )
   }
