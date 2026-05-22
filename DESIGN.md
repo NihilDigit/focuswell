@@ -178,6 +178,12 @@ Avoid one-note palettes. FocusWell may use green, blue-gray, and amber roles, bu
 
 Shape communicates state and grouping.
 
+The app uses a tiered shape vocabulary:
+
+- Expressive state shapes for Today, active timers, primary action pairs, and daily completion surfaces. These may use asymmetric corners and shape changes.
+- Calm utility shapes for Balance, History, and Settings. These should stay rectangular enough to scan and compare.
+- Pills and circles only for badges, navigation indicators, and small status marks.
+
 Use roundness for:
 
 - Primary actions.
@@ -200,6 +206,8 @@ Shape morphing should be tied to interaction or state:
 - Tracker open to done.
 
 Do not use unusual shapes as decoration on accounting screens.
+
+Avoid making every surface equally rounded. Large expressive shapes need calmer neighboring surfaces so the hierarchy remains readable.
 
 ## FocusWell Motif
 

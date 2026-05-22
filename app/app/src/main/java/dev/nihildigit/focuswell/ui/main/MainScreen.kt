@@ -126,6 +126,16 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+private val TodayHeroShape = RoundedCornerShape(topStart = 42.dp, topEnd = 48.dp, bottomEnd = 30.dp, bottomStart = 46.dp)
+private val TodayPanelShape = RoundedCornerShape(topStart = 30.dp, topEnd = 42.dp, bottomEnd = 24.dp, bottomStart = 30.dp)
+private val ActiveTimerShape = RoundedCornerShape(topStart = 44.dp, topEnd = 32.dp, bottomEnd = 44.dp, bottomStart = 32.dp)
+private val FocusActionShape = RoundedCornerShape(topStart = 34.dp, topEnd = 20.dp, bottomEnd = 30.dp, bottomStart = 34.dp)
+private val LeisureActionShape = RoundedCornerShape(topStart = 20.dp, topEnd = 34.dp, bottomEnd = 34.dp, bottomStart = 30.dp)
+private val ControlStartShape = RoundedCornerShape(topStart = 26.dp, topEnd = 14.dp, bottomEnd = 22.dp, bottomStart = 26.dp)
+private val ControlEndShape = RoundedCornerShape(topStart = 14.dp, topEnd = 26.dp, bottomEnd = 26.dp, bottomStart = 22.dp)
+private val CalmPanelShape = RoundedCornerShape(22.dp)
+private val LedgerRowShape = RoundedCornerShape(topStart = 14.dp, topEnd = 18.dp, bottomEnd = 14.dp, bottomStart = 18.dp)
+
 @Composable
 fun MainScreen(
   modifier: Modifier = Modifier,
@@ -389,7 +399,7 @@ private fun ReserveHeader(reserveMinutes: Double) {
   Surface(
     color = MaterialTheme.colorScheme.primaryContainer,
     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    shape = MaterialTheme.shapes.extraLarge,
+    shape = TodayHeroShape,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Box(modifier = Modifier.height(254.dp)) {
@@ -571,9 +581,6 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
-  val focusShape = RoundedCornerShape(topStart = 34.dp, topEnd = 20.dp, bottomEnd = 30.dp, bottomStart = 34.dp)
-  val leisureShape = RoundedCornerShape(topStart = 20.dp, topEnd = 34.dp, bottomEnd = 34.dp, bottomStart = 30.dp)
-
   Box(
     modifier =
       Modifier
@@ -595,7 +602,7 @@ private fun IdleTimerSurface(
         Button(
           onClick = onStartFocusClick,
           modifier = Modifier.weight(1f).height(68.dp),
-          shape = focusShape,
+          shape = FocusActionShape,
         ) {
           Icon(Icons.Rounded.PlayArrow, contentDescription = null)
           Spacer(Modifier.width(8.dp))
@@ -605,7 +612,7 @@ private fun IdleTimerSurface(
           onClick = onStartLeisure,
           enabled = leisureEnabled,
           modifier = Modifier.weight(1f).height(68.dp),
-          shape = leisureShape,
+          shape = LeisureActionShape,
         ) {
           Icon(Icons.Rounded.Timer, contentDescription = null)
           Spacer(Modifier.width(8.dp))
@@ -651,19 +658,31 @@ private fun ActiveFocusSurface(
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
       if (focus.paused) {
-        Button(onClick = onResumeFocus, modifier = Modifier.weight(1f).height(52.dp)) {
+        Button(
+          onClick = onResumeFocus,
+          modifier = Modifier.weight(1f).height(52.dp),
+          shape = ControlStartShape,
+        ) {
           Icon(Icons.Rounded.PlayArrow, contentDescription = null)
           Spacer(Modifier.width(8.dp))
           Text("Resume")
         }
       } else {
-        OutlinedButton(onClick = onPauseFocus, modifier = Modifier.weight(1f).height(52.dp)) {
+        OutlinedButton(
+          onClick = onPauseFocus,
+          modifier = Modifier.weight(1f).height(52.dp),
+          shape = ControlStartShape,
+        ) {
           Icon(Icons.Rounded.Pause, contentDescription = null)
           Spacer(Modifier.width(8.dp))
           Text("Pause")
         }
       }
-      Button(onClick = { showEnd = true }, modifier = Modifier.weight(1f).height(52.dp)) {
+      Button(
+        onClick = { showEnd = true },
+        modifier = Modifier.weight(1f).height(52.dp),
+        shape = ControlEndShape,
+      ) {
         Icon(Icons.Rounded.Stop, contentDescription = null)
         Spacer(Modifier.width(8.dp))
         Text("End")
@@ -760,7 +779,7 @@ private fun ActiveLeisureSurface(
   Surface(
     color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
     contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-    shape = MaterialTheme.shapes.large,
+    shape = RoundedCornerShape(topStart = 22.dp, topEnd = 28.dp, bottomEnd = 18.dp, bottomStart = 22.dp),
     modifier = Modifier.fillMaxWidth(),
   ) {
     Row(
@@ -771,7 +790,7 @@ private fun ActiveLeisureSurface(
       Text(formatDuration(elapsed), fontWeight = FontWeight.SemiBold)
     }
   }
-  Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+  Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(52.dp), shape = FocusActionShape) {
     Icon(Icons.Rounded.Stop, contentDescription = null)
     Spacer(Modifier.width(8.dp))
     Text("End Leisure")
@@ -784,12 +803,12 @@ private fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Uni
     Text("Balance used up", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
     Text("Another 60 min arrives at 04:00.", color = MaterialTheme.colorScheme.onSurfaceVariant)
     Spacer(Modifier.height(12.dp))
-    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth()) {
+    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth(), shape = FocusActionShape) {
       Icon(Icons.Rounded.Stop, contentDescription = null)
       Spacer(Modifier.width(8.dp))
       Text("End Leisure")
     }
-    OutlinedButton(onClick = onStartWindDown, modifier = Modifier.fillMaxWidth()) {
+    OutlinedButton(onClick = onStartWindDown, modifier = Modifier.fillMaxWidth(), shape = LeisureActionShape) {
       Icon(Icons.Rounded.Bedtime, contentDescription = null)
       Spacer(Modifier.width(8.dp))
       Text("Start Wind-down")
@@ -802,7 +821,7 @@ private fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> 
   val elapsed = Duration.between(windDown.startedAt, rememberNow()).coerceAtLeast(Duration.ZERO)
   TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary)
   Text("No earning. No spending.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-  Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp)) {
+  Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp), shape = FocusActionShape) {
     Icon(Icons.Rounded.Stop, contentDescription = null)
     Spacer(Modifier.width(8.dp))
     Text("End")
@@ -823,7 +842,7 @@ private fun TrackerGrid(
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = MaterialTheme.shapes.extraLarge,
+    shape = TodayPanelShape,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
@@ -920,7 +939,12 @@ private fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifie
     enabled = !isRuleTracker,
     color = container,
     contentColor = content,
-    shape = RoundedCornerShape(22.dp),
+    shape =
+      if (tracker.completed) {
+        RoundedCornerShape(topStart = 30.dp, topEnd = 18.dp, bottomEnd = 30.dp, bottomStart = 24.dp)
+      } else {
+        RoundedCornerShape(topStart = 20.dp, topEnd = 26.dp, bottomEnd = 18.dp, bottomStart = 22.dp)
+      },
     modifier = modifier.heightIn(min = 106.dp),
   ) {
     Column(
@@ -966,7 +990,7 @@ private fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: Mo
     else MaterialTheme.colorScheme.onSurface
   val content by animateColorAsState(targetValue = targetContent, label = "tracker-content")
   val corner by animateDpAsState(
-    targetValue = if (tracker.completed) 30.dp else 24.dp,
+    targetValue = if (tracker.completed) 28.dp else 20.dp,
     animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioMediumBouncy),
     label = "tracker-corner",
   )
@@ -1037,7 +1061,7 @@ private fun BalanceSummary(reserveMinutes: Double, netMovement: Double) {
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = MaterialTheme.shapes.large,
+    shape = CalmPanelShape,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Row(
@@ -1490,6 +1514,7 @@ private fun StartFocusSheet(
         enabled = task.trim().isNotEmpty(),
         onClick = { onStart(task, type, tagId) },
         modifier = Modifier.fillMaxWidth().height(56.dp),
+        shape = FocusActionShape,
       ) {
         Icon(Icons.Rounded.PlayArrow, contentDescription = null)
         Spacer(Modifier.width(8.dp))
@@ -1512,8 +1537,8 @@ private fun TimerOrganism(
       Modifier
         .fillMaxWidth()
         .aspectRatio(1.25f)
-        .background(MaterialTheme.colorScheme.surfaceContainerHigh, MaterialTheme.shapes.extraLarge)
-        .border(1.dp, tone.copy(alpha = 0.16f), MaterialTheme.shapes.extraLarge)
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh, ActiveTimerShape)
+        .border(1.dp, tone.copy(alpha = 0.16f), ActiveTimerShape)
         .padding(24.dp),
     contentAlignment = Alignment.Center,
   ) {
@@ -1570,7 +1595,7 @@ private fun StatusBadge(text: String, tone: Color, modifier: Modifier = Modifier
 @Composable
 private fun LedgerRow(entry: LedgerEntry) {
   Surface(
-    shape = RoundedCornerShape(16.dp),
+    shape = LedgerRowShape,
     color = MaterialTheme.colorScheme.surfaceContainer,
     modifier = Modifier.fillMaxWidth(),
   ) {
@@ -1605,7 +1630,7 @@ private fun LedgerRow(entry: LedgerEntry) {
 private fun CalmPanel(content: @Composable ColumnScope.() -> Unit) {
   Card(
     colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainer),
-    shape = MaterialTheme.shapes.large,
+    shape = CalmPanelShape,
     modifier = Modifier.fillMaxWidth(),
   ) {
     Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
