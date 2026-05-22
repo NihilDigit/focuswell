@@ -444,7 +444,8 @@ private fun ReserveWellDrawing(
         right - 8.dp.toPx(),
         top + 72.dp.toPx(),
       )
-    val waterCenterY = rim.center.y + (0.5f - fill) * 8.dp.toPx()
+    val waterCenterY = rim.center.y + (0.5f - fill) * 24.dp.toPx()
+    val waterAlpha = 0.34f + fill * 0.26f
     val waterLine =
       Path().apply {
         val steps = 24
@@ -466,27 +467,54 @@ private fun ReserveWellDrawing(
         }
       }
 
-    drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.1f),
-      topLeft = Offset(rim.left + 8.dp.toPx(), rim.top + 9.dp.toPx()),
-      size = Size(rim.width, rim.height),
-      style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
-    )
-    drawOval(
-      color = colorScheme.surface.copy(alpha = 0.3f),
+    drawArc(
+      color = colorScheme.surface.copy(alpha = 0.28f),
+      startAngle = 188f,
+      sweepAngle = 238f,
+      useCenter = false,
       topLeft = Offset(rim.left, rim.top),
       size = Size(rim.width, rim.height),
-      style = Stroke(width = 13.dp.toPx(), cap = StrokeCap.Round),
+      style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round),
     )
-    drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.2f),
-      topLeft = Offset(rim.left, rim.top),
-      size = Size(rim.width, rim.height),
+    drawArc(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.18f),
+      startAngle = 12f,
+      sweepAngle = 128f,
+      useCenter = false,
+      topLeft = Offset(rim.left + 2.dp.toPx(), rim.top + 1.dp.toPx()),
+      size = Size(rim.width - 4.dp.toPx(), rim.height - 2.dp.toPx()),
+      style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawArc(
+      color = colorScheme.surface.copy(alpha = 0.22f),
+      startAngle = 196f,
+      sweepAngle = 118f,
+      useCenter = false,
+      topLeft = Offset(rim.left + 16.dp.toPx(), rim.top + 11.dp.toPx()),
+      size = Size(rim.width - 32.dp.toPx(), rim.height - 20.dp.toPx()),
       style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawArc(
+      color = colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
+      startAngle = 334f,
+      sweepAngle = 78f,
+      useCenter = false,
+      topLeft = Offset(rim.left + 17.dp.toPx(), rim.top + 11.dp.toPx()),
+      size = Size(rim.width - 34.dp.toPx(), rim.height - 22.dp.toPx()),
+      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
+    )
+    drawArc(
+      color = colorScheme.tertiary.copy(alpha = waterAlpha * 0.42f),
+      startAngle = 202f,
+      sweepAngle = 136f,
+      useCenter = false,
+      topLeft = Offset(rim.left + 28.dp.toPx(), waterCenterY - 15.dp.toPx()),
+      size = Size(rim.width - 56.dp.toPx(), 28.dp.toPx()),
+      style = Stroke(width = 5.dp.toPx(), cap = StrokeCap.Round),
     )
     drawPath(
       path = waterLine,
-      color = colorScheme.tertiary.copy(alpha = 0.72f),
+      color = colorScheme.tertiary.copy(alpha = waterAlpha),
       style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
     )
     drawPath(
