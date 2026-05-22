@@ -211,7 +211,7 @@ Use the motif for:
 - Active reserve changes.
 - Depleted or wind-down transitions.
 
-The motif can use custom drawing, animated water, depth lines, ripples, and shape morphing. Keep it symbolic: concentric openings, waterline, depth, and reflection are preferable to a literal bucket, tank, or decorative scene.
+The motif can use custom drawing, animated water, ripples, and shape morphing. Keep it symbolic: concentric line-art openings, waterline, and reflection are preferable to a literal bucket, tank, measuring cup, or decorative scene.
 
 The motif must not compete with the primary number. The reserve amount and next action stay readable first; the well gives the state a memorable physical model second.
 

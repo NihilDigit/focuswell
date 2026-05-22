@@ -436,7 +436,6 @@ private fun ReserveWellDrawing(
   val colorScheme = MaterialTheme.colorScheme
   Canvas(modifier = modifier) {
     val glyphWidth = 190.dp.toPx()
-    val glyphHeight = 154.dp.toPx()
     val left = size.width - glyphWidth + 8.dp.toPx()
     val top = size.height * 0.32f
     val right = left + glyphWidth
@@ -457,7 +456,6 @@ private fun ReserveWellDrawing(
         right - 42.dp.toPx(),
         top + 55.dp.toPx(),
       )
-    val bottomY = top + glyphHeight
     val waterBase = innerRim.bottom - (innerRim.height * fill * 0.82f)
     val waterPath =
       Path().apply {
@@ -475,35 +473,6 @@ private fun ReserveWellDrawing(
     val innerMask = Path().apply { addOval(innerRim) }
 
     drawOval(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.07f),
-      topLeft = Offset(left + 6.dp.toPx(), bottomY - 28.dp.toPx()),
-      size = Size(glyphWidth - 12.dp.toPx(), 44.dp.toPx()),
-    )
-    drawLine(
-      color = colorScheme.surface.copy(alpha = 0.26f),
-      start = Offset(centerX, middleRim.bottom - 2.dp.toPx()),
-      end = Offset(centerX, bottomY - 10.dp.toPx()),
-      strokeWidth = 6.dp.toPx(),
-      cap = StrokeCap.Round,
-    )
-    drawLine(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
-      start = Offset(centerX + 13.dp.toPx(), middleRim.bottom + 10.dp.toPx()),
-      end = Offset(centerX + 13.dp.toPx(), bottomY - 24.dp.toPx()),
-      strokeWidth = 2.dp.toPx(),
-      cap = StrokeCap.Round,
-    )
-    repeat(3) { index ->
-      val tickY = middleRim.bottom + (index + 1) * 22.dp.toPx()
-      drawLine(
-        color = colorScheme.surface.copy(alpha = 0.22f),
-        start = Offset(centerX + 7.dp.toPx(), tickY),
-        end = Offset(centerX + 30.dp.toPx(), tickY - 5.dp.toPx()),
-        strokeWidth = 3.dp.toPx(),
-        cap = StrokeCap.Round,
-      )
-    }
-    drawOval(
       brush =
         Brush.radialGradient(
           colors =
@@ -517,6 +486,12 @@ private fun ReserveWellDrawing(
         ),
       topLeft = Offset(outerRim.left, outerRim.top),
       size = Size(outerRim.width, outerRim.height),
+    )
+    drawOval(
+      color = colorScheme.surface.copy(alpha = 0.18f),
+      topLeft = Offset(outerRim.left + 4.dp.toPx(), outerRim.top + 4.dp.toPx()),
+      size = Size(outerRim.width - 8.dp.toPx(), outerRim.height - 8.dp.toPx()),
+      style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
     )
     drawOval(
       color = colorScheme.onPrimaryContainer.copy(alpha = 0.16f),
@@ -565,11 +540,6 @@ private fun ReserveWellDrawing(
       topLeft = Offset(innerRim.left, innerRim.top),
       size = Size(innerRim.width, innerRim.height),
       style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-    )
-    drawCircle(
-      color = colorScheme.tertiary.copy(alpha = 0.38f),
-      radius = 6.dp.toPx(),
-      center = Offset(centerX, bottomY - 10.dp.toPx()),
     )
   }
 }
