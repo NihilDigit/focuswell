@@ -122,9 +122,9 @@ import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.PI
+import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
-import kotlin.math.sqrt
 
 @Composable
 fun MainScreen(
@@ -446,51 +446,65 @@ private fun ReserveWellDrawing(
         top + 72.dp.toPx(),
       )
     val waterCenterY = rim.center.y + (0.5f - fill) * 20.dp.toPx()
-    val waterAlpha = 0.34f + fill * 0.26f
-    fun boundedWavePath(
+    val waterAlpha = 0.46f + fill * 0.28f
+    fun ripplePath(
       centerY: Float,
-      horizontalInset: Float,
       amplitude: Float,
-      cycles: Float,
+      radiusScale: Float,
+      startDegrees: Float,
+      sweepDegrees: Float,
       phaseOffset: Float,
       steps: Int,
     ): Path {
-      val rx = rim.width / 2f - horizontalInset
-      val ry = rim.height / 2f - 8.dp.toPx()
-      val normalizedY = ((centerY - rim.center.y) / ry).coerceIn(-0.86f, 0.86f)
-      val halfChord = (rx * sqrt((1f - normalizedY * normalizedY).coerceAtLeast(0f))).coerceAtLeast(16.dp.toPx())
-      val startX = rim.center.x - halfChord
-      val endX = rim.center.x + halfChord
+      val rx = rim.width * 0.34f * radiusScale
+      val ry = rim.height * 0.2f * radiusScale
+      val startRadians = (PI / 180.0 * startDegrees).toFloat()
+      val sweepRadians = (PI / 180.0 * sweepDegrees).toFloat()
       return Path().apply {
         repeat(steps + 1) { index ->
           val t = index / steps.toFloat()
-          val edgeFade = sin((PI * t).toFloat()).coerceAtLeast(0.18f)
-          val crest =
-            sin((PI * 2).toFloat() * cycles * t + phase + phaseOffset) * amplitude +
-              sin((PI * 2).toFloat() * (cycles * 0.55f) * t - phase * 0.7f + phaseOffset) * amplitude * 0.32f
-          val x = startX + (endX - startX) * t
-          val y = centerY + crest * edgeFade
+          val theta = startRadians + sweepRadians * t
+          val edgeFade = sin((PI * t).toFloat()).coerceAtLeast(0f)
+          val wobble =
+            (sin(theta * 2.7f + phase + phaseOffset) * 0.72f +
+              sin(theta * 5.1f - phase * 0.6f + phaseOffset) * 0.28f) *
+              amplitude *
+              edgeFade
+          val x = rim.center.x + cos(theta) * (rx + wobble)
+          val y = centerY + sin(theta) * (ry + wobble * 0.45f)
           if (index == 0) moveTo(x, y) else lineTo(x, y)
         }
       }
     }
-    val waterLine =
-      boundedWavePath(
-        centerY = waterCenterY,
-        horizontalInset = 32.dp.toPx(),
-        amplitude = 3.dp.toPx(),
-        cycles = 2.25f,
-        phaseOffset = 0f,
-        steps = 36,
-      )
-    val echoLine =
-      boundedWavePath(
-        centerY = waterCenterY - 8.dp.toPx(),
-        horizontalInset = 44.dp.toPx(),
-        amplitude = 1.45.dp.toPx(),
-        cycles = 1.4f,
-        phaseOffset = 1.3f,
-        steps = 24,
+    val wavelets =
+      listOf(
+        ripplePath(
+          centerY = waterCenterY + 4.dp.toPx(),
+          amplitude = 2.8.dp.toPx(),
+          radiusScale = 1.0f,
+          startDegrees = 194f,
+          sweepDegrees = 142f,
+          phaseOffset = 0.2f,
+          steps = 28,
+        ) to waterAlpha,
+        ripplePath(
+          centerY = waterCenterY + 1.dp.toPx(),
+          amplitude = 1.8.dp.toPx(),
+          radiusScale = 0.72f,
+          startDegrees = 206f,
+          sweepDegrees = 112f,
+          phaseOffset = 1.6f,
+          steps = 22,
+        ) to (waterAlpha * 0.66f),
+        ripplePath(
+          centerY = waterCenterY - 3.dp.toPx(),
+          amplitude = 1.15.dp.toPx(),
+          radiusScale = 0.46f,
+          startDegrees = 218f,
+          sweepDegrees = 82f,
+          phaseOffset = 2.7f,
+          steps = 18,
+        ) to (0.22f * shimmer),
       )
 
     drawArc(
@@ -529,16 +543,13 @@ private fun ReserveWellDrawing(
       size = Size(rim.width - 34.dp.toPx(), rim.height - 22.dp.toPx()),
       style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
     )
-    drawPath(
-      path = echoLine,
-      color = colorScheme.surface.copy(alpha = 0.16f * shimmer),
-      style = Stroke(width = 2.dp.toPx(), cap = StrokeCap.Round),
-    )
-    drawPath(
-      path = waterLine,
-      color = colorScheme.tertiary.copy(alpha = waterAlpha),
-      style = Stroke(width = 3.6.dp.toPx(), cap = StrokeCap.Round),
-    )
+    wavelets.forEachIndexed { index, (path, alpha) ->
+      drawPath(
+        path = path,
+        color = if (index == 2) colorScheme.surface.copy(alpha = alpha) else colorScheme.tertiary.copy(alpha = alpha),
+        style = Stroke(width = if (index == 2) 1.8.dp.toPx() else 3.3.dp.toPx(), cap = StrokeCap.Round),
+      )
+    }
   }
 }
 
