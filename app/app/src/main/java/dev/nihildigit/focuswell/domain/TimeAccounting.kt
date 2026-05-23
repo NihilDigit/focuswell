@@ -8,7 +8,8 @@ import java.time.ZoneId
 import kotlin.math.max
 
 object TimeAccounting {
-  val focusWellZone: ZoneId = ZoneId.of("Asia/Shanghai")
+  val focusWellZone: ZoneId
+    get() = ZoneId.systemDefault()
   private val dayBoundary: Duration = Duration.ofHours(4)
   private val sleepProtectionStart: LocalTime = LocalTime.of(1, 0)
   private val sleepProtectionEnd: LocalTime = LocalTime.of(4, 0)

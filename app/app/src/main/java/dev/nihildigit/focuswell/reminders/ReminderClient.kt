@@ -17,7 +17,6 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
-import java.time.ZoneId
 import java.util.UUID
 
 data class DeviceIdentity(
@@ -173,7 +172,7 @@ class ReminderClient(context: Context) {
     TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes)
 
   private fun nextLateNightInstant(now: Instant): Instant? {
-    val zone = ZoneId.of("Asia/Shanghai")
+    val zone = TimeAccounting.focusWellZone
     val localNow = LocalDateTime.ofInstant(now, zone)
     val todayOne = LocalDateTime.of(LocalDate.now(zone), LocalTime.of(1, 0))
     val nextOne = if (localNow.isBefore(todayOne)) todayOne else todayOne.plusDays(1)

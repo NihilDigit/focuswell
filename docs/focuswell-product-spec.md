@@ -21,10 +21,10 @@ auditable leisure reserve.
 
 ## Day Boundary
 
-FocusWell uses a fixed daily window:
+FocusWell uses a local daily window:
 
 ```text
-Timezone: Asia/Shanghai
+Timezone: device system time zone
 Daily boundary: 04:00
 Daily window: 04:00 -> next day 03:59
 ```
@@ -35,7 +35,7 @@ splitting it at midnight.
 Storage rules:
 
 - Store all timestamps in UTC.
-- Calculate daily windows with the IANA timezone `Asia/Shanghai`.
+- Calculate daily windows with the device's current system time zone.
 - Store `dailyDate` separately as the business date for daily trackers and
   daily grants.
 
@@ -234,7 +234,7 @@ show that the reserve is depleted.
 
 ## Daily Trackers
 
-Daily trackers are editable and evaluated within the Asia/Shanghai 04:00 daily
+Daily trackers are editable and evaluated within the system-time-zone 04:00 daily
 window.
 
 There are two tracker kinds:

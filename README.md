@@ -8,7 +8,7 @@ It is built for people who need structure without streak pressure. A focus sessi
 
 FocusWell uses a few fixed rules:
 
-- Each day starts at 04:00 in `Asia/Shanghai`.
+- Each day starts at 04:00 in the device's current system time zone.
 - A new FocusWell day grants 60 minutes of leisure reserve.
 - Focus earns reserve by elapsed active time, session type, and tag multiplier.
 - Leisure spends reserve by elapsed time.
