@@ -156,7 +156,8 @@ Settings:
 
 - Groups are plain filled surfaces.
 - Creation forms stay inline when short.
-- Clear all data needs explicit confirmation.
+- Clear all data uses a dedicated confirmation screen, not a small dialog.
+- Destructive reset must offer export first and require a typed phrase before the action enables.
 
 ## Accessibility
 

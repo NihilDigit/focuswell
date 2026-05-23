@@ -1,5 +1,7 @@
 package dev.nihildigit.focuswell.ui.main
 
+import android.Manifest
+import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -133,6 +135,7 @@ import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.notifications.canPostNotifications
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
@@ -296,6 +299,16 @@ internal fun MainScreen(
   modifier: Modifier = Modifier,
 ) {
   var showFocusSheet by remember { mutableStateOf(false) }
+  val context = LocalContext.current
+  val notificationPermissionLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+      // Timer reminders are best effort; the timestamp ledger remains correct without notifications.
+    }
+  fun requestReminderPermissionIfNeeded() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !canPostNotifications(context)) {
+      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    }
+  }
 
   Scaffold(
     modifier = modifier.fillMaxSize(),
@@ -318,7 +331,10 @@ internal fun MainScreen(
             state = state,
             onToggleTracker = onToggleTracker,
             onStartFocusClick = { showFocusSheet = true },
-            onStartLeisure = onStartLeisure,
+            onStartLeisure = {
+              requestReminderPermissionIfNeeded()
+              onStartLeisure()
+            },
             onPauseFocus = onPauseFocus,
             onResumeFocus = onResumeFocus,
             onEndFocus = onEndFocus,
@@ -360,6 +376,7 @@ internal fun MainScreen(
       onDismiss = { showFocusSheet = false },
       onStart = { task, type, tagId ->
         showFocusSheet = false
+        requestReminderPermissionIfNeeded()
         onStartFocus(task, type, tagId)
       },
     )

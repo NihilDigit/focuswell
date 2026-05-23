@@ -15,7 +15,7 @@ export class DisabledQStashClient implements QStashClient {
   async cancel(): Promise<void> {}
 
   async verify(): Promise<boolean> {
-    return true;
+    return false;
   }
 }
 

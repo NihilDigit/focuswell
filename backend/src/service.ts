@@ -18,11 +18,13 @@ export class ReminderService {
     fcmToken?: string;
     nowUtc: string;
   }): Promise<void> {
+    const existing = await this.store.getDevice(args.deviceId);
+    const fcmToken = args.fcmToken ?? existing?.fcmToken;
     const device: Device = {
       deviceId: args.deviceId,
       installSecretHash: args.installSecretHash,
-      ...(args.fcmToken ? { fcmToken: args.fcmToken } : {}),
-      createdAt: args.nowUtc,
+      ...(fcmToken ? { fcmToken } : {}),
+      createdAt: existing?.createdAt ?? args.nowUtc,
       lastSeenAt: args.nowUtc,
     };
     await this.store.putDevice(device);
