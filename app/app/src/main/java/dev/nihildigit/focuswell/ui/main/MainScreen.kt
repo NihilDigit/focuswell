@@ -40,7 +40,6 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
@@ -102,6 +101,7 @@ import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -581,15 +581,15 @@ private fun IdleTimerSurface(
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
-  Box(
-    modifier =
-      Modifier
-        .fillMaxWidth()
-        .heightIn(min = 166.dp),
+  Surface(
+    color = MaterialTheme.colorScheme.surface,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = TodayPanelShape,
+    modifier = Modifier.fillMaxWidth(),
   ) {
     Column(
-      modifier = Modifier.padding(horizontal = 6.dp, vertical = 8.dp),
-      verticalArrangement = Arrangement.spacedBy(18.dp),
+      modifier = Modifier.padding(horizontal = 4.dp, vertical = 6.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(5.dp), modifier = Modifier.padding(horizontal = 2.dp)) {
         Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
@@ -601,22 +601,24 @@ private fun IdleTimerSurface(
       Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
         Button(
           onClick = onStartFocusClick,
-          modifier = Modifier.weight(1f).height(68.dp),
+          modifier = Modifier.weight(1f).height(76.dp),
           shape = FocusActionShape,
         ) {
-          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+            Text("Start Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          }
         }
         FilledTonalButton(
           onClick = onStartLeisure,
           enabled = leisureEnabled,
-          modifier = Modifier.weight(1f).height(68.dp),
+          modifier = Modifier.weight(1f).height(76.dp),
           shape = LeisureActionShape,
         ) {
-          Icon(Icons.Rounded.Timer, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Icon(Icons.Rounded.Timer, contentDescription = null)
+            Text("Start Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          }
         }
       }
     }
@@ -633,28 +635,37 @@ private fun ActiveFocusSurface(
   var showEnd by remember { mutableStateOf(false) }
   var result by remember { mutableStateOf("As planned") }
   val now = rememberNow(paused = focus.paused)
-  val currentPauseMillis =
-    if (focus.paused && focus.pausedAt != null) {
-      Duration.between(focus.pausedAt, Instant.now()).toMillis().coerceAtLeast(0)
-    } else {
-      0L
-    }
+  val elapsedEnd = if (focus.paused && focus.pausedAt != null) focus.pausedAt else now
   val elapsed =
-    Duration.between(focus.startedAt, now)
-      .minusMillis(focus.pausedDurationMillis + currentPauseMillis)
+    Duration.between(focus.startedAt, elapsedEnd)
+      .minusMillis(focus.pausedDurationMillis)
       .coerceAtLeast(Duration.ZERO)
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     TimerOrganism(
-      label = if (focus.paused) "Paused" else "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x",
+      label = if (focus.paused) "Paused" else "Focus time",
       time = formatDuration(elapsed),
       tone = MaterialTheme.colorScheme.primary,
+      supporting = "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x real time",
     )
-    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-      Text(focus.task, style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-      Text(
-        "${focus.type.label} · ${focus.tag?.name ?: "No tag"}",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+    Surface(
+      color = MaterialTheme.colorScheme.surfaceContainer,
+      contentColor = MaterialTheme.colorScheme.onSurface,
+      shape = TodayPanelShape,
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        Text(
+          focus.task,
+          style = MaterialTheme.typography.headlineSmall,
+          fontWeight = FontWeight.Bold,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
+        )
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+          StatusBadge(focus.type.label, MaterialTheme.colorScheme.primary)
+          StatusBadge(focus.tag?.name ?: "No tag", MaterialTheme.colorScheme.secondary)
+        }
+      }
     }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
       if (focus.paused) {
@@ -696,9 +707,9 @@ private fun ActiveFocusSurface(
       title = { Text("What came out of this?") },
       text = {
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+          FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("As planned", "Partial", "Drifted", "Interrupted").forEach { option ->
-              AssistChip(onClick = { result = option }, label = { Text(option) })
+              FilterChip(selected = result == option, onClick = { result = option }, label = { Text(option) })
             }
           }
           OutlinedTextField(
@@ -742,6 +753,7 @@ private fun ActiveLeisureSurface(
   val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
   val remaining = Duration.ofSeconds((liveRemainingMinutes * 60).roundToInt().toLong())
+  val isSleepProtection = isSleepProtectionNow(now)
   LaunchedEffect(liveRemainingMinutes) {
     when {
       liveRemainingMinutes <= 0.0 && !notifiedDepleted -> {
@@ -770,31 +782,60 @@ private fun ActiveLeisureSurface(
     return
   }
   val progress = if (reserveMinutes <= 0.0) 0f else (liveRemainingMinutes / reserveMinutes).toFloat().coerceIn(0f, 1f)
-  TimerOrganism(
-    label = "Remaining",
-    time = formatDuration(remaining),
-    tone = MaterialTheme.colorScheme.tertiary,
-    progress = progress,
-  )
-  Surface(
-    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
-    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-    shape = RoundedCornerShape(topStart = 22.dp, topEnd = 28.dp, bottomEnd = 18.dp, bottomStart = 22.dp),
-    modifier = Modifier.fillMaxWidth(),
-  ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    TimerOrganism(
+      label = "Remaining",
+      time = formatDuration(remaining),
+      tone = MaterialTheme.colorScheme.tertiary,
+      progress = progress,
+      supporting = lowBalanceText(liveRemainingMinutes),
+    )
+    Surface(
+      color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
+      contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+      shape = RoundedCornerShape(topStart = 22.dp, topEnd = 28.dp, bottomEnd = 18.dp, bottomStart = 22.dp),
+      modifier = Modifier.fillMaxWidth(),
     ) {
-      Text("Elapsed", color = MaterialTheme.colorScheme.onSurfaceVariant)
-      Text(formatDuration(elapsed), fontWeight = FontWeight.SemiBold)
+      Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        TimerMetricRow(label = "Elapsed", value = formatDuration(elapsed))
+        TimerMetricRow(label = "Reserve spent", value = "${spent.roundToInt()} min")
+        if (isSleepProtection) {
+          StatusBadge("Sleep protection 2x", MaterialTheme.colorScheme.tertiary)
+        }
+      }
+    }
+    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(56.dp), shape = FocusActionShape) {
+      Icon(Icons.Rounded.Stop, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
+      Text("End Leisure")
     }
   }
-  Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(52.dp), shape = FocusActionShape) {
-    Icon(Icons.Rounded.Stop, contentDescription = null)
-    Spacer(Modifier.width(8.dp))
-    Text("End Leisure")
+}
+
+@Composable
+private fun TimerMetricRow(label: String, value: String) {
+  Row(
+    modifier = Modifier.fillMaxWidth(),
+    horizontalArrangement = Arrangement.SpaceBetween,
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(value, style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
   }
+}
+
+private fun lowBalanceText(remainingMinutes: Double): String? {
+  return when {
+    remainingMinutes <= 1.0 -> "1 min left"
+    remainingMinutes <= 5.0 -> "5 min left"
+    remainingMinutes <= 10.0 -> "10 min left"
+    else -> null
+  }
+}
+
+private fun isSleepProtectionNow(now: Instant): Boolean {
+  val localTime = now.atZone(TimeAccounting.focusWellZone).toLocalTime()
+  return localTime >= java.time.LocalTime.of(1, 0) && localTime < java.time.LocalTime.of(4, 0)
 }
 
 @Composable
@@ -1492,7 +1533,7 @@ private fun StartFocusSheet(
           }
         }
       }
-      Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
           selected = tagId == null,
           onClick = { tagId = null },
@@ -1506,10 +1547,18 @@ private fun StartFocusSheet(
           )
         }
       }
-      Text(
-        "${type.label} · ${tag?.name ?: "No tag"} · earns ${effectiveRate(type, tag?.multiplier ?: 1.0)}x real time",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
+      Surface(
+        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.46f),
+        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = RoundedCornerShape(18.dp),
+        modifier = Modifier.fillMaxWidth(),
+      ) {
+        Text(
+          "${type.label} · ${tag?.name ?: "No tag"} · earns ${effectiveRate(type, tag?.multiplier ?: 1.0)}x real time",
+          modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+          style = MaterialTheme.typography.bodyMedium,
+        )
+      }
       Button(
         enabled = task.trim().isNotEmpty(),
         onClick = { onStart(task, type, tagId) },
@@ -1531,12 +1580,14 @@ private fun TimerOrganism(
   time: String,
   tone: Color,
   progress: Float? = null,
+  supporting: String? = null,
 ) {
   Box(
     modifier =
       Modifier
         .fillMaxWidth()
-        .aspectRatio(1.25f)
+        .heightIn(min = 228.dp)
+        .aspectRatio(1.38f)
         .background(MaterialTheme.colorScheme.surfaceContainerHigh, ActiveTimerShape)
         .border(1.dp, tone.copy(alpha = 0.16f), ActiveTimerShape)
         .padding(24.dp),
@@ -1564,13 +1615,26 @@ private fun TimerOrganism(
         )
       }
     }
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
       StatusBadge(label, tone)
       Text(
         time,
-        style = MaterialTheme.typography.displayLarge.copy(fontFamily = FontFamily.Monospace),
+        style =
+          (if (time.length > 5) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge)
+            .copy(fontFamily = FontFamily.Monospace),
         textAlign = TextAlign.Center,
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Clip,
       )
+      supporting?.let {
+        Text(
+          it,
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          textAlign = TextAlign.Center,
+        )
+      }
     }
   }
 }
