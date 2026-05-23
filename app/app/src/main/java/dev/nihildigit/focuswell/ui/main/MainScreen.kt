@@ -21,6 +21,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -147,7 +148,6 @@ fun MainScreen(
     state = state,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
-    onSetWakeTime = viewModel::setWakeTime,
     onStartFocus = viewModel::startFocus,
     onPauseFocus = viewModel::pauseFocus,
     onResumeFocus = viewModel::resumeFocus,
@@ -179,7 +179,6 @@ internal fun MainScreen(
   state: FocusWellUiState,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
-  onSetWakeTime: (String) -> Unit,
   onStartFocus: (String, SessionType, String?) -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
@@ -234,7 +233,6 @@ internal fun MainScreen(
           TodayScreen(
             state = state,
             onToggleTracker = onToggleTracker,
-            onSetWakeTime = onSetWakeTime,
             onStartFocusClick = { showFocusSheet = true },
             onStartLeisure = onStartLeisure,
             onPauseFocus = onPauseFocus,
@@ -295,7 +293,6 @@ internal fun MainScreen(
 private fun TodayScreen(
   state: FocusWellUiState,
   onToggleTracker: (String) -> Unit,
-  onSetWakeTime: (String) -> Unit,
   onStartFocusClick: () -> Unit,
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
@@ -353,7 +350,6 @@ private fun TodayScreen(
       TrackerGrid(
         trackers = state.trackers.filter { it.archivedAt == null },
         onToggleTracker = onToggleTracker,
-        onSetWakeTime = onSetWakeTime,
       )
     }
   }
@@ -1073,10 +1069,7 @@ private fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> 
 private fun TrackerGrid(
   trackers: List<DailyTracker>,
   onToggleTracker: (String) -> Unit,
-  onSetWakeTime: (String) -> Unit,
 ) {
-  var wakeDialog by remember { mutableStateOf(false) }
-  var wakeValue by remember { mutableStateOf("09:00") }
   val secondary = MaterialTheme.colorScheme.secondary
   val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
   Surface(
@@ -1122,46 +1115,14 @@ private fun TrackerGrid(
           )
         }
       }
-      trackers.chunked(2).forEach { rowTrackers ->
-        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
-          rowTrackers.forEach { tracker ->
-            DailyTrackerTile(
-              tracker = tracker,
-              onClick = { if (tracker.id == "wake") wakeDialog = true else onToggleTracker(tracker.id) },
-              modifier = Modifier.weight(1f),
-            )
-          }
-          if (rowTrackers.size == 1) {
-            Spacer(modifier = Modifier.weight(1f))
-          }
-        }
+      trackers.forEach { tracker ->
+        DailyTrackerTile(
+          tracker = tracker,
+          onClick = { onToggleTracker(tracker.id) },
+          modifier = Modifier.fillMaxWidth(),
+        )
       }
     }
-  }
-  if (wakeDialog) {
-    AlertDialog(
-      onDismissRequest = { wakeDialog = false },
-      title = { Text("Wake time") },
-      text = {
-        OutlinedTextField(
-          value = wakeValue,
-          onValueChange = { wakeValue = it },
-          label = { Text("HH:mm") },
-          singleLine = true,
-        )
-      },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            wakeDialog = false
-            onSetWakeTime(wakeValue)
-          }
-        ) {
-          Text("Save")
-        }
-      },
-      dismissButton = { TextButton(onClick = { wakeDialog = false }) { Text("Cancel") } },
-    )
   }
 }
 
@@ -1181,15 +1142,16 @@ private fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifie
     contentColor = content,
     shape =
       if (tracker.completed) {
-        RoundedCornerShape(topStart = 30.dp, topEnd = 18.dp, bottomEnd = 30.dp, bottomStart = 24.dp)
+        RoundedCornerShape(topStart = 26.dp, topEnd = 18.dp, bottomEnd = 26.dp, bottomStart = 20.dp)
       } else {
-        RoundedCornerShape(topStart = 20.dp, topEnd = 26.dp, bottomEnd = 18.dp, bottomStart = 22.dp)
+        RoundedCornerShape(topStart = 18.dp, topEnd = 24.dp, bottomEnd = 18.dp, bottomStart = 22.dp)
       },
-    modifier = modifier.heightIn(min = 106.dp),
+    modifier = modifier.heightIn(min = 76.dp),
   ) {
-    Column(
+    Row(
       modifier = Modifier.padding(14.dp),
-      verticalArrangement = Arrangement.spacedBy(8.dp),
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(
         when {
@@ -1199,16 +1161,20 @@ private fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifie
         },
         contentDescription = null,
         tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
-        modifier = Modifier.size(30.dp),
+        modifier = Modifier.size(28.dp),
       )
-      Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 2)
-      Text(
-        trackerStatusText(tracker),
-        style = MaterialTheme.typography.labelMedium,
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-      if (isRuleTracker) {
-        LinearProgressIndicator(progress = { trackerProgress(tracker) }, modifier = Modifier.fillMaxWidth())
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+          trackerStatusText(tracker),
+          style = MaterialTheme.typography.labelMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+        if (isRuleTracker) {
+          LinearProgressIndicator(progress = { trackerProgress(tracker) }, modifier = Modifier.fillMaxWidth())
+        }
       }
     }
   }
@@ -1337,49 +1303,90 @@ private fun RecordsScreen(
 ) {
   var tab by remember { mutableStateOf("Focus") }
   val tabs = listOf("Focus", "Leisure", "Trackers", "Tags")
-  LazyColumn(
-    contentPadding = PaddingValues(20.dp),
-    verticalArrangement = Arrangement.spacedBy(12.dp),
-  ) {
-    item { SectionHeader(title = "History", subtitle = "Edit past sessions without rewriting the ledger") }
-    item { HistoryTabBar(tabs = tabs, selected = tab, onSelected = { tab = it }) }
-    when (tab) {
-      "Focus" -> {
-        val records = state.focusRecords.filter { it.deletedAt == null }
-        if (records.isEmpty()) item { EmptyRecordText("No focus sessions yet.") }
-        items(records, key = { it.id }) { record ->
-          FocusRecordRow(
-            record = record,
-            onDelete = { onDeleteFocusRecord(record.id) },
-            onUpdate = { result, minutes -> onUpdateFocusRecord(record.id, result, minutes) },
-          )
-        }
-      }
-      "Leisure" -> {
-        val records = state.leisureRecords.filter { it.deletedAt == null }
-        if (records.isEmpty()) item { EmptyRecordText("No leisure sessions yet.") }
-        items(records, key = { it.id }) { record ->
-          LeisureRecordRow(record = record, onDelete = { onDeleteLeisureRecord(record.id) })
-        }
-      }
-      "Trackers" -> {
-        items(state.trackers.filter { it.archivedAt == null }, key = { it.id }) { tracker ->
-          CalmPanel {
-            Text(tracker.label, style = MaterialTheme.typography.titleMedium)
-            Text(tracker.progressLabel ?: if (tracker.completed) "Done" else "Open")
+  BoxWithConstraints {
+    val useTwoColumns = maxWidth >= 620.dp
+    LazyColumn(
+      contentPadding = PaddingValues(20.dp),
+      verticalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+      item { SectionHeader(title = "History", subtitle = "Past sessions and editable records") }
+      item { HistoryTabBar(tabs = tabs, selected = tab, onSelected = { tab = it }) }
+      when (tab) {
+        "Focus" -> {
+          val records = state.focusRecords.filter { it.deletedAt == null }
+          if (records.isEmpty()) item { EmptyRecordText("No focus sessions yet.") }
+          if (useTwoColumns) {
+            records.chunked(2).forEach { rowRecords ->
+              item(key = rowRecords.joinToString { it.id }) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                  rowRecords.forEach { record ->
+                    FocusRecordRow(
+                      record = record,
+                      onDelete = { onDeleteFocusRecord(record.id) },
+                      onUpdate = { result, minutes -> onUpdateFocusRecord(record.id, result, minutes) },
+                      modifier = Modifier.weight(1f),
+                    )
+                  }
+                  if (rowRecords.size == 1) Spacer(Modifier.weight(1f))
+                }
+              }
+            }
+          } else {
+            items(records, key = { it.id }) { record ->
+              FocusRecordRow(
+                record = record,
+                onDelete = { onDeleteFocusRecord(record.id) },
+                onUpdate = { result, minutes -> onUpdateFocusRecord(record.id, result, minutes) },
+              )
+            }
           }
         }
-      }
-      "Tags" -> {
-        items(state.tags.filter { it.archivedAt == null }, key = { it.id }) { tag ->
-          CalmPanel {
-            Row(
-              modifier = Modifier.fillMaxWidth(),
-              horizontalArrangement = Arrangement.SpaceBetween,
-              verticalAlignment = Alignment.CenterVertically,
-            ) {
-              Text(tag.name, style = MaterialTheme.typography.titleMedium)
-              StatusBadge("${tag.multiplier}x", MaterialTheme.colorScheme.secondary)
+
+        "Leisure" -> {
+          val records = state.leisureRecords.filter { it.deletedAt == null }
+          if (records.isEmpty()) item { EmptyRecordText("No leisure sessions yet.") }
+          if (useTwoColumns) {
+            records.chunked(2).forEach { rowRecords ->
+              item(key = rowRecords.joinToString { it.id }) {
+                Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+                  rowRecords.forEach { record ->
+                    LeisureRecordRow(
+                      record = record,
+                      onDelete = { onDeleteLeisureRecord(record.id) },
+                      modifier = Modifier.weight(1f),
+                    )
+                  }
+                  if (rowRecords.size == 1) Spacer(Modifier.weight(1f))
+                }
+              }
+            }
+          } else {
+            items(records, key = { it.id }) { record ->
+              LeisureRecordRow(record = record, onDelete = { onDeleteLeisureRecord(record.id) })
+            }
+          }
+        }
+
+        "Trackers" -> {
+          items(state.trackers.filter { it.archivedAt == null }, key = { it.id }) { tracker ->
+            CalmPanel {
+              Text(tracker.label, style = MaterialTheme.typography.titleMedium)
+              Text(tracker.progressLabel ?: if (tracker.completed) "Done" else "Open")
+            }
+          }
+        }
+
+        "Tags" -> {
+          items(state.tags.filter { it.archivedAt == null }, key = { it.id }) { tag ->
+            CalmPanel {
+              Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+              ) {
+                Text(tag.name, style = MaterialTheme.typography.titleMedium)
+                StatusBadge("${tag.multiplier}x", MaterialTheme.colorScheme.secondary)
+              }
             }
           }
         }
@@ -1434,6 +1441,7 @@ private fun FocusRecordRow(
   record: FocusRecord,
   onDelete: () -> Unit,
   onUpdate: (String, Double) -> Unit,
+  modifier: Modifier = Modifier,
 ) {
   var editing by remember { mutableStateOf(false) }
   var result by remember(record.id) { mutableStateOf(record.result) }
@@ -1443,7 +1451,7 @@ private fun FocusRecordRow(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
     shape = LedgerRowShape,
-    modifier = Modifier.fillMaxWidth(),
+    modifier = modifier.fillMaxWidth(),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -1455,10 +1463,15 @@ private fun FocusRecordRow(
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = if (record.earnedMinutes > 0.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-        modifier = Modifier.width(88.dp),
+        modifier = Modifier.width(76.dp),
       )
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-        Text("${record.type.label} · ${record.tagName ?: "Untagged"}", style = MaterialTheme.typography.titleMedium)
+        Text(
+          "${record.type.label} · ${record.tagName ?: "Untagged"}",
+          style = MaterialTheme.typography.titleMedium,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
         Text(record.task, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
           "${record.activeDurationMinutes.roundToInt()} min · ${record.result}",
@@ -1627,12 +1640,12 @@ private fun BalanceDeltaPreview(original: Double, updated: Double, delta: Double
 }
 
 @Composable
-private fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit) {
+private fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit, modifier: Modifier = Modifier) {
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
     shape = LedgerRowShape,
-    modifier = Modifier.fillMaxWidth(),
+    modifier = modifier.fillMaxWidth(),
   ) {
     Row(
       modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
@@ -1644,7 +1657,7 @@ private fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit) {
         style = MaterialTheme.typography.titleMedium,
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.tertiary,
-        modifier = Modifier.width(88.dp),
+        modifier = Modifier.width(76.dp),
       )
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text("Leisure", style = MaterialTheme.typography.titleMedium)
@@ -1672,17 +1685,33 @@ private fun EmptyRecordText(text: String) {
 }
 
 @Composable
-private fun SettingsInfoRow(label: String, value: String) {
+private fun SettingsRuleRow(
+  title: String,
+  value: String,
+  supporting: String,
+  icon: ImageVector,
+) {
   Row(
-    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-    horizontalArrangement = Arrangement.SpaceBetween,
+    modifier = Modifier.fillMaxWidth().heightIn(min = 68.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(14.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(label, style = MaterialTheme.typography.bodyLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Surface(
+      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f),
+      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      shape = CircleShape,
+    ) {
+      Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+    }
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
     Text(
       value,
       style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
       fontWeight = FontWeight.Bold,
+      textAlign = TextAlign.End,
     )
   }
 }
@@ -1725,39 +1754,30 @@ private fun SettingsAddTagForm(
   onTagMultiplierChange: (String) -> Unit,
   onAddTag: () -> Unit,
 ) {
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = RoundedCornerShape(18.dp),
-    modifier = Modifier.fillMaxWidth(),
+  SettingsCreateForm(
+    title = "New tag",
+    supporting = "Tags multiply focus earnings.",
+    actionLabel = "Add tag",
+    icon = Icons.Rounded.Add,
+    enabled = tagName.isNotBlank(),
+    onSubmit = onAddTag,
   ) {
-    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-          value = tagName,
-          onValueChange = onTagNameChange,
-          label = { Text("Tag") },
-          singleLine = true,
-          modifier = Modifier.weight(1f),
-        )
-        OutlinedTextField(
-          value = tagMultiplier,
-          onValueChange = onTagMultiplierChange,
-          label = { Text("x") },
-          singleLine = true,
-          modifier = Modifier.width(104.dp),
-        )
-      }
-      FilledTonalButton(
-        onClick = onAddTag,
-        enabled = tagName.isNotBlank(),
-        modifier = Modifier.align(Alignment.End).height(44.dp),
-        shape = RoundedCornerShape(22.dp),
-      ) {
-        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text("Add tag")
-      }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+      OutlinedTextField(
+        value = tagName,
+        onValueChange = onTagNameChange,
+        label = { Text("Name") },
+        singleLine = true,
+        modifier = Modifier.weight(1f),
+      )
+      OutlinedTextField(
+        value = tagMultiplier,
+        onValueChange = onTagMultiplierChange,
+        label = { Text("Rate") },
+        singleLine = true,
+        suffix = { Text("x") },
+        modifier = Modifier.width(118.dp),
+      )
     }
   }
 }
@@ -1768,31 +1788,21 @@ private fun SettingsAddBooleanTrackerForm(
   onTrackerLabelChange: (String) -> Unit,
   onAddTracker: () -> Unit,
 ) {
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = RoundedCornerShape(18.dp),
-    modifier = Modifier.fillMaxWidth(),
+  SettingsCreateForm(
+    title = "New checklist item",
+    supporting = "Manual daily completion.",
+    actionLabel = "Add tracker",
+    icon = Icons.Rounded.CheckCircle,
+    enabled = trackerLabel.isNotBlank(),
+    onSubmit = onAddTracker,
   ) {
-    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      OutlinedTextField(
-        value = trackerLabel,
-        onValueChange = onTrackerLabelChange,
-        label = { Text("Boolean tracker") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-      )
-      FilledTonalButton(
-        onClick = onAddTracker,
-        enabled = trackerLabel.isNotBlank(),
-        modifier = Modifier.align(Alignment.End).height(44.dp),
-        shape = RoundedCornerShape(22.dp),
-      ) {
-        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
-        Spacer(Modifier.width(8.dp))
-        Text("Add boolean tracker")
-      }
-    }
+    OutlinedTextField(
+      value = trackerLabel,
+      onValueChange = onTrackerLabelChange,
+      label = { Text("Label") },
+      singleLine = true,
+      modifier = Modifier.fillMaxWidth(),
+    )
   }
 }
 
@@ -1806,45 +1816,81 @@ private fun SettingsAddRuleTrackerForm(
   onRuleHoursChange: (String) -> Unit,
   onAddRuleTracker: () -> Unit,
 ) {
+  SettingsCreateForm(
+    title = "New rule tracker",
+    supporting = "Auto-completes from focused time.",
+    actionLabel = "Add rule",
+    icon = Icons.Rounded.Timer,
+    enabled = ruleLabel.isNotBlank() && ruleTag.isNotBlank(),
+    onSubmit = onAddRuleTracker,
+  ) {
+    OutlinedTextField(
+      value = ruleLabel,
+      onValueChange = onRuleLabelChange,
+      label = { Text("Label") },
+      singleLine = true,
+      modifier = Modifier.fillMaxWidth(),
+    )
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+      OutlinedTextField(
+        value = ruleTag,
+        onValueChange = onRuleTagChange,
+        label = { Text("Tag") },
+        singleLine = true,
+        modifier = Modifier.weight(1f),
+      )
+      OutlinedTextField(
+        value = ruleHours,
+        onValueChange = onRuleHoursChange,
+        label = { Text("Target") },
+        singleLine = true,
+        suffix = { Text("h") },
+        modifier = Modifier.width(126.dp),
+      )
+    }
+  }
+}
+
+@Composable
+private fun SettingsCreateForm(
+  title: String,
+  supporting: String,
+  actionLabel: String,
+  icon: ImageVector,
+  enabled: Boolean,
+  onSubmit: () -> Unit,
+  content: @Composable ColumnScope.() -> Unit,
+) {
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor = MaterialTheme.colorScheme.onSurface,
     shape = RoundedCornerShape(18.dp),
     modifier = Modifier.fillMaxWidth(),
   ) {
-    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-      OutlinedTextField(
-        value = ruleLabel,
-        onValueChange = onRuleLabelChange,
-        label = { Text("Rule label") },
-        singleLine = true,
-        modifier = Modifier.fillMaxWidth(),
-      )
-      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-        OutlinedTextField(
-          value = ruleTag,
-          onValueChange = onRuleTagChange,
-          label = { Text("Tag") },
-          singleLine = true,
-          modifier = Modifier.weight(1f),
-        )
-        OutlinedTextField(
-          value = ruleHours,
-          onValueChange = onRuleHoursChange,
-          label = { Text("Hours") },
-          singleLine = true,
-          modifier = Modifier.width(112.dp),
-        )
+    Column(modifier = Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+          color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f),
+          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          shape = CircleShape,
+        ) {
+          Icon(icon, contentDescription = null, modifier = Modifier.padding(8.dp).size(18.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+          Text(title, style = MaterialTheme.typography.titleMedium)
+          Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
       }
+      content()
       FilledTonalButton(
-        onClick = onAddRuleTracker,
-        enabled = ruleLabel.isNotBlank() && ruleTag.isNotBlank(),
-        modifier = Modifier.align(Alignment.End).height(44.dp),
-        shape = RoundedCornerShape(22.dp),
+        onClick = onSubmit,
+        enabled = enabled,
+        modifier = Modifier.fillMaxWidth().height(48.dp),
+        shape = RoundedCornerShape(24.dp),
       ) {
         Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(8.dp))
-        Text("Add rule tracker")
+        Text(actionLabel)
       }
     }
   }
@@ -1951,9 +1997,24 @@ private fun SettingsScreen(
     item {
       CalmPanel {
         Text("Rules", style = MaterialTheme.typography.headlineSmall)
-        SettingsInfoRow(label = "Daily grant", value = "60 min")
-        SettingsInfoRow(label = "Day boundary", value = "04:00")
-        SettingsInfoRow(label = "Sleep protection", value = "01:00 · 2x")
+        SettingsRuleRow(
+          title = "Daily grant",
+          value = "60 min",
+          supporting = "Added at the day boundary.",
+          icon = Icons.Rounded.AccountBalanceWallet,
+        )
+        SettingsRuleRow(
+          title = "Day boundary",
+          value = "04:00",
+          supporting = "New FocusWell day starts here.",
+          icon = Icons.Rounded.Today,
+        )
+        SettingsRuleRow(
+          title = "Sleep protection",
+          value = "01:00 · 2x",
+          supporting = "Late leisure spends faster.",
+          icon = Icons.Rounded.Bedtime,
+        )
       }
     }
     item {
@@ -1986,7 +2047,7 @@ private fun SettingsScreen(
         state.trackers.filter { it.archivedAt == null }.forEach {
           SettingsListRow(
             title = it.label,
-            supporting = it.progressLabel ?: it.wakeTime ?: if (it.ruleTagName != null) "Rule tracker" else "Boolean tracker",
+            supporting = it.progressLabel ?: if (it.ruleTagName != null) "Rule tracker" else "Manual item",
             onArchive = { onArchiveTracker(it.id) },
           )
         }
@@ -2390,10 +2451,8 @@ private fun trackerProgress(tracker: DailyTracker): Float {
 }
 
 private fun trackerStatusText(tracker: DailyTracker): String {
-  return tracker.wakeTime
-    ?: tracker.progressLabel
+  return tracker.progressLabel
     ?: when {
-      tracker.id == "wake" -> "Set time"
       tracker.completed -> "Done"
       else -> "Open"
     }
@@ -2423,7 +2482,6 @@ private fun MainScreenPreview() {
       state = FocusWellUiState(),
       onDestination = {},
       onToggleTracker = {},
-      onSetWakeTime = {},
       onStartFocus = { _, _, _ -> },
       onPauseFocus = {},
       onResumeFocus = {},
