@@ -1,6 +1,6 @@
 # FocusWell
 
-FocusWell is an Android app for turning focused work into leisure time you can spend later.
+FocusWell is a local-first Android app for turning focused work into leisure time you can spend later.
 
 It is built for people who need structure without streak pressure. A focus session earns reserve. A leisure session spends reserve. The app keeps a ledger so the balance can be audited and corrected instead of treated as a vague habit score.
 
@@ -18,7 +18,7 @@ FocusWell uses a few fixed rules:
 
 The main screen is for the current day: reserve, active mode, and daily trackers. Balance is the account ledger. History is where records can be reviewed or edited. Settings holds rules, tags, trackers, backup, and reset.
 
-The product spec lives in [docs/focuswell-product-spec.md](docs/focuswell-product-spec.md). UI rules live in [DESIGN.md](DESIGN.md).
+The product concept and accounting boundaries live in [docs/focuswell-product-spec.md](docs/focuswell-product-spec.md). Exact behavior should be checked against the current code and tests. UI rules live in [DESIGN.md](DESIGN.md).
 
 ## Android App
 
@@ -30,13 +30,14 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Daily trackers and rule-based tracker progress.
 - JSON export/import.
 - Local notifications and remote FCM reminders.
+- Minified release builds with scoped Room/R8 keep rules.
 - Material 3 Expressive-inspired shape, motion, typography, and icon treatment.
 
 ## Build
 
 ```powershell
 cd app
-.\gradlew.bat test assembleDebug
+.\gradlew.bat testDebugUnitTest assembleDebug
 ```
 
 Install a debug build:
@@ -50,7 +51,7 @@ Build a signed release when signing environment variables are available:
 
 ```powershell
 cd app
-.\gradlew.bat test assembleRelease "-PfocuswellVersionName=26.5.1"
+.\gradlew.bat testDebugUnitTest assembleRelease "-PfocuswellVersionName=26.5.4"
 ```
 
 Release APKs are split by ABI: `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
@@ -69,4 +70,6 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 ## Release
 
-Releases are manual-tag driven. Use a time-based tag such as `26.5.1`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
+Releases are manual-tag driven. Use a time-based tag such as `26.5.4`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
+
+The current public release is [26.5.4](https://github.com/NihilDigit/focuswell/releases/tag/26.5.4). It is the Room cutover release and intentionally does not migrate old SharedPreferences app state from early builds.

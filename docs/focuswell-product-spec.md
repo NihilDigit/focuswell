@@ -5,7 +5,9 @@ time that can be spent later. It is designed for people who need external time
 sense and low-friction guardrails without streak pressure.
 
 This document is a product concept and implementation boundary, not a complete
-future roadmap. The current implementation is the source of truth for exact
+future roadmap or a line-by-line implementation spec. It remains useful because
+it keeps the product vocabulary, accounting model, and current non-goals in one
+place. The current implementation and tests are the source of truth for exact
 screen behavior.
 
 ## Product Principles

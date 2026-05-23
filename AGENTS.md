@@ -1,18 +1,18 @@
 # Repository Guidelines
 
-This repository contains the Android app, reminder backend, product spec, and design system for FocusWell. `CLAUDE.md` is a symbolic link to this file and must stay equivalent to `AGENTS.md`.
+This repository contains the Android app, reminder backend, product concept, and design system for FocusWell. `CLAUDE.md` is a symbolic link to this file and must stay equivalent to `AGENTS.md`.
 
 ## Project Layout
 
 - `README.md`: project entry point, build commands, and release summary.
-- `docs/focuswell-product-spec.md`: product behavior, accounting rules, UX model, and data model.
+- `docs/focuswell-product-spec.md`: product concept, accounting boundaries, vocabulary, and current non-goals.
 - `DESIGN.md`: durable UI rules for Material 3 Expressive usage.
 - `app/`: nested Android Gradle project.
 - `app/app/src/main/java/dev/nihildigit/focuswell/`: Kotlin, Jetpack Compose, reminders, data, and domain code.
 - `app/app/src/test/`: JVM tests for accounting and domain behavior.
 - `backend/`: TypeScript reminder backend for QStash callbacks and FCM delivery.
 
-Do not scatter product or design decisions across comments. Update the spec or design document when a change makes those rules different.
+Do not scatter product or design decisions across comments. Update the concept document or design document when a change alters durable product rules, accounting semantics, navigation model, visual language, or explicit non-goals.
 
 ## Local Commands
 
@@ -20,7 +20,7 @@ Android:
 
 ```powershell
 cd app
-.\gradlew.bat test assembleDebug
+.\gradlew.bat testDebugUnitTest assembleDebug
 .\gradlew.bat connectedAndroidTest
 .\gradlew.bat installDebug
 ```
@@ -69,7 +69,7 @@ Name tests after behavior, not implementation details.
 Release builds are tag-driven. CI creates the GitHub Release and attaches APKs; the coding agent edits the final Release text after CI succeeds.
 
 1. Finish code, docs, version metadata, signing configuration, and CI changes in ordinary commits.
-2. Manually create and push a time-based release tag such as `26.5.1`.
+2. Manually create and push a time-based release tag such as `26.5.4`.
 3. Wait for CI to build the release APKs and create the GitHub Release.
 4. After CI succeeds, use `gh release edit` to update the generated Release title, description, and notes.
 
@@ -85,7 +85,7 @@ Signing material belongs in GitHub Secrets. Never commit keystores, passwords, s
 
 ## Agent Notes
 
-Treat `docs/focuswell-product-spec.md` as the product source of truth.
+Treat `docs/focuswell-product-spec.md` as the durable product concept and accounting-boundary document. It should stay short. Do not turn it back into a line-by-line implementation spec; exact current behavior belongs in code, tests, and release evidence.
 
 Treat `DESIGN.md` as the reusable UI source of truth. When changing Compose surfaces, shape, elevation, icon usage, typography, motion, color semantics, or responsive behavior, update `DESIGN.md` in the same change.
 
