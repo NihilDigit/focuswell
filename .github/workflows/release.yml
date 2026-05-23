@@ -15,7 +15,34 @@ jobs:
 
     steps:
       - name: Check out repository
+        id: checkout
         uses: actions/checkout@v5
+        continue-on-error: true
+
+      - name: Retry checkout
+        if: steps.checkout.outcome == 'failure'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          rm -rf .git
+          auth_header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w 0)"
+          for attempt in 1 2 3 4 5; do
+            echo "Manual checkout attempt $attempt"
+            git init .
+            git remote remove origin 2>/dev/null || true
+            git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
+            if git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth_header" \
+              fetch --no-tags --prune --no-recurse-submodules --depth=1 origin \
+              "+${GITHUB_SHA}:refs/ci-checkout/${GITHUB_SHA}"; then
+              git checkout --force "refs/ci-checkout/${GITHUB_SHA}"
+              exit 0
+            fi
+            rm -rf .git
+            sleep $((attempt * 10))
+          done
+          exit 1
 
       - name: Set up JDK
         uses: actions/setup-java@v5
@@ -76,8 +103,24 @@ jobs:
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          gh release create "$GITHUB_REF_NAME" release-artifacts/* \
-            --repo "$GITHUB_REPOSITORY" \
-            --title "FocusWell $GITHUB_REF_NAME" \
-            --notes "Automated APK build for $GITHUB_REF_NAME. Edit this release manually before sharing."
+          set -euo pipefail
+          notes="Automated APK build for $GITHUB_REF_NAME. Edit this release manually before sharing."
+          for attempt in 1 2 3 4 5; do
+            echo "Release publish attempt $attempt"
+            if gh release view "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+              if gh release upload "$GITHUB_REF_NAME" release-artifacts/* --repo "$GITHUB_REPOSITORY" --clobber; then
+                exit 0
+              fi
+            else
+              if gh release create "$GITHUB_REF_NAME" release-artifacts/* \
+                --repo "$GITHUB_REPOSITORY" \
+                --title "FocusWell $GITHUB_REF_NAME" \
+                --notes "$notes"; then
+                exit 0
+              fi
+            fi
+            sleep $((attempt * 10))
+          done
+          exit 1
