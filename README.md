@@ -76,4 +76,4 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 Releases are manual-tag driven. Use a time-based tag such as `26.5.5`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
 
-The current public release is [26.5.5](https://github.com/NihilDigit/focuswell/releases/tag/26.5.5). It redesigns Balance and Plan, makes rules adjustable, and keeps debug/release launcher icons consistent.
+The current public release is [26.5.6](https://github.com/NihilDigit/focuswell/releases/tag/26.5.6). It adds in-app update checks, fixes late-night Leisure remaining-time display, and keeps release APKs split by ABI.
