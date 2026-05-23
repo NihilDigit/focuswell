@@ -1343,18 +1343,13 @@ private fun RecordsScreen(
   onDeleteLeisureRecord: (String) -> Unit,
 ) {
   var tab by remember { mutableStateOf("Focus") }
+  val tabs = listOf("Focus", "Leisure", "Trackers", "Tags")
   LazyColumn(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(12.dp),
   ) {
     item { SectionHeader(title = "History", subtitle = "Edit past sessions without rewriting the ledger") }
-    item {
-      FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        listOf("Focus", "Leisure", "Trackers", "Tags").forEach { label ->
-          FilterChip(selected = tab == label, onClick = { tab = label }, label = { Text(label) })
-        }
-      }
-    }
+    item { HistoryTabBar(tabs = tabs, selected = tab, onSelected = { tab = it }) }
     when (tab) {
       "Focus" -> {
         val records = state.focusRecords.filter { it.deletedAt == null }
@@ -1401,6 +1396,46 @@ private fun RecordsScreen(
 }
 
 @Composable
+private fun HistoryTabBar(
+  tabs: List<String>,
+  selected: String,
+  onSelected: (String) -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(24.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(4.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      tabs.forEach { label ->
+        val isSelected = selected == label
+        Surface(
+          onClick = { onSelected(label) },
+          color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+          contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+          shape = RoundedCornerShape(20.dp),
+          modifier = Modifier.weight(if (isSelected) 1.08f else 1f).height(46.dp),
+        ) {
+          Box(contentAlignment = Alignment.Center, modifier = Modifier.padding(horizontal = 4.dp)) {
+            Text(
+              label,
+              style = MaterialTheme.typography.labelLarge,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
 private fun FocusRecordRow(
   record: FocusRecord,
   onDelete: () -> Unit,
@@ -1409,22 +1444,53 @@ private fun FocusRecordRow(
   var editing by remember { mutableStateOf(false) }
   var result by remember(record.id) { mutableStateOf(record.result) }
   var minutes by remember(record.id) { mutableStateOf(record.activeDurationMinutes.roundToInt().toString()) }
-  CalmPanel {
-    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("${record.type.label} · ${record.tagName ?: "Untagged"}", fontWeight = FontWeight.Bold)
-        Text(record.task)
-        Text(record.result, color = MaterialTheme.colorScheme.onSurfaceVariant)
-        Text("${record.activeDurationMinutes.roundToInt()} min · ${signedMinutes(record.earnedMinutes)}")
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = LedgerRowShape,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        signedMinutes(record.earnedMinutes),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = if (record.earnedMinutes > 0.0) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.width(88.dp),
+      )
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text("${record.type.label} · ${record.tagName ?: "Untagged"}", style = MaterialTheme.typography.titleMedium)
+        Text(record.task, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+          "${record.activeDurationMinutes.roundToInt()} min · ${record.result}",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
       }
-      IconButton(onClick = onDelete) {
-        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+      Column(horizontalAlignment = Alignment.CenterHorizontally) {
+        IconButton(onClick = { editing = true }, modifier = Modifier.size(40.dp)) {
+          Icon(
+            Icons.Rounded.Edit,
+            contentDescription = "Edit",
+            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.size(22.dp),
+          )
+        }
+        IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+          Icon(
+            Icons.Rounded.Delete,
+            contentDescription = "Delete",
+            tint = MaterialTheme.colorScheme.error,
+            modifier = Modifier.size(22.dp),
+          )
+        }
       }
-    }
-    TextButton(onClick = { editing = true }) {
-      Icon(Icons.Rounded.Edit, contentDescription = null)
-      Spacer(Modifier.width(8.dp))
-      Text("Edit")
     }
   }
   if (editing) {
@@ -1459,15 +1525,39 @@ private fun FocusRecordRow(
 
 @Composable
 private fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit) {
-  CalmPanel {
-    Row(horizontalArrangement = Arrangement.SpaceBetween, modifier = Modifier.fillMaxWidth()) {
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Leisure", fontWeight = FontWeight.Bold)
-        Text("${record.elapsedMinutes.roundToInt()} min elapsed")
-        Text("${signedMinutes(-record.costMinutes)} cost", color = MaterialTheme.colorScheme.onSurfaceVariant)
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = LedgerRowShape,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        signedMinutes(-record.costMinutes),
+        style = MaterialTheme.typography.titleMedium,
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.tertiary,
+        modifier = Modifier.width(88.dp),
+      )
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text("Leisure", style = MaterialTheme.typography.titleMedium)
+        Text(
+          "${record.elapsedMinutes.roundToInt()} min elapsed",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
       }
-      IconButton(onClick = onDelete) {
-        Icon(Icons.Rounded.Delete, contentDescription = "Delete")
+      IconButton(onClick = onDelete, modifier = Modifier.size(40.dp)) {
+        Icon(
+          Icons.Rounded.Delete,
+          contentDescription = "Delete",
+          tint = MaterialTheme.colorScheme.error,
+          modifier = Modifier.size(22.dp),
+        )
       }
     }
   }
