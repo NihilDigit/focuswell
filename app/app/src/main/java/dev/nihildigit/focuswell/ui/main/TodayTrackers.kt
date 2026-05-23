@@ -127,6 +127,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -148,6 +149,7 @@ import kotlin.math.sqrt
 @Composable
 internal fun TrackerGrid(
   trackers: List<DailyTracker>,
+  rules: FocusWellRules,
   onToggleTracker: (String) -> Unit,
 ) {
   val secondary = MaterialTheme.colorScheme.secondary
@@ -174,7 +176,11 @@ internal fun TrackerGrid(
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text("Daily", style = MaterialTheme.typography.headlineSmall)
-          Text("Resets at 04:00", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(
+            "Resets at ${rules.normalized().safeDayBoundaryHour.todayHourLabel()}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
         }
         Text(
           "${trackers.count { it.completed }}/${trackers.size}",
@@ -236,6 +242,8 @@ internal fun TrackerGrid(
     }
   }
 }
+
+private fun Int.todayHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
 
 @Composable
 internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {

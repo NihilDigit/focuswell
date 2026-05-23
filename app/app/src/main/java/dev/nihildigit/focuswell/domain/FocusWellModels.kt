@@ -1,6 +1,7 @@
 package dev.nihildigit.focuswell.domain
 
 import java.time.Instant
+import java.time.LocalTime
 
 enum class SessionType(val label: String, val rate: Double) {
   Input("Input", 0.5),
@@ -18,13 +19,49 @@ data class DailyTracker(
   val id: String,
   val label: String,
   val completed: Boolean,
-  val rewardMinutes: Double = 10.0,
+  val rewardMinutes: Double = 15.0,
   val progressLabel: String? = null,
   val ruleTagName: String? = null,
   val ruleTargetMinutes: Double? = null,
   val wakeTime: String? = null,
   val archivedAt: Instant? = null,
 )
+
+data class FocusWellRules(
+  val dailyGrantMinutes: Double = 60.0,
+  val dayBoundaryHour: Int = 4,
+  val sleepProtectionStartHour: Int = 1,
+  val sleepProtectionMultiplier: Double = 2.0,
+) {
+  val safeDailyGrantMinutes: Double
+    get() = dailyGrantMinutes.coerceIn(0.0, 24.0 * 60.0)
+
+  val safeDayBoundaryHour: Int
+    get() = dayBoundaryHour.coerceIn(1, 12)
+
+  val safeSleepProtectionStartHour: Int
+    get() = sleepProtectionStartHour.coerceIn(0, safeDayBoundaryHour - 1)
+
+  val safeSleepProtectionMultiplier: Double
+    get() = sleepProtectionMultiplier.coerceIn(1.0, 5.0)
+
+  val dayBoundaryTime: LocalTime
+    get() = LocalTime.of(safeDayBoundaryHour, 0)
+
+  val sleepProtectionStartTime: LocalTime
+    get() = LocalTime.of(safeSleepProtectionStartHour, 0)
+
+  val sleepProtectionEndTime: LocalTime
+    get() = dayBoundaryTime
+
+  fun normalized(): FocusWellRules =
+    copy(
+      dailyGrantMinutes = safeDailyGrantMinutes,
+      dayBoundaryHour = safeDayBoundaryHour,
+      sleepProtectionStartHour = safeSleepProtectionStartHour,
+      sleepProtectionMultiplier = safeSleepProtectionMultiplier,
+    )
+}
 
 sealed interface ActiveMode {
   data object None : ActiveMode
@@ -92,6 +129,7 @@ data class LeisureRecord(
 enum class Destination(val label: String) {
   Today("Today"),
   Reserve("Balance"),
+  Plan("Plan"),
   Settings("Settings"),
 }
 
@@ -99,6 +137,7 @@ data class FocusWellUiState(
   val destination: Destination = Destination.Today,
   val reserveMinutes: Double = 0.0,
   val dailyDate: String = "",
+  val rules: FocusWellRules = FocusWellRules(),
   val activeMode: ActiveMode = ActiveMode.None,
   val tags: List<TagConfig> = defaultTags,
   val trackers: List<DailyTracker> = defaultTrackers,
@@ -116,15 +155,15 @@ val defaultTags =
 
 val defaultTrackers =
   listOf(
-    DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 10.0),
-    DailyTracker(id = "wake", label = "Wake by 9", completed = false, rewardMinutes = 10.0),
-    DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false, rewardMinutes = 10.0),
-    DailyTracker(id = "codewars", label = "CodeWars", completed = false, rewardMinutes = 10.0),
+    DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 15.0),
+    DailyTracker(id = "wake", label = "Wake by 9", completed = false, rewardMinutes = 15.0),
+    DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false, rewardMinutes = 15.0),
+    DailyTracker(id = "codewars", label = "CodeWars", completed = false, rewardMinutes = 15.0),
     DailyTracker(
       id = "math-3h",
       label = "Math",
       completed = false,
-      rewardMinutes = 10.0,
+      rewardMinutes = 60.0,
       progressLabel = "0m / 3h",
       ruleTagName = "math",
       ruleTargetMinutes = 180.0,
@@ -133,7 +172,7 @@ val defaultTrackers =
       id = "408-3h",
       label = "408",
       completed = false,
-      rewardMinutes = 10.0,
+      rewardMinutes = 60.0,
       progressLabel = "0m / 3h",
       ruleTagName = "408",
       ruleTargetMinutes = 180.0,

@@ -83,6 +83,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Archive
@@ -133,6 +134,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -170,16 +172,9 @@ internal enum class ActiveModeMotionKey {
   Depleted,
 }
 
-internal fun AnimatedContentTransitionScope<Destination>.destinationMotionTransform(): ContentTransform {
-  val direction = if (destinationOrder(targetState) >= destinationOrder(initialState)) 1 else -1
-  return (
-    slideInHorizontally(animationSpec = focusWellDefaultSpatialSpec()) { width -> width * direction / 5 } +
-      fadeIn(animationSpec = focusWellFastEffectsSpec())
-    ) togetherWith (
-      slideOutHorizontally(animationSpec = focusWellFastSpatialSpec()) { width -> -width * direction / 8 } +
-        fadeOut(animationSpec = focusWellFastEffectsSpec())
-      )
-}
+internal fun AnimatedContentTransitionScope<Destination>.destinationMotionTransform(): ContentTransform =
+  fadeIn(animationSpec = tween(durationMillis = 140, delayMillis = 40)) togetherWith
+    fadeOut(animationSpec = tween(durationMillis = 90))
 
 internal fun AnimatedContentTransitionScope<ActiveModeMotionKey>.activeModeMotionTransform(): ContentTransform {
   val direction = if (activeModeOrder(targetState) >= activeModeOrder(initialState)) 1 else -1
@@ -205,7 +200,8 @@ internal fun destinationOrder(destination: Destination): Int {
   return when (destination) {
     Destination.Today -> 0
     Destination.Reserve -> 1
-    Destination.Settings -> 2
+    Destination.Plan -> 2
+    Destination.Settings -> 3
   }
 }
 
@@ -264,7 +260,10 @@ fun MainScreen(
     onAddBooleanTracker = viewModel::addBooleanTracker,
     onAddRuleTracker = viewModel::addRuleTracker,
     onArchiveTracker = viewModel::archiveTracker,
-    onUpdateTrackerReward = viewModel::updateTrackerReward,
+    onUpdateTag = viewModel::updateTag,
+    onUpdateManualTracker = viewModel::updateManualTracker,
+    onUpdateRuleTracker = viewModel::updateRuleTracker,
+    onUpdateRules = viewModel::updateRules,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -298,7 +297,10 @@ internal fun MainScreen(
   onAddBooleanTracker: (String, Double) -> Unit,
   onAddRuleTracker: (String, String, Double, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
-  onUpdateTrackerReward: (String, Double) -> Unit,
+  onUpdateTag: (String, String, Double) -> Unit,
+  onUpdateManualTracker: (String, String, Double) -> Unit,
+  onUpdateRuleTracker: (String, String, String, Double, Double) -> Unit,
+  onUpdateRules: (FocusWellRules) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -361,7 +363,10 @@ internal fun MainScreen(
           onAddBooleanTracker = onAddBooleanTracker,
           onAddRuleTracker = onAddRuleTracker,
           onArchiveTracker = onArchiveTracker,
-          onUpdateTrackerReward = onUpdateTrackerReward,
+          onUpdateTag = onUpdateTag,
+          onUpdateManualTracker = onUpdateManualTracker,
+          onUpdateRuleTracker = onUpdateRuleTracker,
+          onUpdateRules = onUpdateRules,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
           modifier = Modifier.weight(1f),
@@ -416,7 +421,10 @@ private fun DestinationContent(
   onAddBooleanTracker: (String, Double) -> Unit,
   onAddRuleTracker: (String, String, Double, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
-  onUpdateTrackerReward: (String, Double) -> Unit,
+  onUpdateTag: (String, String, Double) -> Unit,
+  onUpdateManualTracker: (String, String, Double) -> Unit,
+  onUpdateRuleTracker: (String, String, String, Double, Double) -> Unit,
+  onUpdateRules: (FocusWellRules) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -450,18 +458,25 @@ private fun DestinationContent(
           onUpdateFocusRecord = onUpdateFocusRecord,
           onDeleteLeisureRecord = onDeleteLeisureRecord,
         )
+      Destination.Plan ->
+        PlanScreen(
+          state = state,
+          onAddTag = onAddTag,
+          onArchiveTag = onArchiveTag,
+          onUpdateTag = onUpdateTag,
+          onAddBooleanTracker = onAddBooleanTracker,
+          onAddRuleTracker = onAddRuleTracker,
+          onArchiveTracker = onArchiveTracker,
+          onUpdateManualTracker = onUpdateManualTracker,
+          onUpdateRuleTracker = onUpdateRuleTracker,
+        )
       Destination.Settings ->
         SettingsScreen(
           state = state,
           onExportJson = onExportJson,
           onImportJson = onImportJson,
           onClearAllData = onClearAllData,
-          onAddTag = onAddTag,
-          onArchiveTag = onArchiveTag,
-          onAddBooleanTracker = onAddBooleanTracker,
-          onAddRuleTracker = onAddRuleTracker,
-          onArchiveTracker = onArchiveTracker,
-          onUpdateTrackerReward = onUpdateTrackerReward,
+          onUpdateRules = onUpdateRules,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
         )
@@ -695,6 +710,7 @@ internal fun DestinationIcon(destination: Destination) {
     when (destination) {
       Destination.Today -> Icons.Rounded.Today
       Destination.Reserve -> Icons.Rounded.AccountBalanceWallet
+      Destination.Plan -> Icons.AutoMirrored.Rounded.EventNote
       Destination.Settings -> Icons.Rounded.Settings
     }
   Icon(
@@ -829,7 +845,10 @@ internal fun MainScreenPreview() {
       onAddBooleanTracker = { _, _ -> },
       onAddRuleTracker = { _, _, _, _ -> },
       onArchiveTracker = {},
-      onUpdateTrackerReward = { _, _ -> },
+      onUpdateTag = { _, _, _ -> },
+      onUpdateManualTracker = { _, _, _ -> },
+      onUpdateRuleTracker = { _, _, _, _, _ -> },
+      onUpdateRules = {},
       themeMode = ThemeMode.System,
       onThemeModeChange = {},
     )

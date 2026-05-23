@@ -7,6 +7,7 @@ import androidx.lifecycle.viewModelScope
 import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import kotlinx.coroutines.flow.SharingStarted
@@ -73,6 +74,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun startLeisure() {
     val reserveMinutes = uiState.value.reserveMinutes
+    val rules = uiState.value.rules
     val leisure = repository.startLeisure() ?: return
     viewModelScope.launch {
       runCatching {
@@ -80,6 +82,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
           sessionId = leisure.reminderSessionId,
           revision = leisure.revision,
           reserveMinutes = reserveMinutes,
+          rules = rules,
         )
       }.onFailure { Log.e("FocusWellPush", "Failed to schedule leisure reminders", it) }
     }
@@ -131,6 +134,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun archiveTag(id: String) = repository.archiveTag(id)
 
+  fun updateTag(id: String, name: String, multiplier: Double) = repository.updateTag(id, name, multiplier)
+
   fun addBooleanTracker(label: String, rewardMinutes: Double) = repository.addBooleanTracker(label, rewardMinutes)
 
   fun addRuleTracker(label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) =
@@ -138,5 +143,11 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun archiveTracker(id: String) = repository.archiveTracker(id)
 
-  fun updateTrackerReward(id: String, rewardMinutes: Double) = repository.updateTrackerReward(id, rewardMinutes)
+  fun updateManualTracker(id: String, label: String, rewardMinutes: Double) =
+    repository.updateManualTracker(id, label, rewardMinutes)
+
+  fun updateRuleTracker(id: String, label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) =
+    repository.updateRuleTracker(id, label, tagName, targetMinutes, rewardMinutes)
+
+  fun updateRules(rules: FocusWellRules) = repository.updateRules(rules)
 }

@@ -26,6 +26,14 @@ class TimeAccountingTest {
   }
 
   @Test
+  fun dailyDate_usesConfiguredDayBoundary() {
+    val instant = Instant.parse("2026-05-21T22:30:00Z") // 06:30, 2026-05-22 Shanghai
+    val rules = FocusWellRules(dayBoundaryHour = 7)
+
+    assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant, shanghai, rules))
+  }
+
+  @Test
   fun dailyDate_defaultZoneUsesSystemTimeZone() {
     val previous = TimeZone.getDefault()
     val instant = Instant.parse("2026-05-22T07:30:00Z")
@@ -67,6 +75,15 @@ class TimeAccountingTest {
     val endedAt = Instant.parse("2026-05-21T20:20:00Z") // 04:20 Shanghai
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
+  }
+
+  @Test
+  fun leisureCostMinutes_usesConfiguredSleepWindowAndMultiplier() {
+    val startedAt = Instant.parse("2026-05-21T18:10:00Z") // 02:10 Shanghai
+    val endedAt = Instant.parse("2026-05-21T18:30:00Z") // 02:30 Shanghai
+    val rules = FocusWellRules(dayBoundaryHour = 6, sleepProtectionStartHour = 2, sleepProtectionMultiplier = 3.0)
+
+    assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai, rules), 0.0001)
   }
 
   @Test

@@ -125,6 +125,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -219,7 +220,7 @@ internal fun ReserveScreen(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
-    item { NetBalanceChart(entries = state.ledger) }
+    item { NetBalanceChart(entries = state.ledger, rules = state.rules) }
     item {
       RecordsFilterHeader(
         selected = filter,
@@ -266,8 +267,8 @@ internal fun ReserveScreen(
 }
 
 @Composable
-internal fun NetBalanceChart(entries: List<LedgerEntry>) {
-  val points = remember(entries) { sevenDayNetPoints(entries) }
+internal fun NetBalanceChart(entries: List<LedgerEntry>, rules: FocusWellRules) {
+  val points = remember(entries, rules) { sevenDayNetPoints(entries, rules) }
   val total = points.sumOf { it.netMinutes }
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -638,9 +639,10 @@ internal data class DailyNetPoint(
   val netMinutes: Double,
 )
 
-internal fun sevenDayNetPoints(entries: List<LedgerEntry>): List<DailyNetPoint> {
-  val today = TimeAccounting.dailyDate(Instant.now())
-  val byDate = entries.groupBy { TimeAccounting.dailyDate(it.createdAt) }
+internal fun sevenDayNetPoints(entries: List<LedgerEntry>, rules: FocusWellRules): List<DailyNetPoint> {
+  val normalizedRules = rules.normalized()
+  val today = TimeAccounting.dailyDate(Instant.now(), rules = normalizedRules)
+  val byDate = entries.groupBy { TimeAccounting.dailyDate(it.createdAt, rules = normalizedRules) }
   return (6 downTo 0).map { daysAgo ->
     val date = today.minusDays(daysAgo.toLong())
     DailyNetPoint(
@@ -651,9 +653,10 @@ internal fun sevenDayNetPoints(entries: List<LedgerEntry>): List<DailyNetPoint> 
   }
 }
 
-internal fun todayNetMovement(entries: List<LedgerEntry>): Double {
-  val today = TimeAccounting.dailyDate(Instant.now())
-  return entries.filter { TimeAccounting.dailyDate(it.createdAt) == today }.sumOf { it.deltaMinutes }
+internal fun todayNetMovement(entries: List<LedgerEntry>, rules: FocusWellRules): Double {
+  val normalizedRules = rules.normalized()
+  val today = TimeAccounting.dailyDate(Instant.now(), rules = normalizedRules)
+  return entries.filter { TimeAccounting.dailyDate(it.createdAt, rules = normalizedRules) == today }.sumOf { it.deltaMinutes }
 }
 
 internal fun balanceRecordItems(

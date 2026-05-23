@@ -6,6 +6,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
@@ -24,6 +25,13 @@ internal class RoomFocusWellStore(
       val appState = dao.appState() ?: return@runBlocking null
       FocusWellUiState(
         dailyDate = appState.dailyDate,
+        rules =
+          FocusWellRules(
+            dailyGrantMinutes = appState.dailyGrantMinutes,
+            dayBoundaryHour = appState.dayBoundaryHour,
+            sleepProtectionStartHour = appState.sleepProtectionStartHour,
+            sleepProtectionMultiplier = appState.sleepProtectionMultiplier,
+          ).normalized(),
         activeMode = appState.toActiveMode(),
         tags = dao.tags().map { it.toDomain() },
         trackers = dao.trackers().map { it.toDomain() },
@@ -120,11 +128,10 @@ private data class EntityDiff<T>(
 private fun FocusWellUiState.toAppStateEntity(): AppStateEntity =
   when (val mode = activeMode) {
     ActiveMode.None ->
-      AppStateEntity(dailyDate = dailyDate, activeKind = "none")
+      baseAppStateEntity(activeKind = "none")
 
     is ActiveMode.Focus ->
-      AppStateEntity(
-        dailyDate = dailyDate,
+      baseAppStateEntity(
         activeKind = "focus",
         activeStartedAt = mode.startedAt.toString(),
         activeFocusTask = mode.task,
@@ -141,8 +148,7 @@ private fun FocusWellUiState.toAppStateEntity(): AppStateEntity =
       )
 
     is ActiveMode.Leisure ->
-      AppStateEntity(
-        dailyDate = dailyDate,
+      baseAppStateEntity(
         activeKind = "leisure",
         activeStartedAt = mode.startedAt.toString(),
         activeReminderSessionId = mode.reminderSessionId,
@@ -150,15 +156,52 @@ private fun FocusWellUiState.toAppStateEntity(): AppStateEntity =
       )
 
     is ActiveMode.WindDown ->
-      AppStateEntity(
-        dailyDate = dailyDate,
+      baseAppStateEntity(
         activeKind = "windDown",
         activeStartedAt = mode.startedAt.toString(),
       )
 
     ActiveMode.Depleted ->
-      AppStateEntity(dailyDate = dailyDate, activeKind = "depleted")
+      baseAppStateEntity(activeKind = "depleted")
   }
+
+private fun FocusWellUiState.baseAppStateEntity(
+  activeKind: String,
+  activeStartedAt: String? = null,
+  activeFocusTask: String? = null,
+  activeFocusType: String? = null,
+  activeTagId: String? = null,
+  activeTagName: String? = null,
+  activeTagMultiplier: Double? = null,
+  activeTagArchivedAt: String? = null,
+  activeReminderSessionId: String? = null,
+  activeRevision: Int = 1,
+  activePaused: Boolean = false,
+  activePausedAt: String? = null,
+  activePausedDurationMillis: Long = 0,
+): AppStateEntity {
+  val normalizedRules = rules.normalized()
+  return AppStateEntity(
+    dailyDate = dailyDate,
+    dailyGrantMinutes = normalizedRules.dailyGrantMinutes,
+    dayBoundaryHour = normalizedRules.dayBoundaryHour,
+    sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour,
+    sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
+    activeKind = activeKind,
+    activeStartedAt = activeStartedAt,
+    activeFocusTask = activeFocusTask,
+    activeFocusType = activeFocusType,
+    activeTagId = activeTagId,
+    activeTagName = activeTagName,
+    activeTagMultiplier = activeTagMultiplier,
+    activeTagArchivedAt = activeTagArchivedAt,
+    activeReminderSessionId = activeReminderSessionId,
+    activeRevision = activeRevision,
+    activePaused = activePaused,
+    activePausedAt = activePausedAt,
+    activePausedDurationMillis = activePausedDurationMillis,
+  )
+}
 
 private fun AppStateEntity.toActiveMode(): ActiveMode =
   when (activeKind) {

@@ -3,18 +3,19 @@ package dev.nihildigit.focuswell.domain
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import kotlin.math.max
 
 object TimeAccounting {
   val focusWellZone: ZoneId
     get() = ZoneId.systemDefault()
-  private val dayBoundary: Duration = Duration.ofHours(4)
-  private val sleepProtectionStart: LocalTime = LocalTime.of(1, 0)
-  private val sleepProtectionEnd: LocalTime = LocalTime.of(4, 0)
 
-  fun dailyDate(instant: Instant, zone: ZoneId = focusWellZone): LocalDate {
+  fun dailyDate(
+    instant: Instant,
+    zone: ZoneId = focusWellZone,
+    rules: FocusWellRules = FocusWellRules(),
+  ): LocalDate {
+    val dayBoundary = Duration.ofHours(rules.normalized().safeDayBoundaryHour.toLong())
     return instant.atZone(zone).toLocalDateTime().minus(dayBoundary).toLocalDate()
   }
 
@@ -31,15 +32,17 @@ object TimeAccounting {
     startedAt: Instant,
     endedAt: Instant,
     zone: ZoneId = focusWellZone,
+    rules: FocusWellRules = FocusWellRules(),
   ): Double {
     if (!endedAt.isAfter(startedAt)) return 0.0
+    val normalizedRules = rules.normalized()
 
     var cursor = startedAt
     var total = 0.0
     while (cursor.isBefore(endedAt)) {
-      val nextBoundary = nextSleepProtectionBoundary(cursor, zone)
+      val nextBoundary = nextSleepProtectionBoundary(cursor, zone, normalizedRules)
       val segmentEnd = minOf(endedAt, nextBoundary)
-      val rate = if (isSleepProtection(cursor, zone)) 2.0 else 1.0
+      val rate = if (isSleepProtection(cursor, zone, normalizedRules)) normalizedRules.safeSleepProtectionMultiplier else 1.0
       total += Duration.between(cursor, segmentEnd).toMillis() / 60_000.0 * rate
       cursor = segmentEnd
     }
@@ -50,14 +53,16 @@ object TimeAccounting {
     startedAt: Instant,
     costMinutes: Double,
     zone: ZoneId = focusWellZone,
+    rules: FocusWellRules = FocusWellRules(),
   ): Instant {
     if (costMinutes <= 0.0) return startedAt
+    val normalizedRules = rules.normalized()
 
     var cursor = startedAt
     var remainingCost = costMinutes
     while (true) {
-      val nextBoundary = nextSleepProtectionBoundary(cursor, zone)
-      val rate = if (isSleepProtection(cursor, zone)) 2.0 else 1.0
+      val nextBoundary = nextSleepProtectionBoundary(cursor, zone, normalizedRules)
+      val rate = if (isSleepProtection(cursor, zone, normalizedRules)) normalizedRules.safeSleepProtectionMultiplier else 1.0
       val segmentRealMinutes = Duration.between(cursor, nextBoundary).toMillis() / 60_000.0
       val segmentCost = segmentRealMinutes * rate
       if (remainingCost <= segmentCost) {
@@ -69,15 +74,27 @@ object TimeAccounting {
     }
   }
 
-  private fun isSleepProtection(instant: Instant, zone: ZoneId): Boolean {
+  fun isSleepProtection(
+    instant: Instant,
+    zone: ZoneId = focusWellZone,
+    rules: FocusWellRules = FocusWellRules(),
+  ): Boolean {
+    val normalizedRules = rules.normalized()
     val localTime = instant.atZone(zone).toLocalTime()
-    return !localTime.isBefore(sleepProtectionStart) && localTime.isBefore(sleepProtectionEnd)
+    return !localTime.isBefore(normalizedRules.sleepProtectionStartTime) &&
+      localTime.isBefore(normalizedRules.sleepProtectionEndTime)
   }
 
-  private fun nextSleepProtectionBoundary(instant: Instant, zone: ZoneId): Instant {
+  private fun nextSleepProtectionBoundary(
+    instant: Instant,
+    zone: ZoneId,
+    rules: FocusWellRules,
+  ): Instant {
     val local = instant.atZone(zone)
     val date = local.toLocalDate()
     val time = local.toLocalTime()
+    val sleepProtectionStart = rules.sleepProtectionStartTime
+    val sleepProtectionEnd = rules.sleepProtectionEndTime
     val boundaryLocal =
       when {
         time.isBefore(sleepProtectionStart) -> date.atTime(sleepProtectionStart)

@@ -12,6 +12,8 @@ The current design pass used Kimi WebBridge to read the official Material 3 page
 - Styles: color, elevation, icons, motion, shape, and typography.
 - Components: app bars, navigation bar, navigation rail, navigation drawer, buttons, button groups, FABs, icon buttons, split buttons, toolbars, cards, lists, chips, text fields, switches, dialogs, bottom sheets, menus, progress indicators, loading indicators, snackbars, tabs, and search.
 
+The Plan/Settings audit was checked again against the current Material 3 pages for lists, icon buttons, navigation bar, bottom sheets, layout, and icons.
+
 Durable implementation references:
 
 - `https://m3.material.io/foundations/accessible-design/overview`
@@ -26,6 +28,10 @@ Durable implementation references:
 - `https://m3.material.io/styles/shape/overview`
 - `https://m3.material.io/styles/typography/overview`
 - `https://m3.material.io/components`
+- `https://m3.material.io/components/lists/overview`
+- `https://m3.material.io/components/icon-buttons/overview`
+- `https://m3.material.io/components/navigation-bar/overview`
+- `https://m3.material.io/components/bottom-sheets/overview`
 
 ## Product Register
 
@@ -47,7 +53,9 @@ Today is expressive. It owns the reserve well motif, active timers, large action
 
 Balance is auditable. Rows are amount-first and compact.
 
-History is editable. It shows enough context to identify and correct records.
+Plan is configurable. It owns user-defined earning inputs: tags, daily trackers, tracker rewards, and rule tracker targets.
+
+History is not a primary screen. Historical records are part of Balance.
 
 Settings is plain. It should be predictable, dense enough to scan, and cautious around destructive actions.
 
@@ -118,6 +126,7 @@ Mapping:
 - Start focus/leisure: default spatial plus fast effects.
 - Pause, resume, and end controls: fast spatial plus fast effects.
 - Tracker completion: fast spatial for shape/progress, fast effects for color.
+- Destination switching: use quiet fade-through motion. Primary destinations are same-level places, not a forward/back stack, so avoid directional page slides.
 - Balance, History, Settings: quieter standard motion.
 - Depleted and wind-down: slower spatial motion.
 
@@ -155,7 +164,7 @@ Rules:
 - Selected navigation should have a visible selected state beyond color where possible.
 - Navigation items must keep labels.
 
-The app icon uses the same simplified reserve well motif as Today: a few rounded well-wall strokes and one waterline. It should not become a bucket, tank, cup, or abstract mark unrelated to the in-app motif.
+The app icon uses the same simplified reserve well motif as Today: a few rounded well-wall strokes and one waterline. Debug, release, adaptive, round, and legacy launcher fallbacks must resolve to the same FocusWell icon artwork. It should not become a bucket, tank, cup, Android template, or abstract mark unrelated to the in-app motif.
 
 ## Components
 
@@ -165,6 +174,7 @@ Global shell:
 
 - Use short navigation bar on compact phone widths.
 - Use navigation rail on wider widths when the implementation can adapt safely.
+- Primary destinations are Today, Balance, Plan, and Settings.
 - Do not add a navigation drawer for new UI. Material 3 Expressive recommends expanded navigation rail instead.
 - Do not add a bottom app bar for new UI. Use a docked toolbar when bottom actions are needed.
 - Use app bars to describe the current page and hold at most one or two essential actions.
@@ -178,7 +188,7 @@ Today:
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
-- Daily trackers: compact rail plus scannable tracker tiles. Completion has accounting meaning because each tracker has a configurable minute reward settled at the 04:00 day boundary.
+- Daily trackers: compact rail plus scannable tracker tiles. Completion has accounting meaning because each tracker has a configurable minute reward settled at the configured day boundary.
 - Indeterminate short waits use the new loading indicator when available; otherwise keep Material progress small and contextual.
 
 Balance:
@@ -192,6 +202,15 @@ Balance:
 - Focus and leisure CRUD lives in Balance. Delete actions should not be permanently visible in the list; show them in an edit/details sheet.
 - Use lists or filled surfaces, not decorative cards, when rows are repeated.
 
+Plan:
+
+- Plan is the management surface for earning structure. Keep it calmer than Today but more operational than Settings.
+- Top summary shows active tracker count, possible daily rewards, and active tag count.
+- Tags and Daily trackers use scannable rows. Details and edits live in bottom sheets, not inline form rows.
+- Tracker rewards are not high-frequency controls. Show them in row metadata and edit them in the tracker sheet.
+- Add actions live in section headers. Avoid permanently visible creation forms.
+- Section add actions use icon buttons with clear content descriptions; avoid making them look like primary task buttons.
+
 History:
 
 - History is not a primary destination. Historical records are part of Balance.
@@ -199,7 +218,8 @@ History:
 Settings:
 
 - Groups are plain filled surfaces.
-- Creation forms stay inline when short.
+- Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
+- Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.
 

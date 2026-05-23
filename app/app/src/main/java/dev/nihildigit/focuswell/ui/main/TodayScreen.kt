@@ -164,7 +164,7 @@ internal fun TodayScreen(
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
     if (activeMode == ActiveMode.None) {
-      item { ReserveHeader(state.reserveMinutes, todayNetMovement(state.ledger)) }
+      item { ReserveHeader(state.reserveMinutes, todayNetMovement(state.ledger, state.rules)) }
     }
     item {
       AnimatedContent(
@@ -192,6 +192,7 @@ internal fun TodayScreen(
             ActiveLeisureSurface(
               leisure = mode,
               reserveMinutes = state.reserveMinutes,
+              rules = state.rules,
               onEndLeisure = onEndLeisure,
               onStartWindDown = onStartWindDown,
             )
@@ -200,7 +201,7 @@ internal fun TodayScreen(
             WindDownSurface(windDown = mode, onEndWindDown = onEndWindDown)
 
           ActiveMode.Depleted ->
-            DepletedSurface(onEndLeisure = onEndDepleted, onStartWindDown = onStartWindDown)
+            DepletedSurface(rules = state.rules, onEndLeisure = onEndDepleted, onStartWindDown = onStartWindDown)
         }
       }
     }
@@ -210,6 +211,7 @@ internal fun TodayScreen(
     item {
       TrackerGrid(
         trackers = state.trackers.filter { it.archivedAt == null },
+        rules = state.rules,
         onToggleTracker = onToggleTracker,
       )
     }

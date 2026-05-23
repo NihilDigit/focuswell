@@ -7,6 +7,10 @@ import androidx.room.PrimaryKey
 internal data class AppStateEntity(
   @PrimaryKey val id: Int = 0,
   val dailyDate: String,
+  val dailyGrantMinutes: Double = 60.0,
+  val dayBoundaryHour: Int = 4,
+  val sleepProtectionStartHour: Int = 1,
+  val sleepProtectionMultiplier: Double = 2.0,
   val activeKind: String,
   val activeStartedAt: String? = null,
   val activeFocusTask: String? = null,

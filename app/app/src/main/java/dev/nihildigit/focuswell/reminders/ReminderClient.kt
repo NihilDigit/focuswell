@@ -3,6 +3,7 @@ package dev.nihildigit.focuswell.reminders
 import android.content.Context
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import kotlinx.coroutines.Dispatchers
@@ -67,16 +68,21 @@ class ReminderClient(context: Context) {
     )
   }
 
-  suspend fun scheduleLeisureReminders(sessionId: String, revision: Int, reserveMinutes: Double) {
+  suspend fun scheduleLeisureReminders(
+    sessionId: String,
+    revision: Int,
+    reserveMinutes: Double,
+    rules: FocusWellRules,
+  ) {
     ensureRegistered()
     val now = Instant.now()
     val reminders =
       buildList {
-        if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", leisureCostDueAt(now, reserveMinutes - 10.0)))
-        if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", leisureCostDueAt(now, reserveMinutes - 5.0)))
-        if (reserveMinutes > 1.0) add(reminder("leisure_1m_left", leisureCostDueAt(now, reserveMinutes - 1.0)))
-        if (reserveMinutes > 0.0) add(reminder("leisure_depleted", leisureCostDueAt(now, reserveMinutes)))
-        nextLateNightInstant(now)?.let { add(reminder("late_night_rate_started", it)) }
+        if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", leisureCostDueAt(now, reserveMinutes - 10.0, rules)))
+        if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", leisureCostDueAt(now, reserveMinutes - 5.0, rules)))
+        if (reserveMinutes > 1.0) add(reminder("leisure_1m_left", leisureCostDueAt(now, reserveMinutes - 1.0, rules)))
+        if (reserveMinutes > 0.0) add(reminder("leisure_depleted", leisureCostDueAt(now, reserveMinutes, rules)))
+        nextLateNightInstant(now, rules)?.let { add(reminder("late_night_rate_started", it)) }
       }
     schedule(sessionId = sessionId, revision = revision, reminders = reminders)
   }
@@ -168,13 +174,14 @@ class ReminderClient(context: Context) {
   private fun reminder(kind: String, dueAt: Instant): JSONObject =
     JSONObject().put("kind", kind).put("dueAtUtc", dueAt.toString())
 
-  private fun leisureCostDueAt(startedAt: Instant, costMinutes: Double): Instant =
-    TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes)
+  private fun leisureCostDueAt(startedAt: Instant, costMinutes: Double, rules: FocusWellRules): Instant =
+    TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes, rules = rules)
 
-  private fun nextLateNightInstant(now: Instant): Instant? {
+  private fun nextLateNightInstant(now: Instant, rules: FocusWellRules): Instant? {
+    val normalizedRules = rules.normalized()
     val zone = TimeAccounting.focusWellZone
     val localNow = LocalDateTime.ofInstant(now, zone)
-    val todayOne = LocalDateTime.of(LocalDate.now(zone), LocalTime.of(1, 0))
+    val todayOne = LocalDateTime.of(LocalDate.now(zone), normalizedRules.sleepProtectionStartTime)
     val nextOne = if (localNow.isBefore(todayOne)) todayOne else todayOne.plusDays(1)
     return nextOne.atZone(zone).toInstant().takeIf { Duration.between(now, it) <= Duration.ofHours(16) }
   }

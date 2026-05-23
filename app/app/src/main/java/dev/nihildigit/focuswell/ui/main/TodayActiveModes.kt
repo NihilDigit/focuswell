@@ -134,6 +134,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -495,6 +496,7 @@ internal fun ResultChoice(
 internal fun ActiveLeisureSurface(
   leisure: ActiveMode.Leisure,
   reserveMinutes: Double,
+  rules: FocusWellRules,
   onEndLeisure: () -> Unit,
   onStartWindDown: () -> Unit,
 ) {
@@ -505,15 +507,21 @@ internal fun ActiveLeisureSurface(
   var notified5 by remember(leisure.startedAt) { mutableStateOf(false) }
   var notified1 by remember(leisure.startedAt) { mutableStateOf(false) }
   var notifiedDepleted by remember(leisure.startedAt) { mutableStateOf(false) }
-  val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now)
+  val normalizedRules = rules.normalized()
+  val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now, rules = normalizedRules)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
   val remaining = Duration.ofSeconds((liveRemainingMinutes * 60).roundToInt().toLong())
-  val isSleepProtection = isSleepProtectionNow(now)
+  val isSleepProtection = TimeAccounting.isSleepProtection(now, rules = normalizedRules)
   LaunchedEffect(liveRemainingMinutes) {
     when {
       liveRemainingMinutes <= 0.0 && !notifiedDepleted -> {
         notifiedDepleted = true
-        postFocusWellNotification(context, 400, "Balance used up", "Another 60 min arrives at 04:00.")
+        postFocusWellNotification(
+          context,
+          400,
+          "Balance used up",
+          "Another ${normalizedRules.dailyGrantMinutes.roundToInt()} min arrives at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}.",
+        )
       }
       liveRemainingMinutes <= 1.0 && !notified1 -> {
         notified1 = true
@@ -533,7 +541,7 @@ internal fun ActiveLeisureSurface(
     LaunchedEffect(leisure.startedAt) {
       onEndLeisure()
     }
-    DepletedSurface(onEndLeisure = onEndLeisure, onStartWindDown = onStartWindDown)
+    DepletedSurface(rules = normalizedRules, onEndLeisure = onEndLeisure, onStartWindDown = onStartWindDown)
     return
   }
   val progress = if (reserveMinutes <= 0.0) 0f else (liveRemainingMinutes / reserveMinutes).toFloat().coerceIn(0f, 1f)
@@ -543,6 +551,7 @@ internal fun ActiveLeisureSurface(
       progress = progress,
       supporting = lowBalanceText(liveRemainingMinutes),
       sleepProtection = isSleepProtection,
+      sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
     )
     HoldToEndLeisureButton(
       onTapWithoutHold = {
@@ -646,6 +655,7 @@ internal fun LeisureTimerSurface(
   progress: Float,
   supporting: String?,
   sleepProtection: Boolean,
+  sleepProtectionMultiplier: Double,
 ) {
   val tone = MaterialTheme.colorScheme.secondary
   val container = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.52f)
@@ -690,7 +700,7 @@ internal fun LeisureTimerSurface(
         ) {
           StatusBadge("Leisure running", tone)
           if (sleepProtection) {
-            StatusBadge("Sleep protection 2x", tone)
+            StatusBadge("Sleep protection ${sleepProtectionMultiplier.formatOne()}x", tone)
           }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -769,16 +779,19 @@ internal fun lowBalanceText(remainingMinutes: Double): String? {
   }
 }
 
-internal fun isSleepProtectionNow(now: Instant): Boolean {
-  val localTime = now.atZone(TimeAccounting.focusWellZone).toLocalTime()
-  return localTime >= java.time.LocalTime.of(1, 0) && localTime < java.time.LocalTime.of(4, 0)
-}
-
 @Composable
-internal fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Unit) {
+internal fun DepletedSurface(
+  rules: FocusWellRules,
+  onEndLeisure: () -> Unit,
+  onStartWindDown: () -> Unit,
+) {
+  val normalizedRules = rules.normalized()
   CalmPanel {
     Text("Balance used up", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-    Text("Another 60 min arrives at 04:00.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(
+      "Another ${normalizedRules.dailyGrantMinutes.roundToInt()} min arrives at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}.",
+      color = MaterialTheme.colorScheme.onSurfaceVariant,
+    )
     Spacer(Modifier.height(12.dp))
     Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth(), shape = FocusActionShape) {
       Icon(Icons.Rounded.Stop, contentDescription = null)
@@ -792,6 +805,8 @@ internal fun DepletedSurface(onEndLeisure: () -> Unit, onStartWindDown: () -> Un
     }
   }
 }
+
+private fun Int.activeHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
 
 @Composable
 internal fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> Unit) {

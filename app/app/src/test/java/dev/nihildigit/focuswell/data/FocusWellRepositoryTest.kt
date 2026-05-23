@@ -4,6 +4,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
@@ -129,6 +130,31 @@ class FocusWellRepositoryTest {
     )
     assertEquals(false, state.trackers.first().completed)
     assertEquals(15.0, state.trackers.first().rewardMinutes, 0.0001)
+  }
+
+  @Test
+  fun init_usesConfiguredDailyGrantAndBoundaryForNewLedgerEntries() {
+    clock.instant = Instant.parse("2026-05-21T07:00:00Z")
+    val rules = FocusWellRules(dailyGrantMinutes = 45.0, dayBoundaryHour = 7, sleepProtectionStartHour = 2)
+
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          FocusWellUiState(
+            dailyDate = "2026-05-20",
+            rules = rules,
+            tags = defaultTags,
+            trackers = defaultTrackers,
+            ledger = emptyList(),
+          )
+        ),
+        clock::now,
+      )
+
+    val grant = repo.state.value.ledger.first { it.id == "daily-grant-2026-05-21" }
+    assertEquals(45.0, grant.deltaMinutes, 0.0001)
+    assertEquals(Instant.parse("2026-05-21T07:00:00Z"), grant.createdAt)
+    assertEquals("2026-05-21", repo.state.value.dailyDate)
   }
 
   @Test

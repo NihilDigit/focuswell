@@ -128,6 +128,7 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -279,6 +280,70 @@ internal fun RewardStepper(
         modifier = Modifier.size(32.dp),
       ) {
         Icon(Icons.Rounded.Add, contentDescription = "Increase reward", modifier = Modifier.size(18.dp))
+      }
+    }
+  }
+}
+
+@Composable
+internal fun SettingsRuleControlRow(
+  title: String,
+  value: String,
+  supporting: String,
+  icon: ImageVector,
+  onDecrease: () -> Unit,
+  onIncrease: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Surface(
+      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f),
+      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      shape = CircleShape,
+    ) {
+      Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+    }
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    RuleStepper(value = value, onDecrease = onDecrease, onIncrease = onIncrease)
+  }
+}
+
+@Composable
+internal fun RuleStepper(
+  value: String,
+  onDecrease: () -> Unit,
+  onIncrease: () -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = CircleShape,
+    modifier = Modifier.height(42.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      IconButton(onClick = onDecrease, modifier = Modifier.size(34.dp)) {
+        Icon(Icons.Rounded.Remove, contentDescription = null, modifier = Modifier.size(18.dp))
+      }
+      Text(
+        value,
+        style = tabularNumbers(MaterialTheme.typography.labelLarge),
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.width(58.dp),
+        textAlign = TextAlign.Center,
+        maxLines = 1,
+      )
+      IconButton(onClick = onIncrease, modifier = Modifier.size(34.dp)) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
       }
     }
   }
@@ -636,6 +701,8 @@ internal fun themeModeIcon(mode: ThemeMode): ImageVector =
     ThemeMode.Light -> Icons.Rounded.LightMode
   }
 
+private fun Int.hourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun SettingsScreen(
@@ -643,12 +710,7 @@ internal fun SettingsScreen(
   onExportJson: () -> String,
   onImportJson: (String) -> Unit,
   onClearAllData: () -> Unit,
-  onAddTag: (String, Double) -> Unit,
-  onArchiveTag: (String) -> Unit,
-  onAddBooleanTracker: (String, Double) -> Unit,
-  onAddRuleTracker: (String, String, Double, Double) -> Unit,
-  onArchiveTracker: (String) -> Unit,
-  onUpdateTrackerReward: (String, Double) -> Unit,
+  onUpdateRules: (FocusWellRules) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
@@ -675,21 +737,7 @@ internal fun SettingsScreen(
         imported?.let(onImportJson)
       }
     }
-  var tagName by remember { mutableStateOf("") }
-  var tagMultiplier by remember { mutableStateOf("1.0") }
-  var trackerLabel by remember { mutableStateOf("") }
-  var trackerReward by remember { mutableStateOf("10") }
-  var ruleLabel by remember { mutableStateOf("") }
-  var ruleTag by remember { mutableStateOf("math") }
-  var ruleHours by remember { mutableStateOf("3") }
-  var ruleReward by remember { mutableStateOf("10") }
   var clearPhrase by remember { mutableStateOf("") }
-  val activeTags = state.tags.filter { it.archivedAt == null }
-  LaunchedEffect(activeTags.map { it.name }) {
-    if (activeTags.none { it.name == ruleTag }) {
-      ruleTag = activeTags.firstOrNull()?.name.orEmpty()
-    }
-  }
   if (confirmClear) {
     ClearAllDataScreen(
       phrase = clearPhrase,
@@ -729,88 +777,39 @@ internal fun SettingsScreen(
     }
     item {
       CalmPanel {
+        val rules = state.rules.normalized()
         Text("Rules", style = MaterialTheme.typography.titleLarge)
-        SettingsRuleRow(
+        SettingsRuleControlRow(
           title = "Daily grant",
-          value = "60 min",
-          supporting = "Added at the day boundary.",
+          value = "${rules.dailyGrantMinutes.roundToInt()}m",
+          supporting = "Added at boundary.",
           icon = Icons.Rounded.AccountBalanceWallet,
+          onDecrease = { onUpdateRules(rules.copy(dailyGrantMinutes = rules.dailyGrantMinutes - 5.0)) },
+          onIncrease = { onUpdateRules(rules.copy(dailyGrantMinutes = rules.dailyGrantMinutes + 5.0)) },
         )
-        SettingsRuleRow(
-          title = "Day boundary",
-          value = "04:00",
-          supporting = "New FocusWell day starts here.",
+        SettingsRuleControlRow(
+          title = "Boundary",
+          value = rules.dayBoundaryHour.hourLabel(),
+          supporting = "New day starts here.",
           icon = Icons.Rounded.Today,
+          onDecrease = { onUpdateRules(rules.copy(dayBoundaryHour = rules.dayBoundaryHour - 1)) },
+          onIncrease = { onUpdateRules(rules.copy(dayBoundaryHour = rules.dayBoundaryHour + 1)) },
         )
-        SettingsRuleRow(
-          title = "Sleep protection",
-          value = "01:00 · 2x",
-          supporting = "Late leisure spends faster.",
+        SettingsRuleControlRow(
+          title = "Sleep start",
+          value = rules.sleepProtectionStartHour.hourLabel(),
+          supporting = "Late leisure begins.",
           icon = Icons.Rounded.Bedtime,
+          onDecrease = { onUpdateRules(rules.copy(sleepProtectionStartHour = rules.sleepProtectionStartHour - 1)) },
+          onIncrease = { onUpdateRules(rules.copy(sleepProtectionStartHour = rules.sleepProtectionStartHour + 1)) },
         )
-      }
-    }
-    item {
-      CalmPanel {
-        Text("Tags", style = MaterialTheme.typography.titleLarge)
-        state.tags.filter { it.archivedAt == null }.forEach {
-          SettingsListRow(
-            title = it.name,
-            supporting = "${it.multiplier.formatThree()}x multiplier",
-            onArchive = { onArchiveTag(it.id) },
-          )
-        }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-        SettingsAddTagForm(
-          tagName = tagName,
-          tagMultiplier = tagMultiplier,
-          onTagNameChange = { tagName = it },
-          onTagMultiplierChange = { tagMultiplier = it },
-          onAddTag = {
-            onAddTag(tagName, tagMultiplier.toDoubleOrNull() ?: 1.0)
-            tagName = ""
-            tagMultiplier = "1.0"
-          },
-        )
-      }
-    }
-    item {
-      CalmPanel {
-        Text("Trackers", style = MaterialTheme.typography.titleLarge)
-        state.trackers.filter { it.archivedAt == null }.forEach {
-          SettingsTrackerRow(
-            tracker = it,
-            onRewardChange = { reward -> onUpdateTrackerReward(it.id, reward) },
-            onArchive = { onArchiveTracker(it.id) },
-          )
-        }
-        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
-        SettingsAddBooleanTrackerForm(
-          trackerLabel = trackerLabel,
-          trackerReward = trackerReward,
-          onTrackerLabelChange = { trackerLabel = it },
-          onTrackerRewardChange = { trackerReward = it },
-          onAddTracker = {
-            onAddBooleanTracker(trackerLabel, trackerReward.toDoubleOrNull() ?: 10.0)
-            trackerLabel = ""
-            trackerReward = "10"
-          },
-        )
-        SettingsAddRuleTrackerForm(
-          ruleLabel = ruleLabel,
-          ruleTag = ruleTag,
-          ruleHours = ruleHours,
-          ruleReward = ruleReward,
-          tags = activeTags,
-          onRuleLabelChange = { ruleLabel = it },
-          onRuleTagChange = { ruleTag = it },
-          onRuleHoursChange = { ruleHours = it },
-          onRuleRewardChange = { ruleReward = it },
-          onAddRuleTracker = {
-            onAddRuleTracker(ruleLabel, ruleTag, (ruleHours.toDoubleOrNull() ?: 3.0) * 60.0, ruleReward.toDoubleOrNull() ?: 10.0)
-            ruleLabel = ""
-            ruleReward = "10"
-          },
+        SettingsRuleControlRow(
+          title = "Sleep rate",
+          value = "${rules.sleepProtectionMultiplier.formatOne()}x",
+          supporting = "Cost multiplier during sleep protection.",
+          icon = Icons.Rounded.Timer,
+          onDecrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier - 0.5)) },
+          onIncrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier + 0.5)) },
         )
       }
     }

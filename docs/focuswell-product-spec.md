@@ -19,6 +19,9 @@ screen behavior.
   anxiety.
 - Entertainment tracking must stay nearly frictionless.
 - Records are editable, but balance changes remain auditable.
+- Plan defines configurable earning inputs: focus tags, daily trackers, tracker rewards, and rule tracker targets.
+- Rules define configurable accounting boundaries: daily grant, daily boundary,
+  sleep-protection start, and sleep-protection cost multiplier.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -33,7 +36,7 @@ FocusWell has one active mode at a time:
 - depleted
 
 All timestamps are stored in UTC. The app evaluates the FocusWell day using the
-device's current system time zone with a 04:00 daily boundary.
+device's current system time zone with the configured daily boundary.
 
 ```text
 Daily window: 04:00 -> next day 03:59
@@ -50,7 +53,7 @@ The leisure reserve stores entertainment time.
 
 Rules:
 
-- A new FocusWell day grants 60 minutes.
+- A new FocusWell day grants the configured daily minutes.
 - The reserve carries over across days.
 - Overdraft is not allowed.
 - All reserve changes are ledger entries.
@@ -96,15 +99,15 @@ A leisure session spends reserve from its timestamped duration.
 Rules:
 
 - Normal leisure costs 1 minute per real minute.
-- 01:00-04:00 local device time costs 2 minutes per real minute.
+- The configured sleep-protection window costs the configured multiplier per real minute.
 - If the reserve is exhausted, the leisure record ends at the depletion instant.
 - The app enters depleted mode when active leisure drains the reserve.
 - The depleted state can be dismissed by the user.
 
 ## Daily Trackers
 
-Daily trackers are evaluated within the 04:00 system-time-zone daily window.
-Each tracker has a configurable minute reward. At the 04:00 day boundary,
+Daily trackers are evaluated within the configured system-time-zone daily
+window. Each tracker has a configurable minute reward. At the day boundary,
 completed non-archived trackers are settled once into the ledger as positive
 reserve adjustments, then the daily tracker state resets for the new day.
 
@@ -116,6 +119,11 @@ Current tracker kinds:
 
 Rule trackers use same-day non-deleted focus records. Current default rule
 trackers target 180 minutes for `math` and `408`.
+
+Default tracker rewards:
+
+- `math` and `408` rule trackers: 60 minutes each.
+- `Aerobic`, `Vocabulary`, `CodeWars`, and `Wake by 9`: 15 minutes each.
 
 ## Records And Ledger
 
