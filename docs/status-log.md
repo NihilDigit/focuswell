@@ -28,7 +28,7 @@ Last updated: 2026-05-23
 
 ## Implemented
 
-- Local-first FocusWell app with focus/leisure/wind-down/depleted modes.
+- Local-first FocusWell app with focus/leisure/depleted modes.
 - Editable tags, daily trackers, rule trackers, records CRUD, JSON import/export, and clear-all-data.
 - System-time-zone 04:00 business-day handling and daily +60m leisure grant.
 - Room-backed local persistence for timers, records, trackers, tags, and ledger entries.

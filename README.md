@@ -26,7 +26,7 @@ The product concept and accounting boundaries live in [docs/focuswell-product-sp
 
 The app is written in Kotlin and Jetpack Compose. It includes:
 
-- Focus, leisure, depleted, and wind-down modes.
+- Focus, leisure, and depleted modes.
 - Room-backed local persistence for timers, records, trackers, tags, and ledger entries.
 - Editable focus and leisure records in Balance.
 - Daily trackers and rule-based tracker progress.

@@ -155,12 +155,6 @@ private fun FocusWellUiState.toAppStateEntity(): AppStateEntity =
         activeRevision = mode.revision,
       )
 
-    is ActiveMode.WindDown ->
-      baseAppStateEntity(
-        activeKind = "windDown",
-        activeStartedAt = mode.startedAt.toString(),
-      )
-
     ActiveMode.Depleted ->
       baseAppStateEntity(activeKind = "depleted")
   }
@@ -235,7 +229,7 @@ private fun AppStateEntity.toActiveMode(): ActiveMode =
       )
     }
 
-    "windDown" -> ActiveMode.WindDown(startedAt = Instant.parse(activeStartedAt))
+    "windDown" -> ActiveMode.None
     "depleted" -> ActiveMode.Depleted
     else -> ActiveMode.None
   }

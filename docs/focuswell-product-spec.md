@@ -32,7 +32,6 @@ FocusWell has one active mode at a time:
 - none
 - focus
 - leisure
-- wind-down
 - depleted
 
 All timestamps are stored in UTC. The app evaluates the FocusWell day using the
@@ -53,8 +52,7 @@ manual backup and recovery path.
 
 Primary destinations:
 
-- Today: current reserve, active mode, daily trackers, depleted state, and
-  wind-down.
+- Today: current reserve, active mode, daily trackers, and depleted state.
 - Balance: ledger-backed account view, 7-day net chart, records, and record
   editing or deletion.
 - Plan: focus tags, daily trackers, tracker rewards, and rule tracker targets.

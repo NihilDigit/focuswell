@@ -498,7 +498,6 @@ internal fun ActiveLeisureSurface(
   reserveMinutes: Double,
   rules: FocusWellRules,
   onEndLeisure: () -> Unit,
-  onStartWindDown: () -> Unit,
 ) {
   val now = rememberNow()
   val context = LocalContext.current
@@ -543,7 +542,7 @@ internal fun ActiveLeisureSurface(
     LaunchedEffect(leisure.startedAt) {
       onEndLeisure()
     }
-    DepletedSurface(rules = normalizedRules, onEndLeisure = onEndLeisure, onStartWindDown = onStartWindDown)
+    DepletedSurface(rules = normalizedRules, onEndLeisure = onEndLeisure)
     return
   }
   val progress =
@@ -786,43 +785,95 @@ internal fun lowBalanceText(remainingMinutes: Double): String? {
   }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun DepletedSurface(
   rules: FocusWellRules,
   onEndLeisure: () -> Unit,
-  onStartWindDown: () -> Unit,
 ) {
   val normalizedRules = rules.normalized()
-  CalmPanel {
-    Text("Balance used up", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-    Text(
-      "Another ${normalizedRules.dailyGrantMinutes.roundToInt()} min arrives at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}.",
-      color = MaterialTheme.colorScheme.onSurfaceVariant,
-    )
-    Spacer(Modifier.height(12.dp))
-    Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth(), shape = FocusActionShape) {
-      Icon(Icons.Rounded.Stop, contentDescription = null)
-      Spacer(Modifier.width(8.dp))
-      Text("End Leisure")
-    }
-    OutlinedButton(onClick = onStartWindDown, modifier = Modifier.fillMaxWidth(), shape = LeisureActionShape) {
-      Icon(Icons.Rounded.Bedtime, contentDescription = null)
-      Spacer(Modifier.width(8.dp))
-      Text("Start Wind-down")
+  val colorScheme = MaterialTheme.colorScheme
+  val tone = MaterialTheme.colorScheme.tertiary
+  Surface(
+    color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.54f),
+    contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+    shape = ActiveTimerShape,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Box {
+      Canvas(modifier = Modifier.matchParentSize()) {
+        drawArc(
+          color = tone.copy(alpha = 0.12f),
+          startAngle = 210f,
+          sweepAngle = 96f,
+          useCenter = false,
+          topLeft = Offset(size.width * 0.62f, -size.height * 0.10f),
+          size = Size(size.width * 0.48f, size.width * 0.48f),
+          style = Stroke(width = 18.dp.toPx(), cap = StrokeCap.Round),
+        )
+        drawArc(
+          color = colorScheme.surface.copy(alpha = 0.34f),
+          startAngle = 192f,
+          sweepAngle = 74f,
+          useCenter = false,
+          topLeft = Offset(-size.width * 0.20f, size.height * 0.58f),
+          size = Size(size.width * 0.54f, size.width * 0.54f),
+          style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
+        )
+      }
+      Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        FlowRow(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(8.dp),
+          verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+          StatusBadge("Reserve depleted", tone)
+          StatusBadge("${normalizedRules.dailyGrantMinutes.roundToInt()}m at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}", tone)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+          Text("Leisure is out", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+          Text(
+            "Your balance is at zero. Finish this session to return to Today.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+        Surface(
+          color = MaterialTheme.colorScheme.surface.copy(alpha = 0.54f),
+          contentColor = MaterialTheme.colorScheme.onSurface,
+          shape = RoundedCornerShape(24.dp),
+          modifier = Modifier.fillMaxWidth(),
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 16.dp, vertical = 13.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+              Icon(Icons.Rounded.Bedtime, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+              Text("Next grant", style = MaterialTheme.typography.labelLarge)
+            }
+            Text(
+              "${normalizedRules.safeDayBoundaryHour.activeHourLabel()} · ${normalizedRules.dailyGrantMinutes.roundToInt()}m",
+              style = tabularNumbers(MaterialTheme.typography.titleMedium),
+            )
+          }
+        }
+        Button(
+          onClick = onEndLeisure,
+          modifier = Modifier.fillMaxWidth().height(58.dp),
+          shape = FocusActionShape,
+        ) {
+          Icon(Icons.Rounded.Stop, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Finish Leisure")
+        }
+      }
     }
   }
 }
 
 private fun Int.activeHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
-
-@Composable
-internal fun WindDownSurface(windDown: ActiveMode.WindDown, onEndWindDown: () -> Unit) {
-  val elapsed = Duration.between(windDown.startedAt, rememberNow()).coerceAtLeast(Duration.ZERO)
-  TimerOrganism(label = "Wind-down", time = formatDuration(elapsed), tone = MaterialTheme.colorScheme.secondary)
-  Text("No earning. No spending.", color = MaterialTheme.colorScheme.onSurfaceVariant)
-  Button(onClick = onEndWindDown, modifier = Modifier.fillMaxWidth().height(52.dp), shape = FocusActionShape) {
-    Icon(Icons.Rounded.Stop, contentDescription = null)
-    Spacer(Modifier.width(8.dp))
-    Text("End")
-  }
-}

@@ -169,7 +169,6 @@ internal enum class ActiveModeMotionKey {
   Idle,
   Focus,
   Leisure,
-  WindDown,
   Depleted,
 }
 
@@ -211,7 +210,6 @@ internal fun activeModeMotionKey(mode: ActiveMode): ActiveModeMotionKey {
     ActiveMode.None -> ActiveModeMotionKey.Idle
     is ActiveMode.Focus -> ActiveModeMotionKey.Focus
     is ActiveMode.Leisure -> ActiveModeMotionKey.Leisure
-    is ActiveMode.WindDown -> ActiveModeMotionKey.WindDown
     ActiveMode.Depleted -> ActiveModeMotionKey.Depleted
   }
 }
@@ -221,8 +219,7 @@ internal fun activeModeOrder(mode: ActiveModeMotionKey): Int {
     ActiveModeMotionKey.Idle -> 0
     ActiveModeMotionKey.Focus -> 1
     ActiveModeMotionKey.Leisure -> 2
-    ActiveModeMotionKey.WindDown -> 3
-    ActiveModeMotionKey.Depleted -> 4
+    ActiveModeMotionKey.Depleted -> 3
   }
 }
 
@@ -248,8 +245,6 @@ fun MainScreen(
     onEndFocus = viewModel::endFocus,
     onStartLeisure = viewModel::startLeisure,
     onEndLeisure = viewModel::endLeisure,
-    onStartWindDown = viewModel::startWindDown,
-    onEndWindDown = viewModel::endWindDown,
     onEndDepleted = viewModel::endDepleted,
     onExportJson = viewModel::exportJson,
     onImportJson = viewModel::importJson,
@@ -290,8 +285,6 @@ internal fun MainScreen(
   onEndFocus: (String) -> Unit,
   onStartLeisure: () -> Unit,
   onEndLeisure: () -> Unit,
-  onStartWindDown: () -> Unit,
-  onEndWindDown: () -> Unit,
   onEndDepleted: () -> Unit,
   onExportJson: () -> String,
   onImportJson: (String) -> Unit,
@@ -361,8 +354,6 @@ internal fun MainScreen(
           onResumeFocus = onResumeFocus,
           onEndFocus = onEndFocus,
           onEndLeisure = onEndLeisure,
-          onStartWindDown = onStartWindDown,
-          onEndWindDown = onEndWindDown,
           onEndDepleted = onEndDepleted,
           onDeleteFocusRecord = onDeleteFocusRecord,
           onUpdateFocusRecord = onUpdateFocusRecord,
@@ -425,8 +416,6 @@ private fun DestinationContent(
   onResumeFocus: () -> Unit,
   onEndFocus: (String) -> Unit,
   onEndLeisure: () -> Unit,
-  onStartWindDown: () -> Unit,
-  onEndWindDown: () -> Unit,
   onEndDepleted: () -> Unit,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
@@ -468,8 +457,6 @@ private fun DestinationContent(
           onResumeFocus = onResumeFocus,
           onEndFocus = onEndFocus,
           onEndLeisure = onEndLeisure,
-          onStartWindDown = onStartWindDown,
-          onEndWindDown = onEndWindDown,
           onEndDepleted = onEndDepleted,
         )
 
@@ -858,8 +845,6 @@ internal fun MainScreenPreview() {
       onEndFocus = {},
       onStartLeisure = {},
       onEndLeisure = {},
-      onStartWindDown = {},
-      onEndWindDown = {},
       onEndDepleted = {},
       onExportJson = { "" },
       onImportJson = {},

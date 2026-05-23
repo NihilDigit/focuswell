@@ -362,14 +362,6 @@ class FocusWellRepository internal constructor(
     return reminderSessionId
   }
 
-  fun startWindDown() {
-    mutate { it.copy(activeMode = ActiveMode.WindDown(startedAt = now())) }
-  }
-
-  fun endWindDown() {
-    mutate { it.copy(activeMode = ActiveMode.None) }
-  }
-
   fun endDepleted() {
     mutate { it.copy(activeMode = ActiveMode.None) }
   }
@@ -642,9 +634,6 @@ class FocusWellRepository internal constructor(
           .put("reminderSessionId", mode.reminderSessionId)
           .put("revision", mode.revision)
 
-      is ActiveMode.WindDown ->
-        JSONObject().put("kind", "windDown").put("startedAt", mode.startedAt.toString())
-
       ActiveMode.Depleted -> JSONObject().put("kind", "depleted")
     }
 
@@ -672,7 +661,7 @@ class FocusWellRepository internal constructor(
           revision = json.optInt("revision", 1),
         )
       }
-      "windDown" -> ActiveMode.WindDown(startedAt = json.optInstant("startedAt"))
+      "windDown" -> ActiveMode.None
       "depleted" -> ActiveMode.Depleted
       else -> ActiveMode.None
     }

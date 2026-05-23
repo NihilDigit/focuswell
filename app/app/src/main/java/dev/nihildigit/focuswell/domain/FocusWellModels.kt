@@ -84,10 +84,6 @@ sealed interface ActiveMode {
     val revision: Int = 1,
   ) : ActiveMode
 
-  data class WindDown(
-    val startedAt: Instant,
-  ) : ActiveMode
-
   data object Depleted : ActiveMode
 }
 

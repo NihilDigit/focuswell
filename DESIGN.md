@@ -49,7 +49,7 @@ The first viewport should answer:
 
 ## Screen Roles
 
-Today is expressive. It owns the reserve well motif, active timers, large actions, tracker completion, depleted state, and wind-down state.
+Today is expressive. It owns the reserve well motif, active timers, large actions, tracker completion, and depleted state.
 
 Balance is auditable. Rows are amount-first and compact.
 
@@ -128,7 +128,7 @@ Mapping:
 - Tracker completion: fast spatial for shape/progress, fast effects for color.
 - Destination switching: use quiet fade-through motion. Primary destinations are same-level places, not a forward/back stack, so avoid directional page slides.
 - Balance, History, Settings: quieter standard motion.
-- Depleted and wind-down: slower spatial motion.
+- Depleted: slower spatial motion.
 
 Most transitions should feel immediate. Use expressive springs for active-mode surfaces and small control morphs; use standard, low-bounce motion for navigation, settings, history, and accounting views.
 

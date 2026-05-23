@@ -145,37 +145,6 @@ import kotlin.math.sin
 import kotlin.math.sqrt
 
 @Composable
-internal fun CompactReserveHeader(reserveMinutes: Double) {
-  val label =
-    when {
-      reserveMinutes < 60 -> "${reserveMinutes.roundToInt()} min available"
-      reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h available"
-      else -> "Reserve is sufficient"
-    }
-  Surface(
-    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
-    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 30.dp, bottomEnd = 22.dp, bottomStart = 28.dp),
-    modifier = Modifier.fillMaxWidth(),
-  ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
-      horizontalArrangement = Arrangement.SpaceBetween,
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
-        Text("Leisure reserve", style = MaterialTheme.typography.labelLarge)
-        Text(label, style = MaterialTheme.typography.titleMedium)
-      }
-      Text(
-        "${reserveMinutes.roundToInt()}m",
-        style = tabularNumbers(MaterialTheme.typography.titleMedium),
-      )
-    }
-  }
-}
-
-@Composable
 internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
   val fillTarget = (reserveMinutes / 180.0).coerceIn(0.08, 1.0).toFloat()
   val fill by animateFloatAsState(

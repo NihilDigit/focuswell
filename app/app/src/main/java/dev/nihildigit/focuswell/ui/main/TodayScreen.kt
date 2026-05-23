@@ -154,8 +154,6 @@ internal fun TodayScreen(
   onResumeFocus: () -> Unit,
   onEndFocus: (String) -> Unit,
   onEndLeisure: () -> Unit,
-  onStartWindDown: () -> Unit,
-  onEndWindDown: () -> Unit,
   onEndDepleted: () -> Unit,
 ) {
   val activeMode = state.activeMode
@@ -194,19 +192,12 @@ internal fun TodayScreen(
               reserveMinutes = state.reserveMinutes,
               rules = state.rules,
               onEndLeisure = onEndLeisure,
-              onStartWindDown = onStartWindDown,
             )
 
-          is ActiveMode.WindDown ->
-            WindDownSurface(windDown = mode, onEndWindDown = onEndWindDown)
-
           ActiveMode.Depleted ->
-            DepletedSurface(rules = state.rules, onEndLeisure = onEndDepleted, onStartWindDown = onStartWindDown)
+            DepletedSurface(rules = state.rules, onEndLeisure = onEndDepleted)
         }
       }
-    }
-    if (activeMode != ActiveMode.None && activeMode !is ActiveMode.Leisure) {
-      item { CompactReserveHeader(state.reserveMinutes) }
     }
     item {
       TrackerGrid(

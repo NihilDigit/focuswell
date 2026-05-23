@@ -109,10 +109,6 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     }
   }
 
-  fun startWindDown() = repository.startWindDown()
-
-  fun endWindDown() = repository.endWindDown()
-
   fun endDepleted() = repository.endDepleted()
 
   fun exportJson(): String = repository.exportJson()
