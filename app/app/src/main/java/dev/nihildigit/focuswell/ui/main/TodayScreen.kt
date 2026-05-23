@@ -164,7 +164,7 @@ internal fun TodayScreen(
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
     if (activeMode == ActiveMode.None) {
-      item { ReserveHeader(state.reserveMinutes) }
+      item { ReserveHeader(state.reserveMinutes, todayNetMovement(state.ledger)) }
     }
     item {
       AnimatedContent(

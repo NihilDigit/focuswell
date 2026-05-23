@@ -131,10 +131,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun archiveTag(id: String) = repository.archiveTag(id)
 
-  fun addBooleanTracker(label: String) = repository.addBooleanTracker(label)
+  fun addBooleanTracker(label: String, rewardMinutes: Double) = repository.addBooleanTracker(label, rewardMinutes)
 
-  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double) =
-    repository.addRuleTracker(label, tagName, targetMinutes)
+  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) =
+    repository.addRuleTracker(label, tagName, targetMinutes, rewardMinutes)
 
   fun archiveTracker(id: String) = repository.archiveTracker(id)
+
+  fun updateTrackerReward(id: String, rewardMinutes: Double) = repository.updateTrackerReward(id, rewardMinutes)
 }

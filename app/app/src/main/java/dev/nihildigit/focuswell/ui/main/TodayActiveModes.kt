@@ -151,6 +151,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
 
+private const val LEISURE_END_HOLD_MILLIS = 950
+
 @Composable
 internal fun IdleTimerSurface(
   onStartFocusClick: () -> Unit,
@@ -179,7 +181,7 @@ internal fun IdleTimerSurface(
         shape = FocusActionShape,
       ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Icon(Icons.Rounded.PlayArrow, contentDescription = null)
+          Icon(Icons.Rounded.Timer, contentDescription = null)
           Text("Start Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
       }
@@ -193,7 +195,7 @@ internal fun IdleTimerSurface(
         shape = LeisureActionShape,
       ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Icon(Icons.Rounded.Timer, contentDescription = null)
+          Icon(Icons.Rounded.Bedtime, contentDescription = null)
           Text("Start Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
       }
@@ -463,11 +465,11 @@ internal fun ResultChoice(
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
 ) {
-  val tone = MaterialTheme.colorScheme.primary
+  val (icon, tone) = focusOutcomeVisual(label)
   Surface(
     onClick = onClick,
-    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
-    contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+    color = if (selected) tone.copy(alpha = 0.18f) else MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = if (selected) tone else MaterialTheme.colorScheme.onSurface,
     shape = RoundedCornerShape(20.dp),
     modifier =
       modifier
@@ -483,9 +485,7 @@ internal fun ResultChoice(
       horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      if (selected) {
-        Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
-      }
+      Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) tone else MaterialTheme.colorScheme.onSurfaceVariant)
       Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
   }
@@ -567,7 +567,7 @@ internal fun HoldToEndLeisureButton(
   var completed by remember { mutableStateOf(false) }
   val holdProgress by animateFloatAsState(
     targetValue = if (holding) 1f else 0f,
-    animationSpec = tween(durationMillis = if (holding) 950 else 180),
+    animationSpec = tween(durationMillis = if (holding) LEISURE_END_HOLD_MILLIS else 180),
     label = "hold-to-end-progress",
   )
   val container by animateColorAsState(
@@ -583,7 +583,7 @@ internal fun HoldToEndLeisureButton(
 
   LaunchedEffect(holding) {
     if (holding) {
-      delay(950)
+      delay(LEISURE_END_HOLD_MILLIS.toLong())
       completed = true
       holding = false
       onConfirmed()
@@ -631,7 +631,7 @@ internal fun HoldToEndLeisureButton(
           Text(if (holding) "Keep holding" else "Hold to end", style = MaterialTheme.typography.labelLarge)
         }
         Text(
-          if (holding) "${(holdProgress * 100).roundToInt()}%" else "950 ms",
+          if (holding) "${(holdProgress * 100).roundToInt()}%" else "Press and hold",
           style = tabularNumbers(MaterialTheme.typography.labelMedium),
           color = content,
         )

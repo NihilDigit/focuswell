@@ -1,6 +1,7 @@
 package dev.nihildigit.focuswell.data
 
 import dev.nihildigit.focuswell.domain.ActiveMode
+import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.LedgerEntry
@@ -94,6 +95,40 @@ class FocusWellRepositoryTest {
     assertEquals(clock.instant, state.focusRecords.first { it.id == focus.id }.deletedAt)
     assertEquals(listOf(-60.0, 30.0, 30.0, 60.0), state.ledger.map { it.deltaMinutes })
     assertEquals(listOf("Deleted focus", "Edited focus", "Focus", "Daily grant"), state.ledger.map { it.title })
+  }
+
+  @Test
+  fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() {
+    clock.instant = Instant.parse("2026-05-21T04:00:00Z")
+    val tracker =
+      DailyTracker(
+        id = "vocabulary",
+        label = "Vocabulary",
+        completed = true,
+        rewardMinutes = 15.0,
+      )
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          FocusWellUiState(
+            dailyDate = "2026-05-20",
+            tags = defaultTags,
+            trackers = listOf(tracker),
+            ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
+          )
+        ),
+        clock::now,
+      )
+
+    val state = repo.state.value
+    assertEquals("2026-05-21", state.dailyDate)
+    assertEquals(135.0, state.reserveMinutes, 0.0001)
+    assertEquals(
+      listOf("daily-grant-2026-05-21", "tracker-reward-2026-05-20-vocabulary", "daily-grant-2026-05-20"),
+      state.ledger.map { it.id },
+    )
+    assertEquals(false, state.trackers.first().completed)
+    assertEquals(15.0, state.trackers.first().rewardMinutes, 0.0001)
   }
 
   @Test

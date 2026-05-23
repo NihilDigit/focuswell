@@ -385,6 +385,7 @@ internal fun FocusRecordEditSheet(
   sheetState: androidx.compose.material3.SheetState,
   onDismiss: () -> Unit,
   onSave: () -> Unit,
+  onDelete: (() -> Unit)? = null,
 ) {
   val newMinutes = minutes.toDoubleOrNull() ?: record.activeDurationMinutes
   val newEarned = newMinutes * record.typeRate * record.tagMultiplier
@@ -453,6 +454,18 @@ internal fun FocusRecordEditSheet(
           shape = ControlEndShape,
         ) {
           Text("Apply change")
+        }
+      }
+      onDelete?.let { delete ->
+        OutlinedButton(
+          onClick = delete,
+          modifier = Modifier.fillMaxWidth().height(52.dp),
+          shape = CalmPanelShape,
+          colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+          Icon(Icons.Rounded.Delete, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Delete record")
         }
       }
       Spacer(Modifier.height(16.dp))

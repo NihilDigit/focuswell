@@ -312,7 +312,7 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-          trackerStatusText(tracker),
+          "${trackerStatusText(tracker)} · +${tracker.rewardMinutes.roundToInt()}m",
           style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
@@ -372,7 +372,7 @@ internal fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: M
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium)
         Text(
-          trackerStatusText(tracker),
+          "${trackerStatusText(tracker)} · +${tracker.rewardMinutes.roundToInt()}m",
           style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

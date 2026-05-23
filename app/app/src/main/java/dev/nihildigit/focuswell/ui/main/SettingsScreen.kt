@@ -92,6 +92,7 @@ import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
+import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
@@ -207,6 +208,83 @@ internal fun SettingsListRow(
 }
 
 @Composable
+internal fun SettingsTrackerRow(
+  tracker: DailyTracker,
+  onRewardChange: (Double) -> Unit,
+  onArchive: () -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = 78.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(
+          tracker.progressLabel ?: if (tracker.ruleTagName != null) "Rule" else "Manual",
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      RewardStepper(
+        rewardMinutes = tracker.rewardMinutes,
+        onRewardChange = onRewardChange,
+      )
+      IconButton(onClick = onArchive, modifier = Modifier.size(40.dp)) {
+        Icon(Icons.Rounded.Archive, contentDescription = "Archive", modifier = Modifier.size(20.dp))
+      }
+    }
+  }
+}
+
+@Composable
+internal fun RewardStepper(
+  rewardMinutes: Double,
+  onRewardChange: (Double) -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = CircleShape,
+    modifier = Modifier.height(40.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      IconButton(
+        onClick = { onRewardChange((rewardMinutes - 5.0).coerceAtLeast(0.0)) },
+        modifier = Modifier.size(32.dp),
+      ) {
+        Icon(Icons.Rounded.Remove, contentDescription = "Decrease reward", modifier = Modifier.size(18.dp))
+      }
+      Text(
+        "${rewardMinutes.roundToInt()}m",
+        style = tabularNumbers(MaterialTheme.typography.labelLarge),
+        fontWeight = FontWeight.SemiBold,
+        modifier = Modifier.width(38.dp),
+        textAlign = TextAlign.Center,
+      )
+      IconButton(
+        onClick = { onRewardChange(rewardMinutes + 5.0) },
+        modifier = Modifier.size(32.dp),
+      ) {
+        Icon(Icons.Rounded.Add, contentDescription = "Increase reward", modifier = Modifier.size(18.dp))
+      }
+    }
+  }
+}
+
+@Composable
 internal fun SettingsAddTagForm(
   tagName: String,
   tagMultiplier: String,
@@ -245,7 +323,9 @@ internal fun SettingsAddTagForm(
 @Composable
 internal fun SettingsAddBooleanTrackerForm(
   trackerLabel: String,
+  trackerReward: String,
   onTrackerLabelChange: (String) -> Unit,
+  onTrackerRewardChange: (String) -> Unit,
   onAddTracker: () -> Unit,
 ) {
   SettingsCreateForm(
@@ -253,16 +333,26 @@ internal fun SettingsAddBooleanTrackerForm(
     supporting = "Manual daily completion.",
     actionLabel = "Add tracker",
     icon = Icons.Rounded.CheckCircle,
-    enabled = trackerLabel.isNotBlank(),
+    enabled = trackerLabel.isNotBlank() && trackerReward.toDoubleOrNull() != null,
     onSubmit = onAddTracker,
   ) {
-    OutlinedTextField(
-      value = trackerLabel,
-      onValueChange = onTrackerLabelChange,
-      label = { Text("Label") },
-      singleLine = true,
-      modifier = Modifier.fillMaxWidth(),
-    )
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+      OutlinedTextField(
+        value = trackerLabel,
+        onValueChange = onTrackerLabelChange,
+        label = { Text("Label") },
+        singleLine = true,
+        modifier = Modifier.weight(1f),
+      )
+      OutlinedTextField(
+        value = trackerReward,
+        onValueChange = onTrackerRewardChange,
+        label = { Text("Reward") },
+        singleLine = true,
+        suffix = { Text("m") },
+        modifier = Modifier.width(126.dp),
+      )
+    }
   }
 }
 
@@ -271,10 +361,12 @@ internal fun SettingsAddRuleTrackerForm(
   ruleLabel: String,
   ruleTag: String,
   ruleHours: String,
+  ruleReward: String,
   tags: List<TagConfig>,
   onRuleLabelChange: (String) -> Unit,
   onRuleTagChange: (String) -> Unit,
   onRuleHoursChange: (String) -> Unit,
+  onRuleRewardChange: (String) -> Unit,
   onAddRuleTracker: () -> Unit,
 ) {
   var showTagPicker by remember { mutableStateOf(false) }
@@ -283,7 +375,7 @@ internal fun SettingsAddRuleTrackerForm(
     supporting = "Auto-completes from focused time.",
     actionLabel = "Add rule",
     icon = Icons.Rounded.Timer,
-    enabled = ruleLabel.isNotBlank() && tags.any { it.name == ruleTag },
+    enabled = ruleLabel.isNotBlank() && tags.any { it.name == ruleTag } && ruleHours.toDoubleOrNull() != null && ruleReward.toDoubleOrNull() != null,
     onSubmit = onAddRuleTracker,
   ) {
     OutlinedTextField(
@@ -306,6 +398,14 @@ internal fun SettingsAddRuleTrackerForm(
         label = { Text("Target") },
         singleLine = true,
         suffix = { Text("h") },
+        modifier = Modifier.width(126.dp),
+      )
+      OutlinedTextField(
+        value = ruleReward,
+        onValueChange = onRuleRewardChange,
+        label = { Text("Reward") },
+        singleLine = true,
+        suffix = { Text("m") },
         modifier = Modifier.width(126.dp),
       )
     }
@@ -545,9 +645,10 @@ internal fun SettingsScreen(
   onClearAllData: () -> Unit,
   onAddTag: (String, Double) -> Unit,
   onArchiveTag: (String) -> Unit,
-  onAddBooleanTracker: (String) -> Unit,
-  onAddRuleTracker: (String, String, Double) -> Unit,
+  onAddBooleanTracker: (String, Double) -> Unit,
+  onAddRuleTracker: (String, String, Double, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
+  onUpdateTrackerReward: (String, Double) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
@@ -577,9 +678,11 @@ internal fun SettingsScreen(
   var tagName by remember { mutableStateOf("") }
   var tagMultiplier by remember { mutableStateOf("1.0") }
   var trackerLabel by remember { mutableStateOf("") }
+  var trackerReward by remember { mutableStateOf("10") }
   var ruleLabel by remember { mutableStateOf("") }
   var ruleTag by remember { mutableStateOf("math") }
   var ruleHours by remember { mutableStateOf("3") }
+  var ruleReward by remember { mutableStateOf("10") }
   var clearPhrase by remember { mutableStateOf("") }
   val activeTags = state.tags.filter { it.archivedAt == null }
   LaunchedEffect(activeTags.map { it.name }) {
@@ -675,32 +778,38 @@ internal fun SettingsScreen(
       CalmPanel {
         Text("Trackers", style = MaterialTheme.typography.titleLarge)
         state.trackers.filter { it.archivedAt == null }.forEach {
-          SettingsListRow(
-            title = it.label,
-            supporting = it.progressLabel ?: if (it.ruleTagName != null) "Rule tracker" else "Manual item",
+          SettingsTrackerRow(
+            tracker = it,
+            onRewardChange = { reward -> onUpdateTrackerReward(it.id, reward) },
             onArchive = { onArchiveTracker(it.id) },
           )
         }
         HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
         SettingsAddBooleanTrackerForm(
           trackerLabel = trackerLabel,
+          trackerReward = trackerReward,
           onTrackerLabelChange = { trackerLabel = it },
+          onTrackerRewardChange = { trackerReward = it },
           onAddTracker = {
-            onAddBooleanTracker(trackerLabel)
+            onAddBooleanTracker(trackerLabel, trackerReward.toDoubleOrNull() ?: 10.0)
             trackerLabel = ""
+            trackerReward = "10"
           },
         )
         SettingsAddRuleTrackerForm(
           ruleLabel = ruleLabel,
           ruleTag = ruleTag,
           ruleHours = ruleHours,
+          ruleReward = ruleReward,
           tags = activeTags,
           onRuleLabelChange = { ruleLabel = it },
           onRuleTagChange = { ruleTag = it },
           onRuleHoursChange = { ruleHours = it },
+          onRuleRewardChange = { ruleReward = it },
           onAddRuleTracker = {
-            onAddRuleTracker(ruleLabel, ruleTag, (ruleHours.toDoubleOrNull() ?: 3.0) * 60.0)
+            onAddRuleTracker(ruleLabel, ruleTag, (ruleHours.toDoubleOrNull() ?: 3.0) * 60.0, ruleReward.toDoubleOrNull() ?: 10.0)
             ruleLabel = ""
+            ruleReward = "10"
           },
         )
       }

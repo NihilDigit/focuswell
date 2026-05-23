@@ -178,22 +178,23 @@ Today:
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
-- Daily trackers: compact rail plus scannable tracker tiles.
+- Daily trackers: compact rail plus scannable tracker tiles. Completion has accounting meaning because each tracker has a configurable minute reward settled at the 04:00 day boundary.
 - Indeterminate short waits use the new loading indicator when available; otherwise keep Material progress small and contextual.
 
 Balance:
 
-- Ledger rows are amount-first.
-- Summary is calm and compact.
-- Deltas use sign and semantic color.
+- Today owns the available leisure reserve. The Leisure well's top-end chip shows today's net movement so the account state stays visible without duplicating Balance.
+- Balance starts with a 7-day net chart and then shows ledger-backed records.
+- The 7-day net chart uses ledger entries as the source of truth, includes coordinate marks, and scales its y-axis from the largest absolute daily movement in the visible 7-day window.
+- Records use compact icon-only filter chips, not tabs. Keep `All`, `Focus`, `Leisure`, and `Adjust` on one row on compact phone widths with content descriptions for accessibility.
+- Record rows are amount-first and compact. Focus earning uses primary, leisure spending uses tertiary, and each record type gets a quiet inline type icon. Destructive actions use error only inside details/edit surfaces.
+- Focus outcome states use the same icon and color mapping everywhere they appear.
+- Focus and leisure CRUD lives in Balance. Delete actions should not be permanently visible in the list; show them in an edit/details sheet.
 - Use lists or filled surfaces, not decorative cards, when rows are repeated.
 
 History:
 
-- Filter/group controls switch record categories.
-- Rows may be filled surfaces because edit/delete actions need containment.
-- Edit flows use sheets or dialogs depending on field count.
-- Prefer connected button groups over segmented buttons when the dependency exposes the expressive component. Until then, keep selection controls visually compact and clearly selected.
+- History is not a primary destination. Historical records are part of Balance.
 
 Settings:
 

@@ -33,6 +33,7 @@ class FocusWellRepository internal constructor(
   val state: StateFlow<FocusWellUiState> = _state
 
   init {
+    settleDailyTrackers()
     ensureDailyGrants()
     rollDailyState()
   }
@@ -93,7 +94,7 @@ class FocusWellRepository internal constructor(
     }
   }
 
-  fun addBooleanTracker(label: String) {
+  fun addBooleanTracker(label: String, rewardMinutes: Double) {
     val trimmed = label.trim()
     if (trimmed.isEmpty()) return
     mutate { state ->
@@ -104,12 +105,13 @@ class FocusWellRepository internal constructor(
               id = "tracker-${System.currentTimeMillis()}",
               label = trimmed,
               completed = false,
+              rewardMinutes = rewardMinutes.coerceAtLeast(0.0),
             )
       )
     }
   }
 
-  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double) {
+  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) {
     val trimmedLabel = label.trim()
     val trimmedTag = tagName.trim()
     if (trimmedLabel.isEmpty() || trimmedTag.isEmpty() || targetMinutes <= 0.0) return
@@ -121,6 +123,7 @@ class FocusWellRepository internal constructor(
               id = "rule-${System.currentTimeMillis()}",
               label = trimmedLabel,
               completed = false,
+              rewardMinutes = rewardMinutes.coerceAtLeast(0.0),
               ruleTagName = trimmedTag,
               ruleTargetMinutes = targetMinutes,
             )
@@ -132,6 +135,14 @@ class FocusWellRepository internal constructor(
     mutate { state ->
       state.copy(
         trackers = state.trackers.map { if (it.id == id) it.copy(archivedAt = now()) else it }
+      )
+    }
+  }
+
+  fun updateTrackerReward(id: String, rewardMinutes: Double) {
+    mutate { state ->
+      state.copy(
+        trackers = state.trackers.map { if (it.id == id) it.copy(rewardMinutes = rewardMinutes.coerceAtLeast(0.0)) else it }
       )
     }
   }
@@ -428,6 +439,34 @@ class FocusWellRepository internal constructor(
     }
   }
 
+  private fun settleDailyTrackers() {
+    val currentDate = runCatching { LocalDate.parse(_state.value.dailyDate) }.getOrNull() ?: return
+    val today = TimeAccounting.dailyDate(now())
+    if (!currentDate.isBefore(today)) return
+    mutate { state ->
+      val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
+      val rewards =
+        state.trackers
+          .filter { it.archivedAt == null && it.completed && it.rewardMinutes > 0.0 }
+          .filter { trackerRewardId(currentDate, it.id) !in existingIds }
+          .map {
+            LedgerEntry(
+              id = trackerRewardId(currentDate, it.id),
+              title = "Daily tracker",
+              deltaMinutes = it.rewardMinutes,
+              createdAt = dailyGrantInstant(currentDate.plusDays(1)),
+              note = it.label,
+              sourceId = it.id,
+            )
+          }
+      if (rewards.isEmpty()) return@mutate state
+      state.copy(
+        reserveMinutes = state.reserveMinutes + rewards.sumOf { it.deltaMinutes },
+        ledger = rewards.asReversed() + state.ledger,
+      )
+    }
+  }
+
   private fun rollDailyState() {
     mutate { state ->
       val today = TimeAccounting.dailyDate(now()).toString()
@@ -473,6 +512,8 @@ class FocusWellRepository internal constructor(
     )
 
   private fun dailyGrantId(date: LocalDate): String = "daily-grant-$date"
+
+  private fun trackerRewardId(date: LocalDate, trackerId: String): String = "tracker-reward-$date-$trackerId"
 
   private fun dailyGrantInstant(date: LocalDate): Instant =
     date.atTime(LocalTime.of(4, 0)).atZone(TimeAccounting.focusWellZone).toInstant()
@@ -582,6 +623,7 @@ class FocusWellRepository internal constructor(
       .put("id", tracker.id)
       .put("label", tracker.label)
       .put("completed", tracker.completed)
+      .put("rewardMinutes", tracker.rewardMinutes)
       .put("progressLabel", tracker.progressLabel)
       .put("ruleTagName", tracker.ruleTagName)
       .put("ruleTargetMinutes", tracker.ruleTargetMinutes)
@@ -593,6 +635,7 @@ class FocusWellRepository internal constructor(
       id = json.optString("id"),
       label = json.optString("label"),
       completed = json.optBoolean("completed"),
+      rewardMinutes = json.optDouble("rewardMinutes", 10.0),
       progressLabel = json.optStringOrNull("progressLabel"),
       ruleTagName = json.optStringOrNull("ruleTagName"),
       ruleTargetMinutes = if (json.has("ruleTargetMinutes") && !json.isNull("ruleTargetMinutes")) json.optDouble("ruleTargetMinutes") else null,

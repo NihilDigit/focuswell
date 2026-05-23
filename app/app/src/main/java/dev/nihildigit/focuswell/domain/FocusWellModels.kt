@@ -18,6 +18,7 @@ data class DailyTracker(
   val id: String,
   val label: String,
   val completed: Boolean,
+  val rewardMinutes: Double = 10.0,
   val progressLabel: String? = null,
   val ruleTagName: String? = null,
   val ruleTargetMinutes: Double? = null,
@@ -91,7 +92,6 @@ data class LeisureRecord(
 enum class Destination(val label: String) {
   Today("Today"),
   Reserve("Balance"),
-  Records("History"),
   Settings("Settings"),
 }
 
@@ -116,14 +116,15 @@ val defaultTags =
 
 val defaultTrackers =
   listOf(
-    DailyTracker(id = "aerobic", label = "Aerobic", completed = false),
-    DailyTracker(id = "wake", label = "Wake by 9", completed = false),
-    DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false),
-    DailyTracker(id = "codewars", label = "CodeWars", completed = false),
+    DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 10.0),
+    DailyTracker(id = "wake", label = "Wake by 9", completed = false, rewardMinutes = 10.0),
+    DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false, rewardMinutes = 10.0),
+    DailyTracker(id = "codewars", label = "CodeWars", completed = false, rewardMinutes = 10.0),
     DailyTracker(
       id = "math-3h",
       label = "Math",
       completed = false,
+      rewardMinutes = 10.0,
       progressLabel = "0m / 3h",
       ruleTagName = "math",
       ruleTargetMinutes = 180.0,
@@ -132,6 +133,7 @@ val defaultTrackers =
       id = "408-3h",
       label = "408",
       completed = false,
+      rewardMinutes = 10.0,
       progressLabel = "0m / 3h",
       ruleTagName = "408",
       ruleTargetMinutes = 180.0,

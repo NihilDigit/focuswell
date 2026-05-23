@@ -205,8 +205,7 @@ internal fun destinationOrder(destination: Destination): Int {
   return when (destination) {
     Destination.Today -> 0
     Destination.Reserve -> 1
-    Destination.Records -> 2
-    Destination.Settings -> 3
+    Destination.Settings -> 2
   }
 }
 
@@ -265,6 +264,7 @@ fun MainScreen(
     onAddBooleanTracker = viewModel::addBooleanTracker,
     onAddRuleTracker = viewModel::addRuleTracker,
     onArchiveTracker = viewModel::archiveTracker,
+    onUpdateTrackerReward = viewModel::updateTrackerReward,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -295,9 +295,10 @@ internal fun MainScreen(
   onDeleteLeisureRecord: (String) -> Unit,
   onAddTag: (String, Double) -> Unit,
   onArchiveTag: (String) -> Unit,
-  onAddBooleanTracker: (String) -> Unit,
-  onAddRuleTracker: (String, String, Double) -> Unit,
+  onAddBooleanTracker: (String, Double) -> Unit,
+  onAddRuleTracker: (String, String, Double, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
+  onUpdateTrackerReward: (String, Double) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -360,6 +361,7 @@ internal fun MainScreen(
           onAddBooleanTracker = onAddBooleanTracker,
           onAddRuleTracker = onAddRuleTracker,
           onArchiveTracker = onArchiveTracker,
+          onUpdateTrackerReward = onUpdateTrackerReward,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
           modifier = Modifier.weight(1f),
@@ -411,9 +413,10 @@ private fun DestinationContent(
   onClearAllData: () -> Unit,
   onAddTag: (String, Double) -> Unit,
   onArchiveTag: (String) -> Unit,
-  onAddBooleanTracker: (String) -> Unit,
-  onAddRuleTracker: (String, String, Double) -> Unit,
+  onAddBooleanTracker: (String, Double) -> Unit,
+  onAddRuleTracker: (String, String, Double, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
+  onUpdateTrackerReward: (String, Double) -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -440,9 +443,8 @@ private fun DestinationContent(
           onEndDepleted = onEndDepleted,
         )
 
-      Destination.Reserve -> ReserveScreen(state)
-      Destination.Records ->
-        RecordsScreen(
+      Destination.Reserve ->
+        ReserveScreen(
           state = state,
           onDeleteFocusRecord = onDeleteFocusRecord,
           onUpdateFocusRecord = onUpdateFocusRecord,
@@ -459,6 +461,7 @@ private fun DestinationContent(
           onAddBooleanTracker = onAddBooleanTracker,
           onAddRuleTracker = onAddRuleTracker,
           onArchiveTracker = onArchiveTracker,
+          onUpdateTrackerReward = onUpdateTrackerReward,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
         )
@@ -692,7 +695,6 @@ internal fun DestinationIcon(destination: Destination) {
     when (destination) {
       Destination.Today -> Icons.Rounded.Today
       Destination.Reserve -> Icons.Rounded.AccountBalanceWallet
-      Destination.Records -> Icons.Rounded.History
       Destination.Settings -> Icons.Rounded.Settings
     }
   Icon(
@@ -757,6 +759,17 @@ internal fun trackerStatusText(tracker: DailyTracker): String {
     }
 }
 
+@Composable
+internal fun focusOutcomeVisual(outcome: String): Pair<ImageVector, Color> {
+  return when (outcome) {
+    "As planned" -> Icons.Rounded.CheckCircle to MaterialTheme.colorScheme.primary
+    "Partial" -> Icons.Rounded.RadioButtonUnchecked to MaterialTheme.colorScheme.secondary
+    "Drifted" -> Icons.Rounded.Pause to MaterialTheme.colorScheme.tertiary
+    "Interrupted" -> Icons.Rounded.Stop to MaterialTheme.colorScheme.error
+    else -> Icons.Rounded.RadioButtonUnchecked to MaterialTheme.colorScheme.onSurfaceVariant
+  }
+}
+
 internal fun parseOutcomeResult(result: String): Pair<String, String> {
   val trimmed = result.trim()
   val direct = FocusOutcomeOptions.firstOrNull { it == trimmed }
@@ -813,9 +826,10 @@ internal fun MainScreenPreview() {
       onDeleteLeisureRecord = {},
       onAddTag = { _, _ -> },
       onArchiveTag = {},
-      onAddBooleanTracker = {},
-      onAddRuleTracker = { _, _, _ -> },
+      onAddBooleanTracker = { _, _ -> },
+      onAddRuleTracker = { _, _, _, _ -> },
       onArchiveTracker = {},
+      onUpdateTrackerReward = { _, _ -> },
       themeMode = ThemeMode.System,
       onThemeModeChange = {},
     )

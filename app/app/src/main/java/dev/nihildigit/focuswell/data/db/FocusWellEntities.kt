@@ -37,6 +37,7 @@ internal data class DailyTrackerEntity(
   val sortOrder: Int,
   val label: String,
   val completed: Boolean,
+  val rewardMinutes: Double,
   val progressLabel: String?,
   val ruleTagName: String?,
   val ruleTargetMinutes: Double?,

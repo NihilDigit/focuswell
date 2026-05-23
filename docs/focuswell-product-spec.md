@@ -104,6 +104,9 @@ Rules:
 ## Daily Trackers
 
 Daily trackers are evaluated within the 04:00 system-time-zone daily window.
+Each tracker has a configurable minute reward. At the 04:00 day boundary,
+completed non-archived trackers are settled once into the ledger as positive
+reserve adjustments, then the daily tracker state resets for the new day.
 
 Current tracker kinds:
 

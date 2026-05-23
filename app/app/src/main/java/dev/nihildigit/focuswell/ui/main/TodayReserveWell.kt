@@ -176,7 +176,7 @@ internal fun CompactReserveHeader(reserveMinutes: Double) {
 }
 
 @Composable
-internal fun ReserveHeader(reserveMinutes: Double) {
+internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
   val fillTarget = (reserveMinutes / 180.0).coerceIn(0.08, 1.0).toFloat()
   val fill by animateFloatAsState(
     targetValue = fillTarget,
@@ -230,11 +230,23 @@ internal fun ReserveHeader(reserveMinutes: Double) {
         shape = CircleShape,
         modifier = Modifier.align(Alignment.TopEnd).padding(top = 28.dp, end = 22.dp),
       ) {
-        Text(
-          "${reserveMinutes.roundToInt()}m",
-          modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
-          style = tabularNumbers(MaterialTheme.typography.titleMedium),
-        )
+        Row(
+          modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+          horizontalArrangement = Arrangement.spacedBy(6.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text("Today", style = MaterialTheme.typography.labelMedium)
+          Text(
+            signedMinutes(todayNetMovement),
+            style = tabularNumbers(MaterialTheme.typography.titleMedium),
+            color =
+              when {
+                todayNetMovement > 0.0 -> MaterialTheme.colorScheme.primary
+                todayNetMovement < 0.0 -> MaterialTheme.colorScheme.tertiary
+                else -> MaterialTheme.colorScheme.onPrimaryContainer
+              },
+          )
+        }
       }
     }
   }
