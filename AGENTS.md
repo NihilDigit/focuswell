@@ -2,32 +2,34 @@
 
 ## Project Structure & Module Organization
 
-This repository is currently in the product and architecture design phase.
+This repository now contains the Android implementation under the nested Gradle project in `app/`.
 
 - `README.md`: short project introduction and entry point.
 - `docs/focuswell-product-spec.md`: canonical product, UX, architecture, and data-model specification.
-- Future Android source should live under an app module such as `android/` or `app/`.
-- Future tests should sit next to their target modules using standard Android conventions, for example `src/test/` and `src/androidTest/`.
+- `DESIGN.md`: canonical UI design system and durable Material 3 Expressive constraints.
+- `app/app/src/main/java/dev/nihildigit/focuswell/`: Android Kotlin and Jetpack Compose source.
+- `app/app/src/test/`: JVM tests for domain behavior.
+- Future instrumentation tests should use standard Android conventions, for example `src/androidTest/`.
 
-Keep design decisions in `docs/focuswell-product-spec.md` until implementation files exist. Do not scatter product rules across comments or issue notes.
+Keep product decisions in `docs/focuswell-product-spec.md` and durable visual rules in `DESIGN.md`. Do not scatter product or design rules across comments or issue notes.
 
 ## Build, Test, and Development Commands
 
-There is no buildable app module yet.
-
-Useful commands now:
+Useful repository commands:
 
 ```powershell
 git status --short
 git log --oneline
 ```
 
-Once the Android app is created, prefer the Gradle wrapper from the project:
+Use the Gradle wrapper from the Android project:
 
 ```powershell
+cd app
 .\gradlew.bat build
 .\gradlew.bat test
 .\gradlew.bat connectedAndroidTest
+.\gradlew.bat installDebug
 ```
 
 Use the local Android CLI and connected real device workflow when available.
@@ -48,7 +50,7 @@ Markdown documents should use concise headings, short paragraphs, and fenced cod
 
 ## Testing Guidelines
 
-No test framework is configured yet. When implementation begins, add focused tests for:
+Add or update focused tests for:
 
 - daily boundary calculation at 04:00 Asia/Shanghai
 - focus earning formula
@@ -76,3 +78,5 @@ Continue with short, descriptive commit messages. Pull requests should include:
 ## Agent-Specific Instructions
 
 Treat `docs/focuswell-product-spec.md` as the source of truth. If implementation choices conflict with the spec, update the spec intentionally in the same change.
+
+Treat `DESIGN.md` as the source of truth for reusable UI rules. When changing Compose surfaces, color semantics, component hierarchy, or responsive layout behavior, update `DESIGN.md` in the same change and verify on a connected device or emulator when practical.

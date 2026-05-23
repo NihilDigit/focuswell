@@ -468,6 +468,9 @@ private fun ReserveWellDrawing(
 ) {
   val colorScheme = MaterialTheme.colorScheme
   Canvas(modifier = modifier) {
+    val wallColor = colorScheme.onPrimaryContainer
+    val rippleColor = colorScheme.primary
+    val glintColor = colorScheme.secondary
     val glyphWidth = 150.dp.toPx()
     val left = size.width - 118.dp.toPx()
     val top = size.height - 82.dp.toPx()
@@ -554,7 +557,7 @@ private fun ReserveWellDrawing(
       )
 
     drawArc(
-      color = colorScheme.surface.copy(alpha = 0.28f),
+      color = wallColor.copy(alpha = 0.34f),
       startAngle = 188f,
       sweepAngle = 238f,
       useCenter = false,
@@ -563,7 +566,7 @@ private fun ReserveWellDrawing(
       style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round),
     )
     drawArc(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.18f),
+      color = wallColor.copy(alpha = 0.22f),
       startAngle = 12f,
       sweepAngle = 128f,
       useCenter = false,
@@ -572,7 +575,7 @@ private fun ReserveWellDrawing(
       style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round),
     )
     drawArc(
-      color = colorScheme.surface.copy(alpha = 0.22f),
+      color = wallColor.copy(alpha = 0.2f),
       startAngle = 196f,
       sweepAngle = 118f,
       useCenter = false,
@@ -581,7 +584,7 @@ private fun ReserveWellDrawing(
       style = Stroke(width = 3.dp.toPx(), cap = StrokeCap.Round),
     )
     drawArc(
-      color = colorScheme.onPrimaryContainer.copy(alpha = 0.14f),
+      color = wallColor.copy(alpha = 0.16f),
       startAngle = 334f,
       sweepAngle = 78f,
       useCenter = false,
@@ -592,7 +595,7 @@ private fun ReserveWellDrawing(
     disturbances.forEachIndexed { index, (path, alpha) ->
       drawPath(
         path = path,
-        color = if (index == 1) colorScheme.surface.copy(alpha = alpha) else colorScheme.tertiary.copy(alpha = alpha),
+        color = if (index == 1) glintColor.copy(alpha = alpha * 0.75f) else rippleColor.copy(alpha = alpha),
         style = Stroke(width = if (index == 1) 1.7.dp.toPx() else 3.dp.toPx(), cap = StrokeCap.Round),
       )
     }
@@ -1078,6 +1081,8 @@ private fun TrackerGrid(
 ) {
   val secondary = MaterialTheme.colorScheme.secondary
   val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
+  val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHigh
+  val onSecondaryContainer = MaterialTheme.colorScheme.onSecondaryContainer
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -1100,25 +1105,49 @@ private fun TrackerGrid(
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
+      Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
         val centerY = size.height / 2f
+        val startX = 10.dp.toPx()
+        val endX = size.width - 10.dp.toPx()
+        val trackWidth = (endX - startX).coerceAtLeast(1f)
+        val completion = if (trackers.isEmpty()) 0f else trackers.count { it.completed } / trackers.size.toFloat()
         drawLine(
-          color = onSurfaceVariant.copy(alpha = 0.22f),
-          start = Offset(7.dp.toPx(), centerY),
-          end = Offset(size.width - 7.dp.toPx(), centerY),
-          strokeWidth = 2.dp.toPx(),
+          color = onSurfaceVariant.copy(alpha = 0.16f),
+          start = Offset(startX, centerY),
+          end = Offset(endX, centerY),
+          strokeWidth = 4.dp.toPx(),
           cap = StrokeCap.Round,
         )
+        if (completion > 0f) {
+          drawLine(
+            color = secondary.copy(alpha = 0.72f),
+            start = Offset(startX, centerY),
+            end = Offset(startX + trackWidth * completion, centerY),
+            strokeWidth = 4.dp.toPx(),
+            cap = StrokeCap.Round,
+          )
+        }
         val count = trackers.size.coerceAtLeast(1)
         trackers.forEachIndexed { index, tracker ->
-          val x = if (count == 1) size.width / 2f else 7.dp.toPx() + (size.width - 14.dp.toPx()) * index / (count - 1)
+          val x = if (count == 1) size.width / 2f else startX + trackWidth * index / (count - 1)
+          val completed = tracker.completed
           drawCircle(
-            color =
-              if (tracker.completed) secondary
-              else onSurfaceVariant.copy(alpha = 0.32f),
-            radius = if (tracker.completed) 4.5.dp.toPx() else 3.5.dp.toPx(),
+            color = if (completed) secondary.copy(alpha = 0.18f) else surfaceContainerHigh,
+            radius = 8.dp.toPx(),
             center = Offset(x, centerY),
           )
+          drawCircle(
+            color = if (completed) secondary else onSurfaceVariant.copy(alpha = 0.36f),
+            radius = if (completed) 4.9.dp.toPx() else 3.7.dp.toPx(),
+            center = Offset(x, centerY),
+          )
+          if (completed) {
+            drawCircle(
+              color = onSecondaryContainer.copy(alpha = 0.92f),
+              radius = 1.8.dp.toPx(),
+              center = Offset(x, centerY),
+            )
+          }
         }
       }
       trackers.forEach { tracker ->

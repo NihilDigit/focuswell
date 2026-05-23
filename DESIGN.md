@@ -221,6 +221,8 @@ Use the motif for:
 
 The motif can use custom drawing, animated water, ripples, and shape morphing. Keep it symbolic: concentric line-art openings, waterline, and reflection are preferable to a literal bucket, tank, measuring cup, or decorative scene.
 
+Well wall strokes must use `onPrimaryContainer`, not low-alpha `surface`, so light and dark themes keep comparable contrast. Water and ripple strokes should stay in the primary or secondary color family. Avoid amber/yellow ripples unless the state is explicitly warning-like; the reserve well is not a warning state.
+
 The motif must not compete with the primary number. The reserve amount and next action stay readable first; the well gives the state a memorable physical model second.
 
 Do not use the motif in Balance or History rows. Those screens must remain auditable.
@@ -231,7 +233,7 @@ The idle action area should not be a card by default. Treat it as an action dock
 
 Idle Focus and Leisure actions are a related pair. They should keep equal height and comparable visual weight, but may use subtly different corner shapes to make the pair feel expressive and grouped. Keep the difference structural, not symbolic: Focus remains the filled primary action, Leisure remains the tonal secondary action.
 
-Daily trackers should read as the day's reset rail: a compact progress line plus scannable tracker tiles. Avoid plain card stacks and avoid row layouts that force tracker names to break into unreadable fragments.
+Daily trackers should read as the day's reset rail: a compact progress line plus scannable tracker tiles. The rail should have a muted base track, an active completion segment proportional to completed trackers, and per-tracker nodes with clear done and idle states. Avoid bare one-pixel lines, plain card stacks, and row layouts that force tracker names to break into unreadable fragments.
 
 ## Motion Strategy
 
