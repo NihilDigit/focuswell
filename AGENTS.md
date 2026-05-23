@@ -66,14 +66,14 @@ Name tests after behavior, not implementation details.
 
 ## Release Workflow
 
-Release builds are tag-driven. The final release text is edited by a human after CI succeeds.
+Release builds are tag-driven. CI creates the GitHub Release and attaches APKs; the coding agent edits the final Release text after CI succeeds.
 
 1. Finish code, docs, version metadata, signing configuration, and CI changes in ordinary commits.
 2. Manually create and push a time-based release tag such as `26.5.1`.
 3. Wait for CI to build the release APKs and create the GitHub Release.
-4. Manually edit the generated Release title, description, and notes in GitHub.
+4. After CI succeeds, use `gh release edit` to update the generated Release title, description, and notes.
 
-CI must not generate the final user-facing release copy. CI may create a draft or generated release and attach artifacts.
+CI must not generate the final user-facing release copy. CI may create a draft or generated release and attach artifacts. The agent who pushed the tag is responsible for the post-CI release-note edit unless the user explicitly asks to do it themselves.
 
 The release CI should build signed APKs for:
 
