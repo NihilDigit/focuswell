@@ -1,5 +1,6 @@
 package dev.nihildigit.focuswell.theme
 
+import android.content.Context
 import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
@@ -13,6 +14,31 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
+
+enum class ThemeMode(val label: String) {
+  System("System"),
+  Dark("Dark"),
+  Light("Light");
+
+  fun resolveDarkTheme(systemDarkTheme: Boolean): Boolean =
+    when (this) {
+      System -> systemDarkTheme
+      Dark -> true
+      Light -> false
+    }
+}
+
+private const val THEME_PREFS = "focuswell-theme"
+private const val KEY_THEME_MODE = "themeMode"
+
+fun loadThemeMode(context: Context): ThemeMode {
+  val raw = context.getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE).getString(KEY_THEME_MODE, null)
+  return ThemeMode.entries.firstOrNull { it.name == raw } ?: ThemeMode.System
+}
+
+fun saveThemeMode(context: Context, mode: ThemeMode) {
+  context.getSharedPreferences(THEME_PREFS, Context.MODE_PRIVATE).edit().putString(KEY_THEME_MODE, mode.name).apply()
+}
 
 private val DarkColorScheme =
   darkColorScheme(

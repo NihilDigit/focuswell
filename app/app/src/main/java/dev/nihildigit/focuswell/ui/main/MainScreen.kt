@@ -36,7 +36,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.safeDrawingPadding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
@@ -54,14 +53,17 @@ import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
-import androidx.compose.material3.NavigationBar
-import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.ShortNavigationBar
+import androidx.compose.material3.ShortNavigationBarItem
+import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -71,11 +73,15 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bedtime
+import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
+import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
@@ -117,9 +123,11 @@ import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
+import dev.nihildigit.focuswell.theme.ThemeMode
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -141,6 +149,8 @@ private val FocusOutcomeOptions = listOf("As planned", "Partial", "Drifted", "In
 
 @Composable
 fun MainScreen(
+  themeMode: ThemeMode,
+  onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
   viewModel: MainScreenViewModel = viewModel(),
 ) {
@@ -170,6 +180,8 @@ fun MainScreen(
     onAddBooleanTracker = viewModel::addBooleanTracker,
     onAddRuleTracker = viewModel::addRuleTracker,
     onArchiveTracker = viewModel::archiveTracker,
+    themeMode = themeMode,
+    onThemeModeChange = onThemeModeChange,
     modifier = modifier,
   )
 }
@@ -201,6 +213,8 @@ internal fun MainScreen(
   onAddBooleanTracker: (String) -> Unit,
   onAddRuleTracker: (String, String, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
+  themeMode: ThemeMode,
+  onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
 ) {
   var showFocusSheet by remember { mutableStateOf(false) }
@@ -208,16 +222,7 @@ internal fun MainScreen(
   Scaffold(
     modifier = modifier.fillMaxSize(),
     bottomBar = {
-      NavigationBar {
-        Destination.entries.forEach { destination ->
-          NavigationBarItem(
-            selected = state.destination == destination,
-            onClick = { onDestination(destination) },
-            icon = { DestinationIcon(destination = destination, selected = state.destination == destination) },
-            label = { Text(destination.label) },
-          )
-        }
-      }
+      FocusWellNavigationBar(selected = state.destination, onDestination = onDestination)
     },
   ) { innerPadding ->
     AnimatedContent(
@@ -226,8 +231,7 @@ internal fun MainScreen(
       modifier =
         Modifier
           .fillMaxSize()
-          .padding(innerPadding)
-          .safeDrawingPadding(),
+          .padding(innerPadding),
     ) { destination ->
       when (destination) {
         Destination.Today ->
@@ -264,6 +268,8 @@ internal fun MainScreen(
             onAddBooleanTracker = onAddBooleanTracker,
             onAddRuleTracker = onAddRuleTracker,
             onArchiveTracker = onArchiveTracker,
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
           )
       }
     }
@@ -1852,17 +1858,19 @@ private fun SettingsAddRuleTrackerForm(
   ruleLabel: String,
   ruleTag: String,
   ruleHours: String,
+  tags: List<TagConfig>,
   onRuleLabelChange: (String) -> Unit,
   onRuleTagChange: (String) -> Unit,
   onRuleHoursChange: (String) -> Unit,
   onAddRuleTracker: () -> Unit,
 ) {
+  var showTagPicker by remember { mutableStateOf(false) }
   SettingsCreateForm(
     title = "New rule tracker",
     supporting = "Auto-completes from focused time.",
     actionLabel = "Add rule",
     icon = Icons.Rounded.Timer,
-    enabled = ruleLabel.isNotBlank() && ruleTag.isNotBlank(),
+    enabled = ruleLabel.isNotBlank() && tags.any { it.name == ruleTag },
     onSubmit = onAddRuleTracker,
   ) {
     OutlinedTextField(
@@ -1873,11 +1881,10 @@ private fun SettingsAddRuleTrackerForm(
       modifier = Modifier.fillMaxWidth(),
     )
     Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
-      OutlinedTextField(
-        value = ruleTag,
-        onValueChange = onRuleTagChange,
-        label = { Text("Tag") },
-        singleLine = true,
+      TagPickerField(
+        selectedTag = ruleTag,
+        enabled = tags.isNotEmpty(),
+        onClick = { showTagPicker = true },
         modifier = Modifier.weight(1f),
       )
       OutlinedTextField(
@@ -1888,6 +1895,92 @@ private fun SettingsAddRuleTrackerForm(
         suffix = { Text("h") },
         modifier = Modifier.width(126.dp),
       )
+    }
+  }
+  if (showTagPicker) {
+    AlertDialog(
+      onDismissRequest = { showTagPicker = false },
+      title = { Text("Choose tag") },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          tags.forEach { tag ->
+            TagPickerOption(
+              tag = tag,
+              selected = tag.name == ruleTag,
+              onClick = {
+                onRuleTagChange(tag.name)
+                showTagPicker = false
+              },
+            )
+          }
+        }
+      },
+      confirmButton = {
+        TextButton(onClick = { showTagPicker = false }) {
+          Text("Done")
+        }
+      },
+    )
+  }
+}
+
+@Composable
+private fun TagPickerField(
+  selectedTag: String,
+  enabled: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Surface(
+    onClick = onClick,
+    enabled = enabled,
+    shape = RoundedCornerShape(16.dp),
+    color = MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    modifier = modifier.height(64.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 16.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+        Text("Tag", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+          selectedTag.ifBlank { "No tags" },
+          style = MaterialTheme.typography.titleMedium,
+          maxLines = 1,
+          overflow = TextOverflow.Ellipsis,
+        )
+      }
+      Icon(Icons.Rounded.ExpandMore, contentDescription = null)
+    }
+  }
+}
+
+@Composable
+private fun TagPickerOption(
+  tag: TagConfig,
+  selected: Boolean,
+  onClick: () -> Unit,
+) {
+  Surface(
+    onClick = onClick,
+    shape = RoundedCornerShape(16.dp),
+    color = if (selected) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = if (selected) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column {
+        Text(tag.name, style = MaterialTheme.typography.titleMedium)
+        Text("${tag.multiplier.formatThree()}x multiplier", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      if (selected) Icon(Icons.Rounded.CheckCircle, contentDescription = null)
     }
   }
 }
@@ -1990,6 +2083,48 @@ private fun SettingsDataActionRow(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
+private fun ThemeModePicker(
+  selected: ThemeMode,
+  onSelected: (ThemeMode) -> Unit,
+) {
+  Row(
+    modifier =
+      Modifier
+        .background(MaterialTheme.colorScheme.surfaceContainerHigh, CircleShape)
+        .padding(4.dp),
+    horizontalArrangement = Arrangement.spacedBy(2.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    ThemeMode.entries.forEach { mode ->
+      val checked = selected == mode
+      IconToggleButton(
+        checked = checked,
+        onCheckedChange = { onSelected(mode) },
+        modifier = Modifier.size(44.dp),
+        shape = if (checked) CircleShape else RoundedCornerShape(16.dp),
+        colors =
+          IconButtonDefaults.iconToggleButtonColors(
+            checkedContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+            checkedContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+            containerColor = Color.Transparent,
+            contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+          ),
+      ) {
+        Icon(themeModeIcon(mode), contentDescription = mode.label)
+      }
+    }
+  }
+}
+
+private fun themeModeIcon(mode: ThemeMode): ImageVector =
+  when (mode) {
+    ThemeMode.System -> Icons.Rounded.BrightnessAuto
+    ThemeMode.Dark -> Icons.Rounded.DarkMode
+    ThemeMode.Light -> Icons.Rounded.LightMode
+  }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun SettingsScreen(
   state: FocusWellUiState,
   onExportJson: () -> String,
@@ -2000,6 +2135,8 @@ private fun SettingsScreen(
   onAddBooleanTracker: (String) -> Unit,
   onAddRuleTracker: (String, String, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
+  themeMode: ThemeMode,
+  onThemeModeChange: (ThemeMode) -> Unit,
 ) {
   val context = LocalContext.current
   var confirmClear by remember { mutableStateOf(false) }
@@ -2030,11 +2167,29 @@ private fun SettingsScreen(
   var ruleLabel by remember { mutableStateOf("") }
   var ruleTag by remember { mutableStateOf("math") }
   var ruleHours by remember { mutableStateOf("3") }
+  val activeTags = state.tags.filter { it.archivedAt == null }
+  LaunchedEffect(activeTags.map { it.name }) {
+    if (activeTags.none { it.name == ruleTag }) {
+      ruleTag = activeTags.firstOrNull()?.name.orEmpty()
+    }
+  }
   LazyColumn(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
   ) {
     item { Text("Settings", style = MaterialTheme.typography.headlineLarge) }
+    item {
+      CalmPanel {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text("Theme", style = MaterialTheme.typography.titleLarge)
+          ThemeModePicker(selected = themeMode, onSelected = onThemeModeChange)
+        }
+      }
+    }
     item {
       CalmPanel {
         Text("Rules", style = MaterialTheme.typography.headlineSmall)
@@ -2105,6 +2260,7 @@ private fun SettingsScreen(
           ruleLabel = ruleLabel,
           ruleTag = ruleTag,
           ruleHours = ruleHours,
+          tags = activeTags,
           onRuleLabelChange = { ruleLabel = it },
           onRuleTagChange = { ruleTag = it },
           onRuleHoursChange = { ruleHours = it },
@@ -2428,7 +2584,43 @@ private fun SectionHeader(title: String, subtitle: String? = null) {
 }
 
 @Composable
-private fun DestinationIcon(destination: Destination, selected: Boolean) {
+private fun FocusWellNavigationBar(
+  selected: Destination,
+  onDestination: (Destination) -> Unit,
+) {
+  val colors = MaterialTheme.colorScheme
+  ShortNavigationBar(
+    containerColor = colors.surfaceContainer,
+    contentColor = colors.onSurfaceVariant,
+  ) {
+    Destination.entries.forEach { destination ->
+      ShortNavigationBarItem(
+        selected = selected == destination,
+        onClick = { onDestination(destination) },
+        icon = { DestinationIcon(destination = destination) },
+        label = {
+          Text(
+            destination.label,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        },
+        colors =
+          ShortNavigationBarItemDefaults.colors(
+            selectedIconColor = colors.onSecondaryContainer,
+            selectedTextColor = colors.secondary,
+            selectedIndicatorColor = colors.secondaryContainer,
+            unselectedIconColor = colors.onSurfaceVariant,
+            unselectedTextColor = colors.onSurfaceVariant,
+          ),
+      )
+    }
+  }
+}
+
+@Composable
+private fun DestinationIcon(destination: Destination) {
   val icon =
     when (destination) {
       Destination.Today -> Icons.Rounded.Today
@@ -2439,7 +2631,6 @@ private fun DestinationIcon(destination: Destination, selected: Boolean) {
   Icon(
     imageVector = icon,
     contentDescription = null,
-    tint = if (selected) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
   )
 }
 
@@ -2558,6 +2749,8 @@ private fun MainScreenPreview() {
       onAddBooleanTracker = {},
       onAddRuleTracker = { _, _, _ -> },
       onArchiveTracker = {},
+      themeMode = ThemeMode.System,
+      onThemeModeChange = {},
     )
   }
 }
