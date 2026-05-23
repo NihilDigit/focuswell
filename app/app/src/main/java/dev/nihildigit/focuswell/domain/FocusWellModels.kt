@@ -101,7 +101,6 @@ data class FocusWellUiState(
   val focusRecords: List<FocusRecord> = emptyList(),
   val leisureRecords: List<LeisureRecord> = emptyList(),
   val ledger: List<LedgerEntry> = emptyList(),
-  val exportText: String? = null,
   val importError: String? = null,
 )
 

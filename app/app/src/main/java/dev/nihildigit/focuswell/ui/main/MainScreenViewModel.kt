@@ -8,10 +8,10 @@ import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.reminders.ReminderClient
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,7 +19,6 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val repository = FocusWellRepository(application)
   private val reminders = ReminderClient(application)
   private val destination = MutableStateFlow(Destination.Today)
-  private val exportText = MutableStateFlow<String?>(null)
   private val importError = MutableStateFlow<String?>(null)
   private var focusReminderSessionId: String? = null
   private var leisureReminderSessionId: String? = null
@@ -31,14 +30,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   }
 
   val uiState: StateFlow<FocusWellUiState> =
-    combine(repository.state, destination, exportText, importError) {
+    combine(repository.state, destination, importError) {
         state,
         selectedDestination,
-        export,
         importError ->
         state.copy(
           destination = selectedDestination,
-          exportText = export,
           importError = importError,
         )
       }
@@ -97,13 +94,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun endDepleted() = repository.endDepleted()
 
-  fun exportJson() {
-    exportText.value = repository.exportJson()
-  }
-
-  fun dismissExport() {
-    exportText.value = null
-  }
+  fun exportJson(): String = repository.exportJson()
 
   fun importJson(raw: String) {
     importError.value =
@@ -121,7 +112,6 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun clearAllData() {
     repository.clearAllData()
     reminders.rotateIdentity()
-    exportText.value = null
   }
 
   fun deleteFocusRecord(id: String) = repository.deleteFocusRecord(id)

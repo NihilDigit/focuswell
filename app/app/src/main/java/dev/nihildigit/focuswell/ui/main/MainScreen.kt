@@ -1,5 +1,7 @@
 package dev.nihildigit.focuswell.ui.main
 
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
@@ -156,7 +158,6 @@ fun MainScreen(
     onEndWindDown = viewModel::endWindDown,
     onEndDepleted = viewModel::endDepleted,
     onExportJson = viewModel::exportJson,
-    onDismissExport = viewModel::dismissExport,
     onImportJson = viewModel::importJson,
     onDismissImportError = viewModel::dismissImportError,
     onClearAllData = viewModel::clearAllData,
@@ -188,8 +189,7 @@ internal fun MainScreen(
   onStartWindDown: () -> Unit,
   onEndWindDown: () -> Unit,
   onEndDepleted: () -> Unit,
-  onExportJson: () -> Unit,
-  onDismissExport: () -> Unit,
+  onExportJson: () -> String,
   onImportJson: (String) -> Unit,
   onDismissImportError: () -> Unit,
   onClearAllData: () -> Unit,
@@ -278,15 +278,6 @@ internal fun MainScreen(
         showFocusSheet = false
         onStartFocus(task, type, tagId)
       },
-    )
-  }
-
-  state.exportText?.let { export ->
-    AlertDialog(
-      onDismissRequest = onDismissExport,
-      title = { Text("Export JSON") },
-      text = { Text(export, maxLines = 12) },
-      confirmButton = { TextButton(onClick = onDismissExport) { Text("Done") } },
     )
   }
 
@@ -1914,7 +1905,7 @@ private fun SettingsDataActionRow(
 @Composable
 private fun SettingsScreen(
   state: FocusWellUiState,
-  onExportJson: () -> Unit,
+  onExportJson: () -> String,
   onImportJson: (String) -> Unit,
   onClearAllData: () -> Unit,
   onAddTag: (String, Double) -> Unit,
@@ -1923,10 +1914,29 @@ private fun SettingsScreen(
   onAddRuleTracker: (String, String, Double) -> Unit,
   onArchiveTracker: (String) -> Unit,
 ) {
+  val context = LocalContext.current
   var confirmClear by remember { mutableStateOf(false) }
-  var showImport by remember { mutableStateOf(false) }
-  var importText by remember { mutableStateOf("") }
-  val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  var pendingExportText by remember { mutableStateOf<String?>(null) }
+  val exportLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
+      val exportText = pendingExportText
+      pendingExportText = null
+      if (uri != null && exportText != null) {
+        context.contentResolver.openOutputStream(uri)?.use { stream ->
+          stream.write(exportText.toByteArray(Charsets.UTF_8))
+        }
+      }
+    }
+  val importLauncher =
+    rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+      if (uri != null) {
+        val imported =
+          context.contentResolver.openInputStream(uri)?.use { stream ->
+            stream.bufferedReader().use { it.readText() }
+          }
+        imported?.let(onImportJson)
+      }
+    }
   var tagName by remember { mutableStateOf("") }
   var tagMultiplier by remember { mutableStateOf("1.0") }
   var trackerLabel by remember { mutableStateOf("") }
@@ -2008,17 +2018,20 @@ private fun SettingsScreen(
         Text("Data", style = MaterialTheme.typography.headlineSmall)
         SettingsDataActionRow(
           title = "Export",
-          supporting = "Copy a complete JSON backup.",
+          supporting = "Save a complete JSON backup.",
           icon = Icons.Rounded.Download,
           actionLabel = "Export",
-          onClick = onExportJson,
+          onClick = {
+            pendingExportText = onExportJson()
+            exportLauncher.launch("focuswell-export.json")
+          },
         )
         SettingsDataActionRow(
           title = "Import",
           supporting = "Restore from a JSON export.",
           icon = Icons.Rounded.Upload,
           actionLabel = "Import",
-          onClick = { showImport = true },
+          onClick = { importLauncher.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) },
         )
         SettingsDataActionRow(
           title = "Clear all data",
@@ -2051,71 +2064,6 @@ private fun SettingsScreen(
     )
   }
 
-  if (showImport) {
-    ImportJsonSheet(
-      importText = importText,
-      onImportTextChange = { importText = it },
-      sheetState = importSheetState,
-      onDismiss = { showImport = false },
-      onImport = {
-        showImport = false
-        onImportJson(importText)
-        importText = ""
-      },
-    )
-  }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun ImportJsonSheet(
-  importText: String,
-  onImportTextChange: (String) -> Unit,
-  sheetState: androidx.compose.material3.SheetState,
-  onDismiss: () -> Unit,
-  onImport: () -> Unit,
-) {
-  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
-    Column(
-      modifier =
-        Modifier
-          .padding(horizontal = 20.dp)
-          .imePadding()
-          .verticalScroll(rememberScrollState()),
-      verticalArrangement = Arrangement.spacedBy(16.dp),
-    ) {
-      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("Import JSON", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-        Text(
-          "Paste a FocusWell export. Existing local data will be replaced.",
-          style = MaterialTheme.typography.bodyMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
-      }
-      OutlinedTextField(
-        value = importText,
-        onValueChange = onImportTextChange,
-        minLines = 7,
-        maxLines = 12,
-        label = { Text("FocusWell export") },
-        modifier = Modifier.fillMaxWidth(),
-      )
-      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
-        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
-          Text("Cancel")
-        }
-        Button(
-          enabled = importText.isNotBlank(),
-          onClick = onImport,
-          modifier = Modifier.weight(1f).height(54.dp),
-          shape = ControlEndShape,
-        ) {
-          Text("Import")
-        }
-      }
-      Spacer(Modifier.height(16.dp))
-    }
-  }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2485,8 +2433,7 @@ private fun MainScreenPreview() {
       onStartWindDown = {},
       onEndWindDown = {},
       onEndDepleted = {},
-      onExportJson = {},
-      onDismissExport = {},
+      onExportJson = { "" },
       onImportJson = {},
       onDismissImportError = {},
       onClearAllData = {},
