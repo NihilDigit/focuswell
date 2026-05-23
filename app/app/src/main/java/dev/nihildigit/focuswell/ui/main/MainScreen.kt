@@ -58,9 +58,6 @@ import androidx.compose.material3.NavigationBarItem
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -316,13 +313,16 @@ private fun TodayScreen(
   onEndWindDown: () -> Unit,
   onEndDepleted: () -> Unit,
 ) {
+  val activeMode = state.activeMode
   LazyColumn(
     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
-    item { ReserveHeader(state.reserveMinutes) }
+    if (activeMode == ActiveMode.None) {
+      item { ReserveHeader(state.reserveMinutes) }
+    }
     item {
-      when (val mode = state.activeMode) {
+      when (val mode = activeMode) {
         ActiveMode.None ->
           IdleTimerSurface(
             onStartFocusClick = onStartFocusClick,
@@ -353,11 +353,45 @@ private fun TodayScreen(
           DepletedSurface(onEndLeisure = onEndDepleted, onStartWindDown = onStartWindDown)
       }
     }
+    if (activeMode != ActiveMode.None) {
+      item { CompactReserveHeader(state.reserveMinutes) }
+    }
     item {
       TrackerGrid(
         trackers = state.trackers.filter { it.archivedAt == null },
         onToggleTracker = onToggleTracker,
         onSetWakeTime = onSetWakeTime,
+      )
+    }
+  }
+}
+
+@Composable
+private fun CompactReserveHeader(reserveMinutes: Double) {
+  val label =
+    when {
+      reserveMinutes < 60 -> "${reserveMinutes.roundToInt()} min available"
+      reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h available"
+      else -> "Reserve is sufficient"
+    }
+  Surface(
+    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.58f),
+    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    shape = RoundedCornerShape(topStart = 24.dp, topEnd = 30.dp, bottomEnd = 22.dp, bottomStart = 28.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 18.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.weight(1f)) {
+        Text("Leisure reserve", style = MaterialTheme.typography.labelLarge)
+        Text(label, style = MaterialTheme.typography.titleMedium)
+      }
+      Text(
+        "${reserveMinutes.roundToInt()}m",
+        style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace),
       )
     }
   }
@@ -625,6 +659,7 @@ private fun IdleTimerSurface(
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun ActiveFocusSurface(
   focus: ActiveMode.Focus,
@@ -634,6 +669,7 @@ private fun ActiveFocusSurface(
 ) {
   var showEnd by remember { mutableStateOf(false) }
   var result by remember { mutableStateOf("As planned") }
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val now = rememberNow(paused = focus.paused)
   val elapsedEnd = if (focus.paused && focus.pausedAt != null) focus.pausedAt else now
   val elapsed =
@@ -702,37 +738,119 @@ private fun ActiveFocusSurface(
   }
 
   if (showEnd) {
-    AlertDialog(
-      onDismissRequest = { showEnd = false },
-      title = { Text("What came out of this?") },
-      text = {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf("As planned", "Partial", "Drifted", "Interrupted").forEach { option ->
-              FilterChip(selected = result == option, onClick = { result = option }, label = { Text(option) })
-            }
-          }
-          OutlinedTextField(
-            value = result,
-            onValueChange = { result = it },
-            label = { Text("Result") },
-            minLines = 2,
-          )
-        }
+    FocusResultSheet(
+      result = result,
+      onResultChange = { result = it },
+      sheetState = sheetState,
+      onDismiss = { showEnd = false },
+      onSave = {
+        showEnd = false
+        onEndFocus(result)
       },
-      confirmButton = {
-        TextButton(
-          enabled = result.isNotBlank(),
-          onClick = {
-            showEnd = false
-            onEndFocus(result)
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FocusResultSheet(
+  result: String,
+  onResultChange: (String) -> Unit,
+  sheetState: androidx.compose.material3.SheetState,
+  onDismiss: () -> Unit,
+  onSave: () -> Unit,
+) {
+  val options = listOf("As planned", "Partial", "Drifted", "Interrupted")
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    Column(
+      modifier =
+        Modifier
+          .padding(horizontal = 20.dp)
+          .imePadding()
+          .verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("What came out of this?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "Pick the closest outcome. Add detail only if it will help later.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      options.chunked(2).forEach { rowOptions ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+          rowOptions.forEach { option ->
+            ResultChoice(
+              label = option,
+              selected = result == option,
+              onClick = { onResultChange(option) },
+              modifier = Modifier.weight(1f),
+            )
           }
+          if (rowOptions.size == 1) {
+            Spacer(Modifier.weight(1f))
+          }
+        }
+      }
+      OutlinedTextField(
+        value = result,
+        onValueChange = onResultChange,
+        label = { Text("Result note") },
+        minLines = 2,
+        maxLines = 4,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Cancel")
+        }
+        Button(
+          enabled = result.isNotBlank(),
+          onClick = onSave,
+          modifier = Modifier.weight(1f).height(54.dp),
+          shape = ControlEndShape,
         ) {
           Text("Save result")
         }
-      },
-      dismissButton = { TextButton(onClick = { showEnd = false }) { Text("Cancel") } },
-    )
+      }
+      Spacer(Modifier.height(16.dp))
+    }
+  }
+}
+
+@Composable
+private fun ResultChoice(
+  label: String,
+  selected: Boolean,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  val tone = MaterialTheme.colorScheme.primary
+  Surface(
+    onClick = onClick,
+    color = if (selected) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceContainer,
+    contentColor = if (selected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(20.dp),
+    modifier =
+      modifier
+        .height(58.dp)
+        .border(
+          width = 1.dp,
+          color = if (selected) tone.copy(alpha = 0.34f) else MaterialTheme.colorScheme.outlineVariant,
+          shape = RoundedCornerShape(20.dp),
+        ),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 14.dp),
+      horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      if (selected) {
+        Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(20.dp), tint = tone)
+      }
+      Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
   }
 }
 
@@ -749,7 +867,6 @@ private fun ActiveLeisureSurface(
   var notified5 by remember(leisure.startedAt) { mutableStateOf(false) }
   var notified1 by remember(leisure.startedAt) { mutableStateOf(false) }
   var notifiedDepleted by remember(leisure.startedAt) { mutableStateOf(false) }
-  val elapsed = Duration.between(leisure.startedAt, now).coerceAtLeast(Duration.ZERO)
   val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
   val remaining = Duration.ofSeconds((liveRemainingMinutes * 60).roundToInt().toLong())
@@ -783,27 +900,12 @@ private fun ActiveLeisureSurface(
   }
   val progress = if (reserveMinutes <= 0.0) 0f else (liveRemainingMinutes / reserveMinutes).toFloat().coerceIn(0f, 1f)
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    TimerOrganism(
-      label = "Remaining",
-      time = formatDuration(remaining),
-      tone = MaterialTheme.colorScheme.tertiary,
+    LeisureTimerSurface(
+      remaining = formatDuration(remaining),
       progress = progress,
       supporting = lowBalanceText(liveRemainingMinutes),
+      sleepProtection = isSleepProtection,
     )
-    Surface(
-      color = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.55f),
-      contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
-      shape = RoundedCornerShape(topStart = 22.dp, topEnd = 28.dp, bottomEnd = 18.dp, bottomStart = 22.dp),
-      modifier = Modifier.fillMaxWidth(),
-    ) {
-      Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        TimerMetricRow(label = "Elapsed", value = formatDuration(elapsed))
-        TimerMetricRow(label = "Reserve spent", value = "${spent.roundToInt()} min")
-        if (isSleepProtection) {
-          StatusBadge("Sleep protection 2x", MaterialTheme.colorScheme.tertiary)
-        }
-      }
-    }
     Button(onClick = onEndLeisure, modifier = Modifier.fillMaxWidth().height(56.dp), shape = FocusActionShape) {
       Icon(Icons.Rounded.Stop, contentDescription = null)
       Spacer(Modifier.width(8.dp))
@@ -813,14 +915,118 @@ private fun ActiveLeisureSurface(
 }
 
 @Composable
-private fun TimerMetricRow(label: String, value: String) {
-  Row(
+private fun LeisureTimerSurface(
+  remaining: String,
+  progress: Float,
+  supporting: String?,
+  sleepProtection: Boolean,
+) {
+  val tone = MaterialTheme.colorScheme.secondary
+  val container = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.52f)
+  val content = MaterialTheme.colorScheme.onSecondaryContainer
+  val surfaceVeil = MaterialTheme.colorScheme.surface.copy(alpha = 0.30f)
+  Surface(
+    color = container,
+    contentColor = content,
+    shape = ActiveTimerShape,
     modifier = Modifier.fillMaxWidth(),
-    horizontalArrangement = Arrangement.SpaceBetween,
-    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Text(label, color = MaterialTheme.colorScheme.onSurfaceVariant)
-    Text(value, style = MaterialTheme.typography.titleMedium.copy(fontFamily = FontFamily.Monospace))
+    Box {
+      Canvas(modifier = Modifier.matchParentSize()) {
+        drawArc(
+          color = tone.copy(alpha = 0.10f),
+          startAngle = 205f,
+          sweepAngle = 108f,
+          useCenter = false,
+          topLeft = Offset(size.width * 0.64f, -size.height * 0.16f),
+          size = Size(size.width * 0.50f, size.width * 0.50f),
+          style = Stroke(width = 18.dp.toPx(), cap = StrokeCap.Round),
+        )
+        drawArc(
+          color = surfaceVeil,
+          startAngle = 196f,
+          sweepAngle = 88f,
+          useCenter = false,
+          topLeft = Offset(-size.width * 0.18f, size.height * 0.62f),
+          size = Size(size.width * 0.58f, size.width * 0.58f),
+          style = Stroke(width = 12.dp.toPx(), cap = StrokeCap.Round),
+        )
+      }
+      Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          StatusBadge("Leisure running", tone)
+          if (sleepProtection) {
+            StatusBadge("Sleep protection 2x", tone)
+          }
+        }
+        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("Remaining", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(
+            remaining,
+            style =
+              (if (remaining.length > 5) MaterialTheme.typography.displayMedium else MaterialTheme.typography.displayLarge)
+                .copy(fontFamily = FontFamily.Monospace),
+            maxLines = 1,
+            softWrap = false,
+            overflow = TextOverflow.Clip,
+            textAlign = TextAlign.Center,
+          )
+          supporting?.let {
+            Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        }
+        ExpressiveProgressIndicator(progress = progress, tone = tone)
+      }
+    }
+  }
+}
+
+@Composable
+private fun ExpressiveProgressIndicator(progress: Float, tone: Color, modifier: Modifier = Modifier) {
+  val actualProgress = progress.coerceIn(0f, 1f)
+  val trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
+  val stopColor = MaterialTheme.colorScheme.surface
+  Canvas(modifier = modifier.fillMaxWidth().height(28.dp)) {
+    val stroke = 8.dp.toPx()
+    val centerY = size.height / 2f
+    val startX = stroke / 2f
+    val endX = size.width - stroke / 2f
+    val trackWidth = endX - startX
+    val activeEndX = startX + trackWidth * actualProgress
+    drawLine(
+      color = trackColor,
+      start = Offset(startX, centerY),
+      end = Offset(endX, centerY),
+      strokeWidth = stroke,
+      cap = StrokeCap.Round,
+    )
+    if (actualProgress > 0.01f) {
+      val wave = Path().apply {
+        moveTo(startX, centerY)
+        var x = startX
+        while (x <= activeEndX) {
+          val normalized = (x - startX) / trackWidth
+          val y = centerY + sin(normalized * PI.toFloat() * 8f) * 3.dp.toPx()
+          lineTo(x, y)
+          x += 6.dp.toPx()
+        }
+        lineTo(activeEndX, centerY)
+      }
+      drawPath(wave, color = tone, style = Stroke(width = stroke, cap = StrokeCap.Round))
+    }
+    drawCircle(color = tone, radius = 4.dp.toPx(), center = Offset(endX, centerY))
+    drawCircle(color = stopColor, radius = 2.dp.toPx(), center = Offset(endX, centerY))
+    if (actualProgress in 0.02f..0.98f) {
+      drawCircle(color = tone, radius = 5.dp.toPx(), center = Offset(activeEndX, centerY))
+    }
   }
 }
 
@@ -1294,19 +1500,71 @@ private fun SettingsListRow(
   supporting: String,
   onArchive: () -> Unit,
 ) {
-  Row(
-    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
-    verticalAlignment = Alignment.CenterVertically,
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
   ) {
-    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-      Text(title, style = MaterialTheme.typography.titleMedium)
-      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = 72.dp).padding(horizontal = 16.dp, vertical = 10.dp),
+      verticalAlignment = Alignment.CenterVertically,
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+    ) {
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      FilledTonalButton(onClick = onArchive, modifier = Modifier.width(132.dp).height(44.dp), shape = RoundedCornerShape(22.dp)) {
+        Icon(Icons.Rounded.Archive, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Archive", maxLines = 1)
+      }
     }
-    TextButton(onClick = onArchive, modifier = Modifier.width(132.dp)) {
-      Icon(Icons.Rounded.Archive, contentDescription = null)
-      Spacer(Modifier.width(8.dp))
-      Text("Archive")
+  }
+}
+
+@Composable
+private fun SettingsAddTagForm(
+  tagName: String,
+  tagMultiplier: String,
+  onTagNameChange: (String) -> Unit,
+  onTagMultiplierChange: (String) -> Unit,
+  onAddTag: () -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+          value = tagName,
+          onValueChange = onTagNameChange,
+          label = { Text("Tag") },
+          singleLine = true,
+          modifier = Modifier.weight(1f),
+        )
+        OutlinedTextField(
+          value = tagMultiplier,
+          onValueChange = onTagMultiplierChange,
+          label = { Text("x") },
+          singleLine = true,
+          modifier = Modifier.width(104.dp),
+        )
+      }
+      FilledTonalButton(
+        onClick = onAddTag,
+        enabled = tagName.isNotBlank(),
+        modifier = Modifier.align(Alignment.End).height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+      ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Add tag")
+      }
     }
   }
 }
@@ -1355,21 +1613,18 @@ private fun SettingsScreen(
             onArchive = { onArchiveTag(it.id) },
           )
         }
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-          OutlinedTextField(value = tagName, onValueChange = { tagName = it }, label = { Text("Tag") }, modifier = Modifier.weight(1f))
-          OutlinedTextField(value = tagMultiplier, onValueChange = { tagMultiplier = it }, label = { Text("x") }, modifier = Modifier.width(88.dp))
-        }
-        TextButton(
-          onClick = {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        SettingsAddTagForm(
+          tagName = tagName,
+          tagMultiplier = tagMultiplier,
+          onTagNameChange = { tagName = it },
+          onTagMultiplierChange = { tagMultiplier = it },
+          onAddTag = {
             onAddTag(tagName, tagMultiplier.toDoubleOrNull() ?: 1.0)
             tagName = ""
             tagMultiplier = "1.0"
-          }
-        ) {
-          Icon(Icons.Rounded.Add, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Add tag")
-        }
+          },
+        )
       }
     }
     item {
@@ -1522,17 +1777,7 @@ private fun StartFocusSheet(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
       )
-      SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
-        SessionType.entries.forEachIndexed { index, sessionType ->
-          SegmentedButton(
-            selected = type == sessionType,
-            onClick = { type = sessionType },
-            shape = SegmentedButtonDefaults.itemShape(index, SessionType.entries.size),
-          ) {
-            Text(sessionType.label)
-          }
-        }
-      }
+      ConnectedSessionTypeGroup(selected = type, onSelected = { type = it })
       FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
           selected = tagId == null,
@@ -1570,6 +1815,53 @@ private fun StartFocusSheet(
         Text("Start")
       }
       Spacer(Modifier.height(16.dp))
+    }
+  }
+}
+
+@Composable
+private fun ConnectedSessionTypeGroup(
+  selected: SessionType,
+  onSelected: (SessionType) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(28.dp),
+    modifier = modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(4.dp),
+      horizontalArrangement = Arrangement.spacedBy(4.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      SessionType.entries.forEach { type ->
+        val isSelected = selected == type
+        Surface(
+          onClick = { onSelected(type) },
+          color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else Color.Transparent,
+          contentColor = if (isSelected) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant,
+          shape = RoundedCornerShape(if (isSelected) 24.dp else 20.dp),
+          modifier =
+            Modifier
+              .weight(if (isSelected) 1.14f else 1f)
+              .height(52.dp),
+        ) {
+          Row(
+            modifier = Modifier.padding(horizontal = 14.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
+            verticalAlignment = Alignment.CenterVertically,
+          ) {
+            Icon(
+              imageVector = if (type == SessionType.Input) Icons.Rounded.Download else Icons.Rounded.Upload,
+              contentDescription = null,
+              modifier = Modifier.size(20.dp),
+            )
+            Text(type.label, style = MaterialTheme.typography.labelLarge, maxLines = 1)
+          }
+        }
+      }
     }
   }
 }
