@@ -1770,6 +1770,94 @@ private fun SettingsAddTagForm(
 }
 
 @Composable
+private fun SettingsAddBooleanTrackerForm(
+  trackerLabel: String,
+  onTrackerLabelChange: (String) -> Unit,
+  onAddTracker: () -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      OutlinedTextField(
+        value = trackerLabel,
+        onValueChange = onTrackerLabelChange,
+        label = { Text("Boolean tracker") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      FilledTonalButton(
+        onClick = onAddTracker,
+        enabled = trackerLabel.isNotBlank(),
+        modifier = Modifier.align(Alignment.End).height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+      ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Add boolean tracker")
+      }
+    }
+  }
+}
+
+@Composable
+private fun SettingsAddRuleTrackerForm(
+  ruleLabel: String,
+  ruleTag: String,
+  ruleHours: String,
+  onRuleLabelChange: (String) -> Unit,
+  onRuleTagChange: (String) -> Unit,
+  onRuleHoursChange: (String) -> Unit,
+  onAddRuleTracker: () -> Unit,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+      OutlinedTextField(
+        value = ruleLabel,
+        onValueChange = onRuleLabelChange,
+        label = { Text("Rule label") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
+        OutlinedTextField(
+          value = ruleTag,
+          onValueChange = onRuleTagChange,
+          label = { Text("Tag") },
+          singleLine = true,
+          modifier = Modifier.weight(1f),
+        )
+        OutlinedTextField(
+          value = ruleHours,
+          onValueChange = onRuleHoursChange,
+          label = { Text("Hours") },
+          singleLine = true,
+          modifier = Modifier.width(112.dp),
+        )
+      }
+      FilledTonalButton(
+        onClick = onAddRuleTracker,
+        enabled = ruleLabel.isNotBlank() && ruleTag.isNotBlank(),
+        modifier = Modifier.align(Alignment.End).height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+      ) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(20.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Add rule tracker")
+      }
+    }
+  }
+}
+
+@Composable
 private fun SettingsScreen(
   state: FocusWellUiState,
   onExportJson: () -> Unit,
@@ -1837,42 +1925,27 @@ private fun SettingsScreen(
             onArchive = { onArchiveTracker(it.id) },
           )
         }
-        OutlinedTextField(
-          value = trackerLabel,
-          onValueChange = { trackerLabel = it },
-          label = { Text("Boolean tracker") },
-          modifier = Modifier.fillMaxWidth(),
-        )
-        TextButton(
-          onClick = {
+        HorizontalDivider(modifier = Modifier.padding(vertical = 4.dp), color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.6f))
+        SettingsAddBooleanTrackerForm(
+          trackerLabel = trackerLabel,
+          onTrackerLabelChange = { trackerLabel = it },
+          onAddTracker = {
             onAddBooleanTracker(trackerLabel)
             trackerLabel = ""
-          }
-        ) {
-          Icon(Icons.Rounded.Add, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Add boolean tracker")
-        }
-        OutlinedTextField(
-          value = ruleLabel,
-          onValueChange = { ruleLabel = it },
-          label = { Text("Rule label") },
-          modifier = Modifier.fillMaxWidth(),
+          },
         )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-          OutlinedTextField(value = ruleTag, onValueChange = { ruleTag = it }, label = { Text("Tag") }, modifier = Modifier.weight(1f))
-          OutlinedTextField(value = ruleHours, onValueChange = { ruleHours = it }, label = { Text("Hours") }, modifier = Modifier.width(112.dp))
-        }
-        TextButton(
-          onClick = {
+        SettingsAddRuleTrackerForm(
+          ruleLabel = ruleLabel,
+          ruleTag = ruleTag,
+          ruleHours = ruleHours,
+          onRuleLabelChange = { ruleLabel = it },
+          onRuleTagChange = { ruleTag = it },
+          onRuleHoursChange = { ruleHours = it },
+          onAddRuleTracker = {
             onAddRuleTracker(ruleLabel, ruleTag, (ruleHours.toDoubleOrNull() ?: 3.0) * 60.0)
             ruleLabel = ""
-          }
-        ) {
-          Icon(Icons.Rounded.Add, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Add rule tracker")
-        }
+          },
+        )
       }
     }
     item {
