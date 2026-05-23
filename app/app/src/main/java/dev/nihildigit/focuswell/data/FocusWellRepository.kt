@@ -1,6 +1,7 @@
 package dev.nihildigit.focuswell.data
 
 import android.content.Context
+import dev.nihildigit.focuswell.data.db.RoomFocusWellStore
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusWellUiState
@@ -22,8 +23,12 @@ import java.time.Instant
 import java.time.LocalDate
 import java.time.LocalTime
 
-class FocusWellRepository(context: Context) {
-  private val prefs = context.getSharedPreferences("focuswell-store", Context.MODE_PRIVATE)
+class FocusWellRepository internal constructor(
+  private val store: FocusWellStore,
+  private val now: () -> Instant = Instant::now,
+) {
+  constructor(context: Context) : this(RoomFocusWellStore(context))
+
   private val _state = MutableStateFlow(loadState())
   val state: StateFlow<FocusWellUiState> = _state
 
@@ -84,7 +89,7 @@ class FocusWellRepository(context: Context) {
 
   fun archiveTag(id: String) {
     mutate { state ->
-      state.copy(tags = state.tags.map { if (it.id == id) it.copy(archivedAt = Instant.now()) else it })
+      state.copy(tags = state.tags.map { if (it.id == id) it.copy(archivedAt = now()) else it })
     }
   }
 
@@ -126,14 +131,14 @@ class FocusWellRepository(context: Context) {
   fun archiveTracker(id: String) {
     mutate { state ->
       state.copy(
-        trackers = state.trackers.map { if (it.id == id) it.copy(archivedAt = Instant.now()) else it }
+        trackers = state.trackers.map { if (it.id == id) it.copy(archivedAt = now()) else it }
       )
     }
   }
 
   fun startFocus(task: String, type: SessionType, tagId: String?): ActiveMode.Focus? {
     val trimmed = task.trim().ifBlank { "Focus session" }
-    val now = Instant.now()
+    val now = now()
     val sessionId = "focus-${now.toEpochMilli()}"
     var activeFocus: ActiveMode.Focus? = null
     mutate { state ->
@@ -157,7 +162,7 @@ class FocusWellRepository(context: Context) {
   fun pauseFocus() {
     mutate { state ->
       val focus = state.activeMode as? ActiveMode.Focus ?: return@mutate state
-      if (focus.paused) state else state.copy(activeMode = focus.copy(paused = true, pausedAt = Instant.now()))
+      if (focus.paused) state else state.copy(activeMode = focus.copy(paused = true, pausedAt = now()))
     }
   }
 
@@ -166,7 +171,7 @@ class FocusWellRepository(context: Context) {
       val focus = state.activeMode as? ActiveMode.Focus ?: return@mutate state
       val pausedAt = focus.pausedAt
       val extraPaused =
-        if (pausedAt == null) 0L else Duration.between(pausedAt, Instant.now()).toMillis().coerceAtLeast(0)
+        if (pausedAt == null) 0L else Duration.between(pausedAt, now()).toMillis().coerceAtLeast(0)
       state.copy(
         activeMode =
           focus.copy(
@@ -182,7 +187,7 @@ class FocusWellRepository(context: Context) {
     var reminderSessionId: String? = null
     mutate { state ->
       val focus = state.activeMode as? ActiveMode.Focus ?: return@mutate state
-      val now = Instant.now()
+      val now = now()
       reminderSessionId = focus.reminderSessionId
       val currentPauseMillis =
         if (focus.paused && focus.pausedAt != null) {
@@ -235,7 +240,7 @@ class FocusWellRepository(context: Context) {
   }
 
   fun startLeisure(): ActiveMode.Leisure? {
-    val now = Instant.now()
+    val now = now()
     val sessionId = "leisure-${now.toEpochMilli()}"
     var activeLeisure: ActiveMode.Leisure? = null
     mutate { state ->
@@ -253,7 +258,7 @@ class FocusWellRepository(context: Context) {
     var reminderSessionId: String? = null
     mutate { state ->
       val leisure = state.activeMode as? ActiveMode.Leisure ?: return@mutate state
-      val now = Instant.now()
+      val now = now()
       reminderSessionId = leisure.reminderSessionId
       val rawCost = TimeAccounting.leisureCostMinutes(leisure.startedAt, now)
       val depleted = rawCost >= state.reserveMinutes
@@ -293,7 +298,7 @@ class FocusWellRepository(context: Context) {
   }
 
   fun startWindDown() {
-    mutate { it.copy(activeMode = ActiveMode.WindDown(startedAt = Instant.now())) }
+    mutate { it.copy(activeMode = ActiveMode.WindDown(startedAt = now())) }
   }
 
   fun endWindDown() {
@@ -305,8 +310,10 @@ class FocusWellRepository(context: Context) {
   }
 
   fun clearAllData() {
-    prefs.edit().clear().apply()
-    _state.value = seedState()
+    store.clear()
+    val seeded = seedState()
+    store.persistChange(previous = null, next = seeded)
+    _state.value = seeded
     ensureDailyGrants()
     rollDailyState()
   }
@@ -316,8 +323,9 @@ class FocusWellRepository(context: Context) {
   fun importJson(raw: String): Boolean {
     val imported = runCatching { jsonToState(JSONObject(raw)) }.getOrNull() ?: return false
     val normalized = imported.withLedgerBackedReserve()
+    store.clear()
+    store.persistChange(previous = null, next = normalized)
     _state.value = normalized
-    saveState(normalized)
     ensureDailyGrants()
     rollDailyState()
     return true
@@ -326,7 +334,7 @@ class FocusWellRepository(context: Context) {
   fun deleteFocusRecord(id: String) {
     mutate { state ->
       val record = state.focusRecords.firstOrNull { it.id == id && it.deletedAt == null } ?: return@mutate state
-      val now = Instant.now()
+      val now = now()
       val adjustment =
         LedgerEntry(
           id = "delete-$id-${now.toEpochMilli()}",
@@ -350,7 +358,7 @@ class FocusWellRepository(context: Context) {
       val safeMinutes = activeMinutes.coerceAtLeast(0.0)
       val newEarned = safeMinutes * record.typeRate * record.tagMultiplier
       val delta = newEarned - record.earnedMinutes
-      val now = Instant.now()
+      val now = now()
       val updated =
         record.copy(
           result = result.ifBlank { record.result },
@@ -377,7 +385,7 @@ class FocusWellRepository(context: Context) {
   fun deleteLeisureRecord(id: String) {
     mutate { state ->
       val record = state.leisureRecords.firstOrNull { it.id == id && it.deletedAt == null } ?: return@mutate state
-      val now = Instant.now()
+      val now = now()
       val adjustment =
         LedgerEntry(
           id = "delete-$id-${now.toEpochMilli()}",
@@ -395,7 +403,7 @@ class FocusWellRepository(context: Context) {
   }
 
   private fun ensureDailyGrants() {
-    val today = TimeAccounting.dailyDate(Instant.now())
+    val today = TimeAccounting.dailyDate(now())
     val start = runCatching { LocalDate.parse(_state.value.dailyDate) }.getOrDefault(today)
     val grantStart = if (start.isAfter(today)) today else start
     mutate { state ->
@@ -422,7 +430,7 @@ class FocusWellRepository(context: Context) {
 
   private fun rollDailyState() {
     mutate { state ->
-      val today = TimeAccounting.dailyDate(Instant.now()).toString()
+      val today = TimeAccounting.dailyDate(now()).toString()
       if (state.dailyDate == today) return@mutate state
       state.copy(
         dailyDate = today,
@@ -443,23 +451,20 @@ class FocusWellRepository(context: Context) {
       transform(current)
         .withComputedTrackers()
         .withLedgerBackedReserve()
-        .also { saveState(it) }
+        .also { store.persistChange(previous = current, next = it) }
     }
   }
 
   private fun loadState(): FocusWellUiState {
-    val raw = prefs.getString(KEY_STATE, null) ?: return seedState()
-    return runCatching { jsonToState(JSONObject(raw)) }.getOrElse { seedState() }
-  }
-
-  private fun saveState(state: FocusWellUiState) {
-    prefs.edit().putString(KEY_STATE, stateToJson(state).toString()).apply()
+    val stored = store.loadState()?.withComputedTrackers()?.withLedgerBackedReserve()
+    if (stored != null) return stored
+    return seedState().also { store.persistChange(previous = null, next = it) }
   }
 
   private fun seedState(): FocusWellUiState =
     FocusWellUiState(
       reserveMinutes = 0.0,
-      dailyDate = TimeAccounting.dailyDate(Instant.now()).toString(),
+      dailyDate = TimeAccounting.dailyDate(now()).toString(),
       tags = defaultTags,
       trackers = defaultTrackers,
       focusRecords = emptyList(),
@@ -486,7 +491,7 @@ class FocusWellRepository(context: Context) {
   private fun jsonToState(json: JSONObject): FocusWellUiState =
     FocusWellUiState(
       reserveMinutes = json.optDouble("reserveMinutes", 0.0),
-      dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(Instant.now()).toString()),
+      dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(now()).toString()),
       activeMode = jsonToActiveMode(json.optJSONObject("activeMode")),
       tags = json.optJSONArray("tags")?.mapObjects(::jsonToTag).orEmpty().ifEmpty { defaultTags },
       trackers =
@@ -715,9 +720,5 @@ class FocusWellRepository(context: Context) {
   private fun Double.roundTarget(): String {
     val rounded = toInt()
     return if (rounded % 60 == 0) "${rounded / 60}h" else "${rounded}m"
-  }
-
-  private companion object {
-    const val KEY_STATE = "state"
   }
 }

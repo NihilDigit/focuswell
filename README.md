@@ -25,6 +25,7 @@ The product spec lives in [docs/focuswell-product-spec.md](docs/focuswell-produc
 The app is written in Kotlin and Jetpack Compose. It includes:
 
 - Focus, leisure, depleted, and wind-down modes.
+- Room-backed local persistence for timers, records, trackers, tags, and ledger entries.
 - Editable focus and leisure history.
 - Daily trackers and rule-based tracker progress.
 - JSON export/import.
