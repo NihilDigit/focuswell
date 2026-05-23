@@ -33,6 +33,8 @@ sealed interface ActiveMode {
     val type: SessionType,
     val tag: TagConfig?,
     val startedAt: Instant,
+    val reminderSessionId: String,
+    val revision: Int = 1,
     val paused: Boolean = false,
     val pausedAt: Instant? = null,
     val pausedDurationMillis: Long = 0,
@@ -40,6 +42,8 @@ sealed interface ActiveMode {
 
   data class Leisure(
     val startedAt: Instant,
+    val reminderSessionId: String,
+    val revision: Int = 1,
   ) : ActiveMode
 
   data class WindDown(

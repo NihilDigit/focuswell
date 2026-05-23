@@ -6,6 +6,7 @@ import android.app.NotificationManager
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
@@ -38,7 +39,10 @@ fun postFocusWellNotification(
   title: String,
   body: String,
 ) {
-  if (!canPostNotifications(context)) return
+  if (!canPostNotifications(context)) {
+    Log.w("FocusWellPush", "Notification blocked because POST_NOTIFICATIONS is not granted")
+    return
+  }
   val notification =
     NotificationCompat.Builder(context, FOCUSWELL_CHANNEL_ID)
       .setSmallIcon(R.drawable.ic_launcher_monochrome)
@@ -50,4 +54,5 @@ fun postFocusWellNotification(
       .setAutoCancel(true)
       .build()
   NotificationManagerCompat.from(context).notify(id, notification)
+  Log.i("FocusWellPush", "Posted local notification id=$id")
 }

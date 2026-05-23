@@ -97,8 +97,19 @@ export class ReminderService {
       return "skipped";
     }
     const device = await this.store.getDevice(plan.deviceId);
-    if (!device?.fcmToken) return "disabled";
+    if (!device?.fcmToken) {
+      console.log("reminder_fire", JSON.stringify({ reminderId: plan.reminderId, kind: plan.kind, result: "disabled" }));
+      return "disabled";
+    }
     const result = await this.fcm.send(device.fcmToken, messageFor(plan.kind));
+    console.log(
+      "reminder_fire",
+      JSON.stringify({
+        reminderId: plan.reminderId,
+        kind: plan.kind,
+        result,
+      }),
+    );
     await this.store.updateReminder({ ...plan, status: result === "sent" ? "fired" : "cancelled" });
     return result;
   }

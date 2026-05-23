@@ -48,4 +48,24 @@ class TimeAccountingTest {
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt), 0.0001)
   }
+
+  @Test
+  fun instantWhenLeisureCostReaches_splitsAcrossSleepProtectionStart() {
+    val startedAt = Instant.parse("2026-05-21T16:40:00Z") // 00:40 Shanghai
+
+    assertEquals(
+      Instant.parse("2026-05-21T17:20:00Z"), // 01:20 Shanghai
+      TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes = 60.0),
+    )
+  }
+
+  @Test
+  fun instantWhenLeisureCostReaches_usesDoubleRateDuringSleepProtection() {
+    val startedAt = Instant.parse("2026-05-21T17:10:00Z") // 01:10 Shanghai
+
+    assertEquals(
+      Instant.parse("2026-05-21T17:40:00Z"), // 01:40 Shanghai
+      TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes = 60.0),
+    )
+  }
 }

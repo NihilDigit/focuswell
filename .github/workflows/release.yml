@@ -1,0 +1,80 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "26.5.*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build release APKs
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up JDK
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v5
+
+      - name: Set up Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install backend dependencies
+        working-directory: backend
+        run: bun install --frozen-lockfile
+
+      - name: Check backend
+        working-directory: backend
+        run: |
+          bun run check
+          bun test
+
+      - name: Decode release keystore
+        run: |
+          mkdir -p "$RUNNER_TEMP/focuswell-signing"
+          echo "$FOCUSWELL_RELEASE_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/focuswell-signing/focuswell-release.jks"
+        env:
+          FOCUSWELL_RELEASE_KEYSTORE_BASE64: ${{ secrets.FOCUSWELL_RELEASE_KEYSTORE_BASE64 }}
+
+      - name: Test Android app
+        working-directory: app
+        run: ./gradlew test
+
+      - name: Build signed ABI APKs
+        working-directory: app
+        run: ./gradlew assembleRelease
+        env:
+          FOCUSWELL_RELEASE_STORE_FILE: ${{ runner.temp }}/focuswell-signing/focuswell-release.jks
+          FOCUSWELL_RELEASE_STORE_PASSWORD: ${{ secrets.FOCUSWELL_RELEASE_STORE_PASSWORD }}
+          FOCUSWELL_RELEASE_KEY_ALIAS: ${{ secrets.FOCUSWELL_RELEASE_KEY_ALIAS }}
+          FOCUSWELL_RELEASE_KEY_PASSWORD: ${{ secrets.FOCUSWELL_RELEASE_KEY_PASSWORD }}
+
+      - name: Collect APKs
+        shell: bash
+        run: |
+          mkdir -p release-artifacts
+          cp app/app/build/outputs/apk/release/*arm64-v8a*-release.apk "release-artifacts/focuswell-${GITHUB_REF_NAME}-arm64-v8a.apk"
+          cp app/app/build/outputs/apk/release/*armeabi-v7a*-release.apk "release-artifacts/focuswell-${GITHUB_REF_NAME}-armeabi-v7a.apk"
+          cp app/app/build/outputs/apk/release/*x86_64*-release.apk "release-artifacts/focuswell-${GITHUB_REF_NAME}-x86_64.apk"
+          sha256sum release-artifacts/*.apk > release-artifacts/SHA256SUMS.txt
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" release-artifacts/* \
+            --repo "$GITHUB_REPOSITORY" \
+            --title "FocusWell $GITHUB_REF_NAME" \
+            --notes "Automated APK build for $GITHUB_REF_NAME. Edit this release manually before sharing."

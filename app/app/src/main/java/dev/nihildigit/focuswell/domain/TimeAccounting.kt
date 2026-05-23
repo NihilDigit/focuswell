@@ -45,6 +45,29 @@ object TimeAccounting {
     return total
   }
 
+  fun instantWhenLeisureCostReaches(
+    startedAt: Instant,
+    costMinutes: Double,
+    zone: ZoneId = focusWellZone,
+  ): Instant {
+    if (costMinutes <= 0.0) return startedAt
+
+    var cursor = startedAt
+    var remainingCost = costMinutes
+    while (true) {
+      val nextBoundary = nextSleepProtectionBoundary(cursor, zone)
+      val rate = if (isSleepProtection(cursor, zone)) 2.0 else 1.0
+      val segmentRealMinutes = Duration.between(cursor, nextBoundary).toMillis() / 60_000.0
+      val segmentCost = segmentRealMinutes * rate
+      if (remainingCost <= segmentCost) {
+        val realMillis = (remainingCost / rate * 60_000).toLong().coerceAtLeast(0)
+        return cursor.plusMillis(realMillis)
+      }
+      remainingCost -= segmentCost
+      cursor = nextBoundary
+    }
+  }
+
   private fun isSleepProtection(instant: Instant, zone: ZoneId): Boolean {
     val localTime = instant.atZone(zone).toLocalTime()
     return !localTime.isBefore(sleepProtectionStart) && localTime.isBefore(sleepProtectionEnd)

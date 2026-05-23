@@ -28,8 +28,8 @@ class FocusWellRepository(context: Context) {
   val state: StateFlow<FocusWellUiState> = _state
 
   init {
+    ensureDailyGrants()
     rollDailyState()
-    ensureDailyGrant()
   }
 
   fun toggleTracker(id: String) {
@@ -131,21 +131,28 @@ class FocusWellRepository(context: Context) {
     }
   }
 
-  fun startFocus(task: String, type: SessionType, tagId: String?) {
+  fun startFocus(task: String, type: SessionType, tagId: String?): ActiveMode.Focus? {
     val trimmed = task.trim()
-    if (trimmed.isEmpty()) return
+    if (trimmed.isEmpty()) return null
+    val now = Instant.now()
+    val sessionId = "focus-${now.toEpochMilli()}"
+    var activeFocus: ActiveMode.Focus? = null
     mutate { state ->
       val tag = tagId?.let { selectedId -> state.tags.firstOrNull { it.id == selectedId } }
+      val focus =
+        ActiveMode.Focus(
+          task = trimmed,
+          type = type,
+          tag = tag,
+          startedAt = now,
+          reminderSessionId = sessionId,
+        )
+      activeFocus = focus
       state.copy(
-        activeMode =
-          ActiveMode.Focus(
-            task = trimmed,
-            type = type,
-            tag = tag,
-            startedAt = Instant.now(),
-          )
+        activeMode = focus
       )
     }
+    return activeFocus
   }
 
   fun pauseFocus() {
@@ -172,10 +179,12 @@ class FocusWellRepository(context: Context) {
     }
   }
 
-  fun endFocus(result: String) {
+  fun endFocus(result: String): String? {
+    var reminderSessionId: String? = null
     mutate { state ->
       val focus = state.activeMode as? ActiveMode.Focus ?: return@mutate state
       val now = Instant.now()
+      reminderSessionId = focus.reminderSessionId
       val currentPauseMillis =
         if (focus.paused && focus.pausedAt != null) {
           Duration.between(focus.pausedAt, now).toMillis().coerceAtLeast(0)
@@ -223,19 +232,30 @@ class FocusWellRepository(context: Context) {
         ledger = listOf(entry) + state.ledger,
       )
     }
+    return reminderSessionId
   }
 
-  fun startLeisure() {
+  fun startLeisure(): ActiveMode.Leisure? {
+    val now = Instant.now()
+    val sessionId = "leisure-${now.toEpochMilli()}"
+    var activeLeisure: ActiveMode.Leisure? = null
     mutate { state ->
       if (state.reserveMinutes <= 0.0) state
-      else state.copy(activeMode = ActiveMode.Leisure(startedAt = Instant.now()))
+      else {
+        val leisure = ActiveMode.Leisure(startedAt = now, reminderSessionId = sessionId)
+        activeLeisure = leisure
+        state.copy(activeMode = leisure)
+      }
     }
+    return activeLeisure
   }
 
-  fun endLeisure() {
+  fun endLeisure(): String? {
+    var reminderSessionId: String? = null
     mutate { state ->
       val leisure = state.activeMode as? ActiveMode.Leisure ?: return@mutate state
       val now = Instant.now()
+      reminderSessionId = leisure.reminderSessionId
       val cost =
         TimeAccounting.leisureCostMinutes(leisure.startedAt, now).coerceAtMost(state.reserveMinutes)
       val elapsed = Duration.between(leisure.startedAt, now).toMillis().coerceAtLeast(0) / 60_000.0
@@ -263,6 +283,7 @@ class FocusWellRepository(context: Context) {
         ledger = listOf(entry) + state.ledger,
       )
     }
+    return reminderSessionId
   }
 
   fun startWindDown() {
@@ -280,8 +301,8 @@ class FocusWellRepository(context: Context) {
   fun clearAllData() {
     prefs.edit().clear().apply()
     _state.value = seedState()
+    ensureDailyGrants()
     rollDailyState()
-    ensureDailyGrant()
   }
 
   fun exportJson(): String = stateToJson(_state.value).toString(2)
@@ -290,8 +311,8 @@ class FocusWellRepository(context: Context) {
     val imported = runCatching { jsonToState(JSONObject(raw)) }.getOrNull() ?: return false
     _state.value = imported
     saveState(imported)
+    ensureDailyGrants()
     rollDailyState()
-    ensureDailyGrant()
     return true
   }
 
@@ -366,20 +387,28 @@ class FocusWellRepository(context: Context) {
     }
   }
 
-  private fun ensureDailyGrant() {
+  private fun ensureDailyGrants() {
     val today = TimeAccounting.dailyDate(Instant.now())
+    val start = runCatching { LocalDate.parse(_state.value.dailyDate) }.getOrDefault(today)
+    val grantStart = if (start.isAfter(today)) today else start
     mutate { state ->
-      if (state.ledger.any { it.id == dailyGrantId(today) }) return@mutate state
-      val entry =
-        LedgerEntry(
-          id = dailyGrantId(today),
-          title = "Daily grant",
-          deltaMinutes = 60.0,
-          createdAt = Instant.now(),
-        )
+      val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
+      val grants =
+        generateSequence(grantStart) { date -> date.plusDays(1).takeIf { !it.isAfter(today) } }
+          .filter { date -> dailyGrantId(date) !in existingIds }
+          .map { date ->
+            LedgerEntry(
+              id = dailyGrantId(date),
+              title = "Daily grant",
+              deltaMinutes = 60.0,
+              createdAt = dailyGrantInstant(date),
+            )
+          }
+          .toList()
+      if (grants.isEmpty()) return@mutate state
       state.copy(
-        reserveMinutes = state.reserveMinutes + 60.0,
-        ledger = listOf(entry) + state.ledger,
+        reserveMinutes = state.reserveMinutes + grants.sumOf { it.deltaMinutes },
+        ledger = grants.asReversed() + state.ledger,
       )
     }
   }
@@ -430,6 +459,9 @@ class FocusWellRepository(context: Context) {
 
   private fun dailyGrantId(date: LocalDate): String = "daily-grant-$date"
 
+  private fun dailyGrantInstant(date: LocalDate): Instant =
+    date.atTime(LocalTime.of(4, 0)).atZone(TimeAccounting.focusWellZone).toInstant()
+
   private fun stateToJson(state: FocusWellUiState): JSONObject =
     JSONObject()
       .put("reserveMinutes", state.reserveMinutes)
@@ -466,12 +498,18 @@ class FocusWellRepository(context: Context) {
           .put("type", mode.type.name)
           .put("tag", mode.tag?.let(::tagToJson))
           .put("startedAt", mode.startedAt.toString())
+          .put("reminderSessionId", mode.reminderSessionId)
+          .put("revision", mode.revision)
           .put("paused", mode.paused)
           .put("pausedAt", mode.pausedAt?.toString())
           .put("pausedDurationMillis", mode.pausedDurationMillis)
 
       is ActiveMode.Leisure ->
-        JSONObject().put("kind", "leisure").put("startedAt", mode.startedAt.toString())
+        JSONObject()
+          .put("kind", "leisure")
+          .put("startedAt", mode.startedAt.toString())
+          .put("reminderSessionId", mode.reminderSessionId)
+          .put("revision", mode.revision)
 
       is ActiveMode.WindDown ->
         JSONObject().put("kind", "windDown").put("startedAt", mode.startedAt.toString())
@@ -488,12 +526,21 @@ class FocusWellRepository(context: Context) {
           type = runCatching { SessionType.valueOf(json.optString("type")) }.getOrDefault(SessionType.Input),
           tag = json.optJSONObject("tag")?.let(::jsonToTag),
           startedAt = json.optInstant("startedAt"),
+          reminderSessionId = json.optStringOrNull("reminderSessionId") ?: "focus-${json.optInstant("startedAt").toEpochMilli()}",
+          revision = json.optInt("revision", 1),
           paused = json.optBoolean("paused"),
           pausedAt = json.optNullableInstant("pausedAt"),
           pausedDurationMillis = json.optLong("pausedDurationMillis", 0L),
         )
 
-      "leisure" -> ActiveMode.Leisure(startedAt = json.optInstant("startedAt"))
+      "leisure" -> {
+        val startedAt = json.optInstant("startedAt")
+        ActiveMode.Leisure(
+          startedAt = startedAt,
+          reminderSessionId = json.optStringOrNull("reminderSessionId") ?: "leisure-${startedAt.toEpochMilli()}",
+          revision = json.optInt("revision", 1),
+        )
+      }
       "windDown" -> ActiveMode.WindDown(startedAt = json.optInstant("startedAt"))
       "depleted" -> ActiveMode.Depleted
       else -> ActiveMode.None

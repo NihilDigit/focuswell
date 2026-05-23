@@ -28,25 +28,7 @@ export class HttpV1FcmClient implements FcmClient {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify({
-        message: {
-          token,
-          notification: {
-            title: message.title,
-            body: message.body,
-          },
-          data: {
-            tag: message.tag,
-          },
-          android: {
-            priority: "HIGH",
-            notification: {
-              tag: message.tag,
-              channel_id: "focuswell_reminders",
-            },
-          },
-        },
-      }),
+      body: JSON.stringify(fcmRequestBody(token, message)),
     });
 
     if (response.ok) return "sent";
@@ -79,6 +61,22 @@ export class HttpV1FcmClient implements FcmClient {
     };
     return body.access_token;
   }
+}
+
+export function fcmRequestBody(token: string, message: ReminderMessage): unknown {
+  return {
+    message: {
+      token,
+      data: {
+        tag: message.tag,
+        title: message.title,
+        body: message.body,
+      },
+      android: {
+        priority: "HIGH",
+      },
+    },
+  };
 }
 
 function signServiceAccountJwt(clientEmail: string, privateKey: string): string {

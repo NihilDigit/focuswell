@@ -1,6 +1,7 @@
 package dev.nihildigit.focuswell.ui.main
 
 import android.app.Application
+import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.nihildigit.focuswell.data.FocusWellRepository
@@ -20,12 +21,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val reminders = ReminderClient(application)
   private val destination = MutableStateFlow(Destination.Today)
   private val importError = MutableStateFlow<String?>(null)
-  private var focusReminderSessionId: String? = null
-  private var leisureReminderSessionId: String? = null
 
   init {
     viewModelScope.launch {
       runCatching { reminders.refreshFcmRegistration() }
+        .onSuccess { Log.i("FocusWellPush", "Refreshed FCM registration") }
+        .onFailure { Log.e("FocusWellPush", "Failed to refresh FCM registration", it) }
     }
   }
 
@@ -50,11 +51,10 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun setWakeTime(value: String) = repository.setWakeTime(value)
 
   fun startFocus(task: String, type: SessionType, tagId: String?) {
-    repository.startFocus(task, type, tagId)
-    val sessionId = "focus-${System.currentTimeMillis()}"
-    focusReminderSessionId = sessionId
+    val focus = repository.startFocus(task, type, tagId) ?: return
     viewModelScope.launch {
-      runCatching { reminders.scheduleFocusStaleReminder(sessionId, revision = 1) }
+      runCatching { reminders.scheduleFocusStaleReminder(focus.reminderSessionId, revision = focus.revision) }
+        .onFailure { Log.e("FocusWellPush", "Failed to schedule focus reminder", it) }
     }
   }
 
@@ -63,29 +63,35 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun resumeFocus() = repository.resumeFocus()
 
   fun endFocus(result: String) {
-    repository.endFocus(result)
-    focusReminderSessionId?.let { sessionId ->
-      viewModelScope.launch { runCatching { reminders.cancelSession(sessionId) } }
+    repository.endFocus(result)?.let { sessionId ->
+      viewModelScope.launch {
+        runCatching { reminders.cancelSession(sessionId) }
+          .onFailure { Log.e("FocusWellPush", "Failed to cancel focus reminder", it) }
+      }
     }
-    focusReminderSessionId = null
   }
 
   fun startLeisure() {
     val reserveMinutes = uiState.value.reserveMinutes
-    repository.startLeisure()
-    val sessionId = "leisure-${System.currentTimeMillis()}"
-    leisureReminderSessionId = sessionId
+    val leisure = repository.startLeisure() ?: return
     viewModelScope.launch {
-      runCatching { reminders.scheduleLeisureReminders(sessionId, revision = 1, reserveMinutes = reserveMinutes) }
+      runCatching {
+        reminders.scheduleLeisureReminders(
+          sessionId = leisure.reminderSessionId,
+          revision = leisure.revision,
+          reserveMinutes = reserveMinutes,
+        )
+      }.onFailure { Log.e("FocusWellPush", "Failed to schedule leisure reminders", it) }
     }
   }
 
   fun endLeisure() {
-    repository.endLeisure()
-    leisureReminderSessionId?.let { sessionId ->
-      viewModelScope.launch { runCatching { reminders.cancelSession(sessionId) } }
+    repository.endLeisure()?.let { sessionId ->
+      viewModelScope.launch {
+        runCatching { reminders.cancelSession(sessionId) }
+          .onFailure { Log.e("FocusWellPush", "Failed to cancel leisure reminder", it) }
+      }
     }
-    leisureReminderSessionId = null
   }
 
   fun startWindDown() = repository.startWindDown()

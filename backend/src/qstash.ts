@@ -1,4 +1,4 @@
-import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { Receiver } from "@upstash/qstash";
 import type { ReminderPayload } from "./types";
 
 export type QStashClient = {
@@ -29,6 +29,14 @@ export class RestQStashClient implements QStashClient {
   ) {}
 
   async publish(payload: ReminderPayload, dueAtUtc: string): Promise<{ messageId: string }> {
+    console.log(
+      "qstash_publish",
+      JSON.stringify({
+        callbackUrl: this.callbackUrl,
+        dueAtUtc,
+        reminderId: payload.reminderId,
+      }),
+    );
     const response = await fetch(`${this.baseUrl}/v2/publish/${this.callbackUrl}`, {
       method: "POST",
       headers: {
@@ -41,7 +49,10 @@ export class RestQStashClient implements QStashClient {
       body: JSON.stringify(payload),
     });
 
-    if (!response.ok) throw new Error(`qstash-publish-${response.status}`);
+    if (!response.ok) {
+      console.error("qstash_publish_failed", response.status, await response.text());
+      throw new Error(`qstash-publish-${response.status}`);
+    }
     const body = (await response.json()) as { messageId?: string };
     if (!body.messageId) throw new Error("qstash-missing-message-id");
     return { messageId: body.messageId };
@@ -57,7 +68,11 @@ export class RestQStashClient implements QStashClient {
 
   async verify(signature: string | null, body: string, url: string): Promise<boolean> {
     if (!signature) return false;
-    return verifyJwt(signature, body, url, this.currentSigningKey) || verifyJwt(signature, body, url, this.nextSigningKey);
+    const receiver = new Receiver({
+      currentSigningKey: this.currentSigningKey,
+      nextSigningKey: this.nextSigningKey,
+    });
+    return receiver.verify({ signature, body, url });
   }
 }
 
@@ -65,24 +80,4 @@ function unixSeconds(value: string): number {
   const timestamp = Date.parse(value);
   if (!Number.isFinite(timestamp)) throw new Error("invalid-dueAtUtc");
   return Math.ceil(timestamp / 1000);
-}
-
-function verifyJwt(token: string, body: string, url: string, key: string): boolean {
-  const parts = token.split(".");
-  if (parts.length !== 3 || !parts[0] || !parts[1] || !parts[2]) return false;
-
-  const expected = new Uint8Array(createHmac("sha256", key).update(`${parts[0]}.${parts[1]}`).digest());
-  const actual = new Uint8Array(Buffer.from(parts[2], "base64url"));
-  if (expected.length !== actual.length || !timingSafeEqual(expected, actual)) return false;
-
-  const payload = JSON.parse(Buffer.from(parts[1], "base64url").toString("utf8")) as {
-    iss?: string;
-    sub?: string;
-    exp?: number;
-    nbf?: number;
-    body?: string;
-  };
-  const now = Math.floor(Date.now() / 1000);
-  const bodyHash = createHash("sha256").update(body).digest("base64url");
-  return payload.iss === "Upstash" && payload.sub === url && (payload.exp ?? 0) >= now && (payload.nbf ?? 0) <= now && payload.body === bodyHash;
 }

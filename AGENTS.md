@@ -1,42 +1,45 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
+This repository contains the Android app, reminder backend, product spec, and design system for FocusWell. `CLAUDE.md` is a symbolic link to this file and must stay equivalent to `AGENTS.md`.
 
-This repository now contains the Android implementation under the nested Gradle project in `app/`.
+## Project Layout
 
-- `README.md`: short project introduction and entry point.
-- `docs/focuswell-product-spec.md`: canonical product, UX, architecture, and data-model specification.
-- `DESIGN.md`: canonical UI design system and durable Material 3 Expressive constraints.
-- `app/app/src/main/java/dev/nihildigit/focuswell/`: Android Kotlin and Jetpack Compose source.
-- `app/app/src/test/`: JVM tests for domain behavior.
-- Future instrumentation tests should use standard Android conventions, for example `src/androidTest/`.
+- `README.md`: project entry point, build commands, and release summary.
+- `docs/focuswell-product-spec.md`: product behavior, accounting rules, UX model, and data model.
+- `DESIGN.md`: durable UI rules for Material 3 Expressive usage.
+- `app/`: nested Android Gradle project.
+- `app/app/src/main/java/dev/nihildigit/focuswell/`: Kotlin, Jetpack Compose, reminders, data, and domain code.
+- `app/app/src/test/`: JVM tests for accounting and domain behavior.
+- `backend/`: TypeScript reminder backend for QStash callbacks and FCM delivery.
 
-Keep product decisions in `docs/focuswell-product-spec.md` and durable visual rules in `DESIGN.md`. Do not scatter product or design rules across comments or issue notes.
+Do not scatter product or design decisions across comments. Update the spec or design document when a change makes those rules different.
 
-## Build, Test, and Development Commands
+## Local Commands
 
-Useful repository commands:
-
-```powershell
-git status --short
-git log --oneline
-```
-
-Use the Gradle wrapper from the Android project:
+Android:
 
 ```powershell
 cd app
-.\gradlew.bat build
-.\gradlew.bat test
+.\gradlew.bat test assembleDebug
 .\gradlew.bat connectedAndroidTest
 .\gradlew.bat installDebug
 ```
 
-Use the local Android CLI and connected real device workflow when available.
+Backend:
 
-## Coding Style & Naming Conventions
+```powershell
+cd backend
+bun run check
+bun test
+```
 
-Use Kotlin and Jetpack Compose for the Android app. Prefer clear domain names from the spec:
+Use a connected real Android device for reminder, lifecycle, notification, and background-behavior smoke tests whenever practical. Emulator-only evidence is not enough for push/background claims.
+
+## Code Rules
+
+Use Kotlin and Jetpack Compose for Android UI. Keep accounting logic out of Compose and in the domain/data layer.
+
+Use domain names from the product model:
 
 - `FocusSession`
 - `LeisureSession`
@@ -44,39 +47,51 @@ Use Kotlin and Jetpack Compose for the Android app. Prefer clear domain names fr
 - `DailyTracker`
 - `ReminderPlan`
 
-Use UTC for stored timestamps, `Asia/Shanghai` for daily-window calculation, and `dailyDate` for business-day records. Keep ledger/accounting calculations in a dedicated domain layer instead of UI code.
+Store timestamps in UTC. Use `Asia/Shanghai` for business-day calculation. Use `dailyDate` for day records.
 
-Markdown documents should use concise headings, short paragraphs, and fenced code blocks for rules or examples.
+Large Compose files should be split by screen or component group. `MainScreen.kt` should stay as the entry and shared shell, not the home for every UI component.
 
-## Testing Guidelines
+## Tests
 
-Add or update focused tests for:
+Add focused tests for changes that affect:
 
-- daily boundary calculation at 04:00 Asia/Shanghai
-- focus earning formula
-- leisure cost splitting across 01:00
-- ledger adjustment behavior after edits/deletes
-- reminder staleness checks using `sessionId + revision`
+- 04:00 `Asia/Shanghai` daily boundary behavior.
+- Focus earning formula.
+- Leisure cost splitting across 01:00.
+- Ledger adjustments after edits or deletes.
+- Reminder staleness checks using `sessionId + revision`.
+- Backend skip/send behavior for cancelled or stale reminders.
 
 Name tests after behavior, not implementation details.
 
-## Commit & Pull Request Guidelines
+## Release Workflow
 
-Current history uses concise imperative commits, for example:
+Release builds are tag-driven. The final release text is edited by a human after CI succeeds.
 
-```text
-Initial product spec
-```
+1. Finish code, docs, version metadata, signing configuration, and CI changes in ordinary commits.
+2. Manually create and push a time-based release tag such as `26.5.1`.
+3. Wait for CI to build the release APKs and create the GitHub Release.
+4. Manually edit the generated Release title, description, and notes in GitHub.
 
-Continue with short, descriptive commit messages. Pull requests should include:
+CI must not generate the final user-facing release copy. CI may create a draft or generated release and attach artifacts.
 
-- summary of product or code changes
-- affected screens or data models
-- test results, or a note explaining why tests were not run
-- screenshots for UI changes once the Android app exists
+The release CI should build signed APKs for:
 
-## Agent-Specific Instructions
+- `arm64-v8a`
+- `armeabi-v7a`
+- `x86_64`
 
-Treat `docs/focuswell-product-spec.md` as the source of truth. If implementation choices conflict with the spec, update the spec intentionally in the same change.
+Signing material belongs in GitHub Secrets. Never commit keystores, passwords, service account JSON, or token files.
 
-Treat `DESIGN.md` as the source of truth for reusable UI rules. When changing Compose surfaces, color semantics, component hierarchy, or responsive layout behavior, update `DESIGN.md` in the same change and verify on a connected device or emulator when practical.
+## Agent Notes
+
+Treat `docs/focuswell-product-spec.md` as the product source of truth.
+
+Treat `DESIGN.md` as the reusable UI source of truth. When changing Compose surfaces, shape, elevation, icon usage, typography, motion, color semantics, or responsive behavior, update `DESIGN.md` in the same change.
+
+Before claiming the app is basically usable, verify with current evidence:
+
+- Android JVM tests pass.
+- Backend typecheck and tests pass.
+- Debug or release APK installs on a real connected device.
+- Timing, ledger, reminder scheduling, FCM delivery, notification display, lifecycle, and background behavior have been smoke-tested on the real device.

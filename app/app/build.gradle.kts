@@ -5,6 +5,31 @@ plugins {
   alias(libs.plugins.google.services)
 }
 
+fun versionCodeFromVersionName(versionName: String): Int {
+  val parts = versionName.split(".").mapNotNull { it.toIntOrNull() }
+  if (parts.size >= 3) {
+    return parts[0] * 10_000 + parts[1] * 100 + parts[2]
+  }
+  return 1
+}
+
+val focusWellVersionName =
+  providers.gradleProperty("focuswellVersionName").orNull
+    ?: System.getenv("GITHUB_REF_NAME")?.takeIf { it.matches(Regex("""\d+\.\d+\.\d+""")) }
+    ?: "1.0"
+val focusWellVersionCode =
+  providers.gradleProperty("focuswellVersionCode").orNull?.toIntOrNull()
+    ?: versionCodeFromVersionName(focusWellVersionName)
+val releaseStoreFile = System.getenv("FOCUSWELL_RELEASE_STORE_FILE")
+val releaseStorePassword = System.getenv("FOCUSWELL_RELEASE_STORE_PASSWORD")
+val releaseKeyAlias = System.getenv("FOCUSWELL_RELEASE_KEY_ALIAS")
+val releaseKeyPassword = System.getenv("FOCUSWELL_RELEASE_KEY_PASSWORD")
+val hasReleaseSigning =
+  !releaseStoreFile.isNullOrBlank() &&
+    !releaseStorePassword.isNullOrBlank() &&
+    !releaseKeyAlias.isNullOrBlank() &&
+    !releaseKeyPassword.isNullOrBlank()
+
 android {
     namespace = "dev.nihildigit.focuswell"
     compileSdk = 36
@@ -12,15 +37,41 @@ android {
         applicationId = "dev.nihildigit.focuswell"
         minSdk = 26
         targetSdk = 36
-        versionCode = 1
-        versionName = "1.0"
+        versionCode = focusWellVersionCode
+        versionName = focusWellVersionName
         buildConfigField("String", "FOCUSWELL_BACKEND_URL", "\"https://backend-seven-eosin-45.vercel.app\"")
     }
 
+    signingConfigs {
+        create("release") {
+            if (hasReleaseSigning) {
+                storeFile = file(releaseStoreFile!!)
+                storePassword = releaseStorePassword
+                keyAlias = releaseKeyAlias
+                keyPassword = releaseKeyPassword
+            }
+        }
+    }
+
     buildTypes {
+        debug {
+            applicationIdSuffix = ".debug"
+            versionNameSuffix = "-debug"
+        }
         release {
             isMinifyEnabled = false
+            if (hasReleaseSigning) {
+                signingConfig = signingConfigs.getByName("release")
+            }
             proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
+        }
+    }
+    splits {
+        abi {
+            isEnable = true
+            reset()
+            include("arm64-v8a", "armeabi-v7a", "x86_64")
+            isUniversalApk = false
         }
     }
     compileOptions {
@@ -52,6 +103,7 @@ dependencies {
 
   // Core Android dependencies
   implementation(libs.androidx.core.ktx)
+  implementation(libs.androidx.fragment.ktx)
   implementation(libs.androidx.lifecycle.runtime.ktx)
   implementation(libs.androidx.activity.compose)
 

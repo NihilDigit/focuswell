@@ -4,6 +4,9 @@ import android.content.Context
 import com.google.android.gms.tasks.Tasks
 import com.google.firebase.messaging.FirebaseMessaging
 import dev.nihildigit.focuswell.BuildConfig
+import dev.nihildigit.focuswell.domain.TimeAccounting
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -70,10 +73,10 @@ class ReminderClient(context: Context) {
     val now = Instant.now()
     val reminders =
       buildList {
-        if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", now.plus(minutes(reserveMinutes - 10.0))))
-        if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", now.plus(minutes(reserveMinutes - 5.0))))
-        if (reserveMinutes > 1.0) add(reminder("leisure_1m_left", now.plus(minutes(reserveMinutes - 1.0))))
-        if (reserveMinutes > 0.0) add(reminder("leisure_depleted", now.plus(minutes(reserveMinutes))))
+        if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", leisureCostDueAt(now, reserveMinutes - 10.0)))
+        if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", leisureCostDueAt(now, reserveMinutes - 5.0)))
+        if (reserveMinutes > 1.0) add(reminder("leisure_1m_left", leisureCostDueAt(now, reserveMinutes - 1.0)))
+        if (reserveMinutes > 0.0) add(reminder("leisure_depleted", leisureCostDueAt(now, reserveMinutes)))
         nextLateNightInstant(now)?.let { add(reminder("late_night_rate_started", it)) }
       }
     schedule(sessionId = sessionId, revision = revision, reminders = reminders)
@@ -130,25 +133,32 @@ class ReminderClient(context: Context) {
     )
   }
 
-  private fun fcmToken(forceRefresh: Boolean): String? =
-    runCatching {
+  private suspend fun fcmToken(forceRefresh: Boolean): String? =
+    withContext(Dispatchers.IO) {
+      runCatching {
         if (forceRefresh) FirebaseMessaging.getInstance().deleteToken()
         Tasks.await(FirebaseMessaging.getInstance().token)
       }
-      .getOrNull()
-
-  private fun post(path: String, body: JSONObject) {
-    val connection = (URL("$backendUrl$path").openConnection() as HttpURLConnection).apply {
-      requestMethod = "POST"
-      connectTimeout = 10_000
-      readTimeout = 10_000
-      doOutput = true
-      setRequestProperty("content-type", "application/json")
+        .getOrNull()
     }
-    connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
-    val status = connection.responseCode
-    if (status !in 200..299) error("Reminder backend returned HTTP $status")
-    connection.disconnect()
+
+  private suspend fun post(path: String, body: JSONObject) {
+    withContext(Dispatchers.IO) {
+      val connection = (URL("$backendUrl$path").openConnection() as HttpURLConnection).apply {
+        requestMethod = "POST"
+        connectTimeout = 10_000
+        readTimeout = 10_000
+        doOutput = true
+        setRequestProperty("content-type", "application/json")
+      }
+      try {
+        connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        val status = connection.responseCode
+        if (status !in 200..299) error("Reminder backend returned HTTP $status")
+      } finally {
+        connection.disconnect()
+      }
+    }
   }
 
   private fun sha256Hex(value: String): String =
@@ -159,7 +169,8 @@ class ReminderClient(context: Context) {
   private fun reminder(kind: String, dueAt: Instant): JSONObject =
     JSONObject().put("kind", kind).put("dueAtUtc", dueAt.toString())
 
-  private fun minutes(value: Double): Duration = Duration.ofMillis((value * 60_000).toLong().coerceAtLeast(0))
+  private fun leisureCostDueAt(startedAt: Instant, costMinutes: Double): Instant =
+    TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes)
 
   private fun nextLateNightInstant(now: Instant): Instant? {
     val zone = ZoneId.of("Asia/Shanghai")

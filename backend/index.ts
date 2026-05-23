@@ -51,7 +51,12 @@ export default async function handler(request: {
     if (path === "/qstash/fire") {
       requirePost(request);
       const body = await readText(request);
-      const verified = await service.verifyQStash(header(request, "upstash-signature"), body, process.env.QSTASH_CALLBACK_URL ?? absoluteUrl(request));
+      const signature = header(request, "upstash-signature");
+      const verified =
+        (await service.verifyQStash(signature, body, absoluteUrl(request))) ||
+        (process.env.QSTASH_CALLBACK_URL
+          ? await service.verifyQStash(signature, body, process.env.QSTASH_CALLBACK_URL)
+          : false);
       if (!verified) throw new Error("unauthorized");
       const result = await service.fire(parseReminderPayload(JSON.parse(body) as unknown));
       send(response, 200, { ok: true, result });
