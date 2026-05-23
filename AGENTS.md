@@ -47,7 +47,7 @@ Use domain names from the product model:
 - `DailyTracker`
 - `ReminderPlan`
 
-Store timestamps in UTC. Use `Asia/Shanghai` for business-day calculation. Use `dailyDate` for day records.
+Store timestamps in UTC. Use the device's current system time zone for business-day calculation. Use `dailyDate` for day records.
 
 Large Compose files should be split by screen or component group. `MainScreen.kt` should stay as the entry and shared shell, not the home for every UI component.
 
@@ -55,7 +55,7 @@ Large Compose files should be split by screen or component group. `MainScreen.kt
 
 Add focused tests for changes that affect:
 
-- 04:00 `Asia/Shanghai` daily boundary behavior.
+- 04:00 system-time-zone daily boundary behavior.
 - Focus earning formula.
 - Leisure cost splitting across 01:00.
 - Ledger adjustments after edits or deletes.
