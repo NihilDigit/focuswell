@@ -137,6 +137,7 @@ private val ControlStartShape = RoundedCornerShape(topStart = 26.dp, topEnd = 14
 private val ControlEndShape = RoundedCornerShape(topStart = 14.dp, topEnd = 26.dp, bottomEnd = 26.dp, bottomStart = 22.dp)
 private val CalmPanelShape = RoundedCornerShape(22.dp)
 private val LedgerRowShape = RoundedCornerShape(topStart = 14.dp, topEnd = 18.dp, bottomEnd = 14.dp, bottomStart = 18.dp)
+private val FocusOutcomeOptions = listOf("As planned", "Partial", "Drifted", "Interrupted")
 
 @Composable
 fun MainScreen(
@@ -657,7 +658,8 @@ private fun ActiveFocusSurface(
   onEndFocus: (String) -> Unit,
 ) {
   var showEnd by remember { mutableStateOf(false) }
-  var result by remember { mutableStateOf("As planned") }
+  var outcome by remember { mutableStateOf(FocusOutcomeOptions.first()) }
+  var outcomeNote by remember { mutableStateOf("") }
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val now = rememberNow(paused = focus.paused)
   val elapsedEnd = if (focus.paused && focus.pausedAt != null) focus.pausedAt else now
@@ -728,13 +730,15 @@ private fun ActiveFocusSurface(
 
   if (showEnd) {
     FocusResultSheet(
-      result = result,
-      onResultChange = { result = it },
+      outcome = outcome,
+      note = outcomeNote,
+      onOutcomeChange = { outcome = it },
+      onNoteChange = { outcomeNote = it },
       sheetState = sheetState,
       onDismiss = { showEnd = false },
       onSave = {
         showEnd = false
-        onEndFocus(result)
+        onEndFocus(formatOutcomeResult(outcome, outcomeNote))
       },
     )
   }
@@ -743,13 +747,14 @@ private fun ActiveFocusSurface(
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FocusResultSheet(
-  result: String,
-  onResultChange: (String) -> Unit,
+  outcome: String,
+  note: String,
+  onOutcomeChange: (String) -> Unit,
+  onNoteChange: (String) -> Unit,
   sheetState: androidx.compose.material3.SheetState,
   onDismiss: () -> Unit,
   onSave: () -> Unit,
 ) {
-  val options = listOf("As planned", "Partial", "Drifted", "Interrupted")
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(
       modifier =
@@ -760,20 +765,20 @@ private fun FocusResultSheet(
       verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
       Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-        Text("What came out of this?", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text("Session outcome", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
         Text(
-          "Pick the closest outcome. Add detail only if it will help later.",
+          "Pick one result. Add a short note only when it will help later.",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      options.chunked(2).forEach { rowOptions ->
+      FocusOutcomeOptions.chunked(2).forEach { rowOptions ->
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
           rowOptions.forEach { option ->
             ResultChoice(
               label = option,
-              selected = result == option,
-              onClick = { onResultChange(option) },
+              selected = outcome == option,
+              onClick = { onOutcomeChange(option) },
               modifier = Modifier.weight(1f),
             )
           }
@@ -783,9 +788,10 @@ private fun FocusResultSheet(
         }
       }
       OutlinedTextField(
-        value = result,
-        onValueChange = onResultChange,
-        label = { Text("Result note") },
+        value = note,
+        onValueChange = onNoteChange,
+        label = { Text("Optional note") },
+        placeholder = { Text(outcome) },
         minLines = 2,
         maxLines = 4,
         modifier = Modifier.fillMaxWidth(),
@@ -795,7 +801,7 @@ private fun FocusResultSheet(
           Text("Cancel")
         }
         Button(
-          enabled = result.isNotBlank(),
+          enabled = outcome.isNotBlank(),
           onClick = onSave,
           modifier = Modifier.weight(1f).height(54.dp),
           shape = ControlEndShape,
@@ -1444,7 +1450,9 @@ private fun FocusRecordRow(
   modifier: Modifier = Modifier,
 ) {
   var editing by remember { mutableStateOf(false) }
-  var result by remember(record.id) { mutableStateOf(record.result) }
+  val resultParts = remember(record.id) { parseOutcomeResult(record.result) }
+  var outcome by remember(record.id) { mutableStateOf(resultParts.first) }
+  var note by remember(record.id) { mutableStateOf(resultParts.second) }
   var minutes by remember(record.id) { mutableStateOf(record.activeDurationMinutes.roundToInt().toString()) }
   val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   Surface(
@@ -1504,15 +1512,17 @@ private fun FocusRecordRow(
   if (editing) {
     FocusRecordEditSheet(
       record = record,
-      result = result,
+      outcome = outcome,
+      note = note,
       minutes = minutes,
-      onResultChange = { result = it },
+      onOutcomeChange = { outcome = it },
+      onNoteChange = { note = it },
       onMinutesChange = { minutes = it },
       sheetState = editSheetState,
       onDismiss = { editing = false },
       onSave = {
         editing = false
-        onUpdate(result, minutes.toDoubleOrNull() ?: record.activeDurationMinutes)
+        onUpdate(formatOutcomeResult(outcome, note), minutes.toDoubleOrNull() ?: record.activeDurationMinutes)
       },
     )
   }
@@ -1522,15 +1532,16 @@ private fun FocusRecordRow(
 @Composable
 private fun FocusRecordEditSheet(
   record: FocusRecord,
-  result: String,
+  outcome: String,
+  note: String,
   minutes: String,
-  onResultChange: (String) -> Unit,
+  onOutcomeChange: (String) -> Unit,
+  onNoteChange: (String) -> Unit,
   onMinutesChange: (String) -> Unit,
   sheetState: androidx.compose.material3.SheetState,
   onDismiss: () -> Unit,
   onSave: () -> Unit,
 ) {
-  val options = listOf("As planned", "Partial", "Drifted", "Interrupted")
   val newMinutes = minutes.toDoubleOrNull() ?: record.activeDurationMinutes
   val newEarned = newMinutes * record.typeRate * record.tagMultiplier
   val delta = newEarned - record.earnedMinutes
@@ -1558,13 +1569,13 @@ private fun FocusRecordEditSheet(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
       )
-      options.chunked(2).forEach { rowOptions ->
+      FocusOutcomeOptions.chunked(2).forEach { rowOptions ->
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
           rowOptions.forEach { option ->
             ResultChoice(
               label = option,
-              selected = result == option,
-              onClick = { onResultChange(option) },
+              selected = outcome == option,
+              onClick = { onOutcomeChange(option) },
               modifier = Modifier.weight(1f),
             )
           }
@@ -1574,9 +1585,10 @@ private fun FocusRecordEditSheet(
         }
       }
       OutlinedTextField(
-        value = result,
-        onValueChange = onResultChange,
-        label = { Text("Result note") },
+        value = note,
+        onValueChange = onNoteChange,
+        label = { Text("Optional note") },
+        placeholder = { Text(outcome) },
         minLines = 2,
         maxLines = 4,
         modifier = Modifier.fillMaxWidth(),
@@ -1591,7 +1603,7 @@ private fun FocusRecordEditSheet(
           Text("Cancel")
         }
         Button(
-          enabled = result.isNotBlank() && minutes.toDoubleOrNull() != null,
+          enabled = outcome.isNotBlank() && minutes.toDoubleOrNull() != null,
           onClick = onSave,
           modifier = Modifier.weight(1f).height(54.dp),
           shape = ControlEndShape,
@@ -2456,6 +2468,20 @@ private fun trackerStatusText(tracker: DailyTracker): String {
       tracker.completed -> "Done"
       else -> "Open"
     }
+}
+
+private fun parseOutcomeResult(result: String): Pair<String, String> {
+  val trimmed = result.trim()
+  val direct = FocusOutcomeOptions.firstOrNull { it == trimmed }
+  if (direct != null) return direct to ""
+  val option = FocusOutcomeOptions.firstOrNull { trimmed.startsWith("$it · ") }
+  if (option != null) return option to trimmed.removePrefix("$option · ").trim()
+  return FocusOutcomeOptions.first() to trimmed
+}
+
+private fun formatOutcomeResult(outcome: String, note: String): String {
+  val trimmedNote = note.trim()
+  return if (trimmedNote.isBlank()) outcome else "$outcome · $trimmedNote"
 }
 
 private fun parseDurationMinutes(text: String): Double {
