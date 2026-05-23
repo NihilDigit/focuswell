@@ -35,6 +35,9 @@ jobs:
         working-directory: backend
         run: bun install --frozen-lockfile
 
+      - name: Make Gradle wrapper executable
+        run: chmod +x app/gradlew
+
       - name: Check backend
         working-directory: backend
         run: |
