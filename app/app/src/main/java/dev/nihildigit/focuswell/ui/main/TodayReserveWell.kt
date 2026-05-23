@@ -202,12 +202,6 @@ internal fun ReserveHeader(reserveMinutes: Double) {
       reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h banked"
       else -> "Enough for tonight"
     }
-  val supporting =
-    when {
-      reserveMinutes < 30 -> "Focus can refill the buffer."
-      reserveMinutes < 60 -> "Keep leisure intentional."
-      else -> "Ready when you are."
-    }
   Surface(
     color = MaterialTheme.colorScheme.primaryContainer,
     contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
@@ -230,7 +224,6 @@ internal fun ReserveHeader(reserveMinutes: Double) {
       ) {
         Text("Leisure well", style = MaterialTheme.typography.labelLarge)
         Text(headline, style = MaterialTheme.typography.headlineLarge)
-        Text(supporting, style = MaterialTheme.typography.bodyLarge)
       }
       Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),
