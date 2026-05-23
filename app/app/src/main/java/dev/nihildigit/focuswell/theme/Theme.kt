@@ -60,24 +60,32 @@ private val DarkColorScheme =
     onSurface = Color(0xFFE3E9E1),
     surfaceVariant = FocusSurfaceVariantDark,
     onSurfaceVariant = Color(0xFFC3CEC0),
+    outline = Color(0xFF8D988A),
+    outlineVariant = Color(0xFF434D41),
     surfaceContainer = FocusSurfaceVariantDark,
     surfaceContainerHigh = Color(0xFF2F3B30),
+    error = Color(0xFFFFB4AB),
+    onError = Color(0xFF690005),
+    errorContainer = Color(0xFF93000A),
+    onErrorContainer = Color(0xFFFFDAD6),
   )
 
 private val LightColorScheme =
   lightColorScheme(
     primary = Pine40,
-    onPrimary = Color.White,
+    onPrimary = Color(0xFFF9FFF9),
     secondary = Slate40,
-    onSecondary = Color.White,
+    onSecondary = Color(0xFFF9FBFF),
     tertiary = Amber40,
-    onTertiary = Color.White,
+    onTertiary = Color(0xFFFFFBF4),
     background = FocusBackgroundLight,
     onBackground = Color(0xFF182018),
     surface = FocusSurfaceLight,
     onSurface = Color(0xFF182018),
     surfaceVariant = FocusSurfaceVariantLight,
     onSurfaceVariant = Color(0xFF4E5A4D),
+    outline = Color(0xFF707B6E),
+    outlineVariant = Color(0xFFC0CBBE),
     surfaceContainer = Color(0xFFEEF5EC),
     surfaceContainerHigh = Color(0xFFE4EEE2),
     primaryContainer = Color(0xFFCDEED9),
@@ -86,6 +94,10 @@ private val LightColorScheme =
     onSecondaryContainer = Color(0xFF273344),
     tertiaryContainer = Color(0xFFFFDFA3),
     onTertiaryContainer = Color(0xFF422D00),
+    error = Color(0xFFBA1A1A),
+    onError = Color(0xFFFFFBFF),
+    errorContainer = Color(0xFFFFDAD6),
+    onErrorContainer = Color(0xFF410002),
   )
 
 private val FocusShapes =

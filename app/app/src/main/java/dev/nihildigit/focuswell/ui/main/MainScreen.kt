@@ -40,6 +40,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.consumeWindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -68,6 +69,9 @@ import androidx.compose.material3.IconToggleButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.NavigationRail
+import androidx.compose.material3.NavigationRailItem
+import androidx.compose.material3.NavigationRailItemDefaults
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -310,62 +314,56 @@ internal fun MainScreen(
     }
   }
 
-  Scaffold(
-    modifier = modifier.fillMaxSize(),
-    bottomBar = {
-      FocusWellNavigationBar(selected = state.destination, onDestination = onDestination)
-    },
-  ) { innerPadding ->
-    AnimatedContent(
-      targetState = state.destination,
-      transitionSpec = { destinationMotionTransform() },
-      label = "destination",
-      modifier =
-        Modifier
-          .fillMaxSize()
-          .padding(innerPadding),
-    ) { destination ->
-      when (destination) {
-        Destination.Today ->
-          TodayScreen(
-            state = state,
-            onToggleTracker = onToggleTracker,
-            onStartFocusClick = { showFocusSheet = true },
-            onStartLeisure = {
-              requestReminderPermissionIfNeeded()
-              onStartLeisure()
-            },
-            onPauseFocus = onPauseFocus,
-            onResumeFocus = onResumeFocus,
-            onEndFocus = onEndFocus,
-            onEndLeisure = onEndLeisure,
-            onStartWindDown = onStartWindDown,
-            onEndWindDown = onEndWindDown,
-            onEndDepleted = onEndDepleted,
-          )
-
-        Destination.Reserve -> ReserveScreen(state)
-        Destination.Records ->
-          RecordsScreen(
-            state = state,
-            onDeleteFocusRecord = onDeleteFocusRecord,
-            onUpdateFocusRecord = onUpdateFocusRecord,
-            onDeleteLeisureRecord = onDeleteLeisureRecord,
-          )
-        Destination.Settings ->
-          SettingsScreen(
-            state = state,
-            onExportJson = onExportJson,
-            onImportJson = onImportJson,
-            onClearAllData = onClearAllData,
-            onAddTag = onAddTag,
-            onArchiveTag = onArchiveTag,
-            onAddBooleanTracker = onAddBooleanTracker,
-            onAddRuleTracker = onAddRuleTracker,
-            onArchiveTracker = onArchiveTracker,
-            themeMode = themeMode,
-            onThemeModeChange = onThemeModeChange,
-          )
+  BoxWithConstraints(modifier = modifier.fillMaxSize()) {
+    val useRail = maxWidth >= 600.dp
+    Scaffold(
+      modifier = Modifier.fillMaxSize(),
+      bottomBar = {
+        if (!useRail) {
+          FocusWellNavigationBar(selected = state.destination, onDestination = onDestination)
+        }
+      },
+    ) { innerPadding ->
+      Row(
+        modifier =
+          Modifier
+            .fillMaxSize()
+            .padding(innerPadding)
+            .consumeWindowInsets(innerPadding),
+      ) {
+        if (useRail) {
+          FocusWellNavigationRail(selected = state.destination, onDestination = onDestination)
+        }
+        DestinationContent(
+          state = state,
+          onToggleTracker = onToggleTracker,
+          onStartFocusClick = { showFocusSheet = true },
+          onStartLeisure = {
+            requestReminderPermissionIfNeeded()
+            onStartLeisure()
+          },
+          onPauseFocus = onPauseFocus,
+          onResumeFocus = onResumeFocus,
+          onEndFocus = onEndFocus,
+          onEndLeisure = onEndLeisure,
+          onStartWindDown = onStartWindDown,
+          onEndWindDown = onEndWindDown,
+          onEndDepleted = onEndDepleted,
+          onDeleteFocusRecord = onDeleteFocusRecord,
+          onUpdateFocusRecord = onUpdateFocusRecord,
+          onDeleteLeisureRecord = onDeleteLeisureRecord,
+          onExportJson = onExportJson,
+          onImportJson = onImportJson,
+          onClearAllData = onClearAllData,
+          onAddTag = onAddTag,
+          onArchiveTag = onArchiveTag,
+          onAddBooleanTracker = onAddBooleanTracker,
+          onAddRuleTracker = onAddRuleTracker,
+          onArchiveTracker = onArchiveTracker,
+          themeMode = themeMode,
+          onThemeModeChange = onThemeModeChange,
+          modifier = Modifier.weight(1f),
+        )
       }
     }
   }
@@ -389,6 +387,82 @@ internal fun MainScreen(
       text = { Text(error) },
       confirmButton = { TextButton(onClick = onDismissImportError) { Text("Done") } },
     )
+  }
+}
+
+@Composable
+private fun DestinationContent(
+  state: FocusWellUiState,
+  onToggleTracker: (String) -> Unit,
+  onStartFocusClick: () -> Unit,
+  onStartLeisure: () -> Unit,
+  onPauseFocus: () -> Unit,
+  onResumeFocus: () -> Unit,
+  onEndFocus: (String) -> Unit,
+  onEndLeisure: () -> Unit,
+  onStartWindDown: () -> Unit,
+  onEndWindDown: () -> Unit,
+  onEndDepleted: () -> Unit,
+  onDeleteFocusRecord: (String) -> Unit,
+  onUpdateFocusRecord: (String, String, Double) -> Unit,
+  onDeleteLeisureRecord: (String) -> Unit,
+  onExportJson: () -> String,
+  onImportJson: (String) -> Unit,
+  onClearAllData: () -> Unit,
+  onAddTag: (String, Double) -> Unit,
+  onArchiveTag: (String) -> Unit,
+  onAddBooleanTracker: (String) -> Unit,
+  onAddRuleTracker: (String, String, Double) -> Unit,
+  onArchiveTracker: (String) -> Unit,
+  themeMode: ThemeMode,
+  onThemeModeChange: (ThemeMode) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  AnimatedContent(
+    targetState = state.destination,
+    transitionSpec = { destinationMotionTransform() },
+    label = "destination",
+    modifier = modifier.fillMaxSize(),
+  ) { destination ->
+    when (destination) {
+      Destination.Today ->
+        TodayScreen(
+          state = state,
+          onToggleTracker = onToggleTracker,
+          onStartFocusClick = onStartFocusClick,
+          onStartLeisure = onStartLeisure,
+          onPauseFocus = onPauseFocus,
+          onResumeFocus = onResumeFocus,
+          onEndFocus = onEndFocus,
+          onEndLeisure = onEndLeisure,
+          onStartWindDown = onStartWindDown,
+          onEndWindDown = onEndWindDown,
+          onEndDepleted = onEndDepleted,
+        )
+
+      Destination.Reserve -> ReserveScreen(state)
+      Destination.Records ->
+        RecordsScreen(
+          state = state,
+          onDeleteFocusRecord = onDeleteFocusRecord,
+          onUpdateFocusRecord = onUpdateFocusRecord,
+          onDeleteLeisureRecord = onDeleteLeisureRecord,
+        )
+      Destination.Settings ->
+        SettingsScreen(
+          state = state,
+          onExportJson = onExportJson,
+          onImportJson = onImportJson,
+          onClearAllData = onClearAllData,
+          onAddTag = onAddTag,
+          onArchiveTag = onArchiveTag,
+          onAddBooleanTracker = onAddBooleanTracker,
+          onAddRuleTracker = onAddRuleTracker,
+          onArchiveTracker = onArchiveTracker,
+          themeMode = themeMode,
+          onThemeModeChange = onThemeModeChange,
+        )
+    }
   }
 }
 
@@ -567,6 +641,43 @@ internal fun FocusWellNavigationBar(
             selectedIconColor = colors.onSecondaryContainer,
             selectedTextColor = colors.secondary,
             selectedIndicatorColor = colors.secondaryContainer,
+            unselectedIconColor = colors.onSurfaceVariant,
+            unselectedTextColor = colors.onSurfaceVariant,
+          ),
+      )
+    }
+  }
+}
+
+@Composable
+internal fun FocusWellNavigationRail(
+  selected: Destination,
+  onDestination: (Destination) -> Unit,
+) {
+  val colors = MaterialTheme.colorScheme
+  NavigationRail(
+    containerColor = colors.surfaceContainer,
+    contentColor = colors.onSurfaceVariant,
+  ) {
+    Spacer(Modifier.height(12.dp))
+    Destination.entries.forEach { destination ->
+      NavigationRailItem(
+        selected = selected == destination,
+        onClick = { onDestination(destination) },
+        icon = { DestinationIcon(destination = destination) },
+        label = {
+          Text(
+            destination.label,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        },
+        colors =
+          NavigationRailItemDefaults.colors(
+            selectedIconColor = colors.onSecondaryContainer,
+            selectedTextColor = colors.secondary,
+            indicatorColor = colors.secondaryContainer,
             unselectedIconColor = colors.onSurfaceVariant,
             unselectedTextColor = colors.onSurfaceVariant,
           ),

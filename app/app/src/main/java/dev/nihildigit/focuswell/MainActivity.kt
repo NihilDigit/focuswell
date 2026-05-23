@@ -27,7 +27,7 @@ class MainActivity : ComponentActivity() {
     setContent {
       var themeMode by remember { mutableStateOf(loadThemeMode(this@MainActivity)) }
       val systemDarkTheme = isSystemInDarkTheme()
-      FocusWellTheme(darkTheme = themeMode.resolveDarkTheme(systemDarkTheme)) {
+      FocusWellTheme(darkTheme = themeMode.resolveDarkTheme(systemDarkTheme), dynamicColor = true) {
         Surface(modifier = Modifier.fillMaxSize(), color = MaterialTheme.colorScheme.background) {
           MainNavigation(
             themeMode = themeMode,

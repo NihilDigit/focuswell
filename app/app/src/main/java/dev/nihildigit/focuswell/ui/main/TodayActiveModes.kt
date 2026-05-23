@@ -23,10 +23,11 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
-import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.foundation.gestures.waitForUpOrCancellation
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -121,6 +122,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -219,32 +221,7 @@ internal fun ActiveFocusSurface(
       .minusMillis(focus.pausedDurationMillis)
       .coerceAtLeast(Duration.ZERO)
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
-    TimerOrganism(
-      label = if (focus.paused) "Paused" else "Focus time",
-      time = formatDuration(elapsed),
-      tone = MaterialTheme.colorScheme.primary,
-      supporting = "Earning ${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x real time",
-    )
-    Surface(
-      color = MaterialTheme.colorScheme.surfaceContainer,
-      contentColor = MaterialTheme.colorScheme.onSurface,
-      shape = TodayPanelShape,
-      modifier = Modifier.fillMaxWidth(),
-    ) {
-      Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(
-          focus.task,
-          style = MaterialTheme.typography.headlineSmall,
-          fontWeight = FontWeight.Bold,
-          maxLines = 2,
-          overflow = TextOverflow.Ellipsis,
-        )
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-          StatusBadge(focus.type.label, MaterialTheme.colorScheme.primary)
-          StatusBadge(focus.tag?.name ?: "No tag", MaterialTheme.colorScheme.secondary)
-        }
-      }
-    }
+    FocusTimerSurface(focus = focus, elapsed = elapsed)
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
       if (focus.paused) {
         Button(
@@ -301,6 +278,110 @@ internal fun ActiveFocusSurface(
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
         onEndFocus(formatOutcomeResult(outcome, outcomeNote))
       },
+    )
+  }
+}
+
+@Composable
+internal fun FocusTimerSurface(
+  focus: ActiveMode.Focus,
+  elapsed: Duration,
+) {
+  val rate = focus.type.rate * (focus.tag?.multiplier ?: 1.0)
+  val earnedNow = elapsed.toMillis().coerceAtLeast(0).toDouble() / 60_000.0 * rate
+  val tone = MaterialTheme.colorScheme.primary
+  val container = MaterialTheme.colorScheme.primaryContainer
+  val content = MaterialTheme.colorScheme.onPrimaryContainer
+  Surface(
+    color = container,
+    contentColor = content,
+    shape = ActiveTimerShape,
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Box {
+      FocusFieldDrawing(tone = tone, modifier = Modifier.matchParentSize())
+      Column(
+        modifier = Modifier.padding(24.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          StatusBadge(if (focus.paused) "Paused" else "Focus running", tone)
+          StatusBadge("${effectiveRate(focus.type, focus.tag?.multiplier ?: 1.0)}x earn", MaterialTheme.colorScheme.secondary)
+        }
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Text(
+            focus.task,
+            style = MaterialTheme.typography.headlineSmall,
+            fontWeight = FontWeight.Bold,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+          Text(
+            if (focus.tag == null) focus.type.label else "${focus.type.label} · ${focus.tag.name}",
+            style = MaterialTheme.typography.bodyMedium,
+            color = content,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.Bottom,
+        ) {
+          Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("Elapsed", style = MaterialTheme.typography.labelLarge, color = content)
+            Text(
+              formatDuration(elapsed),
+              style = tabularNumbers(MaterialTheme.typography.displayMedium),
+              maxLines = 1,
+              softWrap = false,
+            )
+          }
+          Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text("If ended now", style = MaterialTheme.typography.labelLarge, color = content)
+            Text(
+              "+${earnedNow.roundToInt()}m",
+              style = tabularNumbers(MaterialTheme.typography.headlineMedium),
+              fontWeight = FontWeight.ExtraBold,
+              color = tone,
+            )
+          }
+        }
+      }
+    }
+  }
+}
+
+@Composable
+internal fun FocusFieldDrawing(tone: Color, modifier: Modifier = Modifier) {
+  val veil = MaterialTheme.colorScheme.surface.copy(alpha = 0.28f)
+  Canvas(modifier = modifier) {
+    val stroke = 12.dp.toPx()
+    val left = size.width * 0.58f
+    val top = size.height * 0.08f
+    repeat(5) { index ->
+      val x = left + index * 18.dp.toPx()
+      drawLine(
+        color = tone.copy(alpha = 0.08f + index * 0.018f),
+        start = Offset(x, top),
+        end = Offset(x + 30.dp.toPx(), size.height - 28.dp.toPx()),
+        strokeWidth = stroke,
+        cap = StrokeCap.Round,
+      )
+    }
+    drawArc(
+      color = veil,
+      startAngle = 198f,
+      sweepAngle = 88f,
+      useCenter = false,
+      topLeft = Offset(-size.width * 0.16f, size.height * 0.60f),
+      size = Size(size.width * 0.56f, size.width * 0.56f),
+      style = Stroke(width = 14.dp.toPx(), cap = StrokeCap.Round),
     )
   }
 }
@@ -410,7 +491,6 @@ internal fun ResultChoice(
   }
 }
 
-@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun ActiveLeisureSurface(
   leisure: ActiveMode.Leisure,
@@ -464,33 +544,97 @@ internal fun ActiveLeisureSurface(
       supporting = lowBalanceText(liveRemainingMinutes),
       sleepProtection = isSleepProtection,
     )
-    Surface(
-      color = MaterialTheme.colorScheme.primary,
-      contentColor = MaterialTheme.colorScheme.onPrimary,
-      shape = FocusActionShape,
-      modifier =
-        Modifier
-          .fillMaxWidth()
-          .height(56.dp)
-          .combinedClickable(
-            onClick = {
-              haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-              Toast.makeText(context, "Hold to end leisure", Toast.LENGTH_SHORT).show()
-            },
-            onLongClick = {
-              haptics.performHapticFeedback(HapticFeedbackType.LongPress)
-              onEndLeisure()
-            },
-          ),
-    ) {
+    HoldToEndLeisureButton(
+      onTapWithoutHold = {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        Toast.makeText(context, "Keep holding to end leisure", Toast.LENGTH_SHORT).show()
+      },
+      onConfirmed = {
+        haptics.performHapticFeedback(HapticFeedbackType.LongPress)
+        onEndLeisure()
+      },
+    )
+  }
+}
+
+@Composable
+internal fun HoldToEndLeisureButton(
+  onTapWithoutHold: () -> Unit,
+  onConfirmed: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var holding by remember { mutableStateOf(false) }
+  var completed by remember { mutableStateOf(false) }
+  val holdProgress by animateFloatAsState(
+    targetValue = if (holding) 1f else 0f,
+    animationSpec = tween(durationMillis = if (holding) 950 else 180),
+    label = "hold-to-end-progress",
+  )
+  val container by animateColorAsState(
+    targetValue = if (holding) MaterialTheme.colorScheme.tertiary else MaterialTheme.colorScheme.tertiaryContainer,
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "hold-to-end-container",
+  )
+  val content by animateColorAsState(
+    targetValue = if (holding) MaterialTheme.colorScheme.onTertiary else MaterialTheme.colorScheme.onTertiaryContainer,
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "hold-to-end-content",
+  )
+
+  LaunchedEffect(holding) {
+    if (holding) {
+      delay(950)
+      completed = true
+      holding = false
+      onConfirmed()
+    }
+  }
+
+  Surface(
+    color = container,
+    contentColor = content,
+    shape = FocusActionShape,
+    modifier =
+      modifier
+        .fillMaxWidth()
+        .height(60.dp)
+        .pointerInput(Unit) {
+          awaitEachGesture {
+            awaitFirstDown(requireUnconsumed = false)
+            completed = false
+            holding = true
+            val up = waitForUpOrCancellation()
+            if (up != null && !completed) {
+              holding = false
+              onTapWithoutHold()
+            } else {
+              holding = false
+            }
+          }
+        },
+  ) {
+    Box {
+      Box(
+        modifier =
+          Modifier
+            .fillMaxWidth(holdProgress.coerceIn(0f, 1f))
+            .height(60.dp)
+            .background(content.copy(alpha = 0.14f), FocusActionShape),
+      )
       Row(
-        modifier = Modifier.fillMaxWidth().height(56.dp),
-        horizontalArrangement = Arrangement.Center,
+        modifier = Modifier.fillMaxWidth().height(60.dp).padding(horizontal = 18.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
       ) {
-        Icon(Icons.Rounded.Stop, contentDescription = null)
-        Spacer(Modifier.width(8.dp))
-        Text("Hold to End")
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+          Icon(Icons.Rounded.Stop, contentDescription = null)
+          Text(if (holding) "Keep holding" else "Hold to end", style = MaterialTheme.typography.labelLarge)
+        }
+        Text(
+          if (holding) "${(holdProgress * 100).roundToInt()}%" else "950 ms",
+          style = tabularNumbers(MaterialTheme.typography.labelMedium),
+          color = content,
+        )
       }
     }
   }
