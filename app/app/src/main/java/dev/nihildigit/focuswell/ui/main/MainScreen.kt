@@ -1435,6 +1435,7 @@ private fun HistoryTabBar(
   }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun FocusRecordRow(
   record: FocusRecord,
@@ -1444,6 +1445,7 @@ private fun FocusRecordRow(
   var editing by remember { mutableStateOf(false) }
   var result by remember(record.id) { mutableStateOf(record.result) }
   var minutes by remember(record.id) { mutableStateOf(record.activeDurationMinutes.roundToInt().toString()) }
+  val editSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -1494,32 +1496,140 @@ private fun FocusRecordRow(
     }
   }
   if (editing) {
-    val newMinutes = minutes.toDoubleOrNull() ?: record.activeDurationMinutes
-    val newEarned = newMinutes * record.typeRate * record.tagMultiplier
-    AlertDialog(
-      onDismissRequest = { editing = false },
-      title = { Text("Edit focus record") },
-      text = {
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-          OutlinedTextField(value = result, onValueChange = { result = it }, label = { Text("Result") })
-          OutlinedTextField(value = minutes, onValueChange = { minutes = it }, label = { Text("Active minutes") })
-          Text("Original earned ${signedMinutes(record.earnedMinutes)}")
-          Text("New earned ${signedMinutes(newEarned)}")
-          Text("Balance delta ${signedMinutes(newEarned - record.earnedMinutes)}")
-        }
+    FocusRecordEditSheet(
+      record = record,
+      result = result,
+      minutes = minutes,
+      onResultChange = { result = it },
+      onMinutesChange = { minutes = it },
+      sheetState = editSheetState,
+      onDismiss = { editing = false },
+      onSave = {
+        editing = false
+        onUpdate(result, minutes.toDoubleOrNull() ?: record.activeDurationMinutes)
       },
-      confirmButton = {
-        TextButton(
-          onClick = {
-            editing = false
-            onUpdate(result, newMinutes)
-          }
-        ) {
-          Text("Save and apply balance change")
-        }
-      },
-      dismissButton = { TextButton(onClick = { editing = false }) { Text("Cancel") } },
     )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun FocusRecordEditSheet(
+  record: FocusRecord,
+  result: String,
+  minutes: String,
+  onResultChange: (String) -> Unit,
+  onMinutesChange: (String) -> Unit,
+  sheetState: androidx.compose.material3.SheetState,
+  onDismiss: () -> Unit,
+  onSave: () -> Unit,
+) {
+  val options = listOf("As planned", "Partial", "Drifted", "Interrupted")
+  val newMinutes = minutes.toDoubleOrNull() ?: record.activeDurationMinutes
+  val newEarned = newMinutes * record.typeRate * record.tagMultiplier
+  val delta = newEarned - record.earnedMinutes
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    Column(
+      modifier =
+        Modifier
+          .padding(horizontal = 20.dp)
+          .imePadding()
+          .verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Edit focus record", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "${record.type.label} · ${record.tagName ?: "Untagged"}",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      OutlinedTextField(
+        value = minutes,
+        onValueChange = onMinutesChange,
+        label = { Text("Active minutes") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      options.chunked(2).forEach { rowOptions ->
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+          rowOptions.forEach { option ->
+            ResultChoice(
+              label = option,
+              selected = result == option,
+              onClick = { onResultChange(option) },
+              modifier = Modifier.weight(1f),
+            )
+          }
+          if (rowOptions.size == 1) {
+            Spacer(Modifier.weight(1f))
+          }
+        }
+      }
+      OutlinedTextField(
+        value = result,
+        onValueChange = onResultChange,
+        label = { Text("Result note") },
+        minLines = 2,
+        maxLines = 4,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      BalanceDeltaPreview(
+        original = record.earnedMinutes,
+        updated = newEarned,
+        delta = delta,
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Cancel")
+        }
+        Button(
+          enabled = result.isNotBlank() && minutes.toDoubleOrNull() != null,
+          onClick = onSave,
+          modifier = Modifier.weight(1f).height(54.dp),
+          shape = ControlEndShape,
+        ) {
+          Text("Apply change")
+        }
+      }
+      Spacer(Modifier.height(16.dp))
+    }
+  }
+}
+
+@Composable
+private fun BalanceDeltaPreview(original: Double, updated: Double, delta: Double) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(modifier = Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Original earned", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(signedMinutes(original), fontWeight = FontWeight.SemiBold)
+      }
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("New earned", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(signedMinutes(updated), fontWeight = FontWeight.SemiBold)
+      }
+      HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
+      Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text("Balance delta", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text(
+          signedMinutes(delta),
+          color =
+            when {
+              delta > 0.0 -> MaterialTheme.colorScheme.primary
+              delta < 0.0 -> MaterialTheme.colorScheme.error
+              else -> MaterialTheme.colorScheme.onSurfaceVariant
+            },
+          fontWeight = FontWeight.Bold,
+        )
+      }
+    }
   }
 }
 
