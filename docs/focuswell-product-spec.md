@@ -58,8 +58,8 @@ Primary destinations:
 - Balance: ledger-backed account view, 7-day net chart, records, and record
   editing or deletion.
 - Plan: focus tags, daily trackers, tracker rewards, and rule tracker targets.
-- Settings: appearance, accounting rules, JSON backup/restore, and destructive
-  reset.
+- Settings: appearance, accounting rules, app update checks, JSON
+  backup/restore, and destructive reset.
 
 History is not a primary destination. Historical records are part of Balance so
 account review and record correction stay in the same place.

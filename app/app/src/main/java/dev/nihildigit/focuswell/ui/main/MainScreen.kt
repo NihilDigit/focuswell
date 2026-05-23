@@ -145,6 +145,7 @@ import dev.nihildigit.focuswell.notifications.canPostNotifications
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
+import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -235,8 +236,10 @@ fun MainScreen(
   viewModel: MainScreenViewModel = viewModel(),
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
+  val updateState by viewModel.updateState.collectAsStateWithLifecycle()
   MainScreen(
     state = state,
+    updateState = updateState,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
     onStartFocus = viewModel::startFocus,
@@ -264,6 +267,10 @@ fun MainScreen(
     onUpdateManualTracker = viewModel::updateManualTracker,
     onUpdateRuleTracker = viewModel::updateRuleTracker,
     onUpdateRules = viewModel::updateRules,
+    onCheckUpdate = viewModel::checkForUpdate,
+    onDownloadUpdate = viewModel::downloadUpdate,
+    onInstallUpdate = viewModel::installDownloadedUpdate,
+    onOpenUpdateReleasePage = viewModel::openUpdateReleasePage,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -274,6 +281,7 @@ fun MainScreen(
 @Composable
 internal fun MainScreen(
   state: FocusWellUiState,
+  updateState: AppUpdateUiState,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
   onStartFocus: (String, SessionType, String?) -> Unit,
@@ -301,6 +309,10 @@ internal fun MainScreen(
   onUpdateManualTracker: (String, String, Double) -> Unit,
   onUpdateRuleTracker: (String, String, String, Double, Double) -> Unit,
   onUpdateRules: (FocusWellRules) -> Unit,
+  onCheckUpdate: () -> Unit,
+  onDownloadUpdate: () -> Unit,
+  onInstallUpdate: () -> Unit,
+  onOpenUpdateReleasePage: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -367,6 +379,11 @@ internal fun MainScreen(
           onUpdateManualTracker = onUpdateManualTracker,
           onUpdateRuleTracker = onUpdateRuleTracker,
           onUpdateRules = onUpdateRules,
+          updateState = updateState,
+          onCheckUpdate = onCheckUpdate,
+          onDownloadUpdate = onDownloadUpdate,
+          onInstallUpdate = onInstallUpdate,
+          onOpenUpdateReleasePage = onOpenUpdateReleasePage,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
           modifier = Modifier.weight(1f),
@@ -400,6 +417,7 @@ internal fun MainScreen(
 @Composable
 private fun DestinationContent(
   state: FocusWellUiState,
+  updateState: AppUpdateUiState,
   onToggleTracker: (String) -> Unit,
   onStartFocusClick: () -> Unit,
   onStartLeisure: () -> Unit,
@@ -425,6 +443,10 @@ private fun DestinationContent(
   onUpdateManualTracker: (String, String, Double) -> Unit,
   onUpdateRuleTracker: (String, String, String, Double, Double) -> Unit,
   onUpdateRules: (FocusWellRules) -> Unit,
+  onCheckUpdate: () -> Unit,
+  onDownloadUpdate: () -> Unit,
+  onInstallUpdate: () -> Unit,
+  onOpenUpdateReleasePage: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -477,6 +499,11 @@ private fun DestinationContent(
           onImportJson = onImportJson,
           onClearAllData = onClearAllData,
           onUpdateRules = onUpdateRules,
+          updateState = updateState,
+          onCheckUpdate = onCheckUpdate,
+          onDownloadUpdate = onDownloadUpdate,
+          onInstallUpdate = onInstallUpdate,
+          onOpenUpdateReleasePage = onOpenUpdateReleasePage,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
         )
@@ -822,6 +849,7 @@ internal fun MainScreenPreview() {
   FocusWellTheme(dynamicColor = false) {
     MainScreen(
       state = FocusWellUiState(),
+      updateState = AppUpdateUiState(),
       onDestination = {},
       onToggleTracker = {},
       onStartFocus = { _, _, _ -> },
@@ -849,6 +877,10 @@ internal fun MainScreenPreview() {
       onUpdateManualTracker = { _, _, _ -> },
       onUpdateRuleTracker = { _, _, _, _, _ -> },
       onUpdateRules = {},
+      onCheckUpdate = {},
+      onDownloadUpdate = {},
+      onInstallUpdate = {},
+      onOpenUpdateReleasePage = {},
       themeMode = ThemeMode.System,
       onThemeModeChange = {},
     )

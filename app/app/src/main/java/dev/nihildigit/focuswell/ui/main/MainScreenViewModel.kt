@@ -1,27 +1,39 @@
 package dev.nihildigit.focuswell.ui.main
 
 import android.app.Application
+import android.os.Build
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
+import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.reminders.ReminderClient
+import dev.nihildigit.focuswell.updates.AppUpdateInstaller
+import dev.nihildigit.focuswell.updates.AppUpdateUiState
+import dev.nihildigit.focuswell.updates.GitHubReleaseClient
+import dev.nihildigit.focuswell.updates.selectUpdateAsset
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
   private val reminders = ReminderClient(application)
+  private val updateClient = GitHubReleaseClient()
+  private val updateInstaller = AppUpdateInstaller(application, updateClient)
   private val destination = MutableStateFlow(Destination.Today)
   private val importError = MutableStateFlow<String?>(null)
+  private val _updateState = MutableStateFlow(AppUpdateUiState())
+  val updateState: StateFlow<AppUpdateUiState> = _updateState
 
   init {
     viewModelScope.launch {
@@ -121,6 +133,82 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun clearAllData() {
     repository.clearAllData()
     reminders.rotateIdentity()
+  }
+
+  fun checkForUpdate() {
+    if (_updateState.value.checking || _updateState.value.downloading) return
+    _updateState.value = _updateState.value.copy(checking = true, message = null, error = null)
+    viewModelScope.launch {
+      runCatching {
+        withContext(Dispatchers.IO) { updateClient.fetchLatestRelease() }
+      }.onSuccess { release ->
+        val selection =
+          if (release.versionCode > BuildConfig.VERSION_CODE) {
+            selectUpdateAsset(release, Build.SUPPORTED_ABIS.toList())
+          } else {
+            null
+          }
+        _updateState.value =
+          AppUpdateUiState(
+            latestRelease = release,
+            selection = selection,
+            message =
+              when {
+                release.versionCode <= BuildConfig.VERSION_CODE -> "FocusWell is up to date."
+                selection == null -> "Update found, but no APK matches this device."
+                else -> "FocusWell ${release.tagName} is available."
+              },
+          )
+      }.onFailure { error ->
+        _updateState.value = AppUpdateUiState(error = error.message ?: "Update check failed.")
+      }
+    }
+  }
+
+  fun downloadUpdate() {
+    val selection = _updateState.value.selection ?: return
+    if (_updateState.value.downloading) return
+    _updateState.value = _updateState.value.copy(downloading = true, progress = 0, message = "Downloading update.", error = null)
+    viewModelScope.launch {
+      runCatching {
+        updateInstaller.downloadAndVerify(selection) { progress ->
+          _updateState.value = _updateState.value.copy(progress = progress)
+        }
+      }.onSuccess { apk ->
+        _updateState.value =
+          _updateState.value.copy(
+            downloading = false,
+            progress = 100,
+            downloadedApk = apk,
+            message = "Update downloaded. Install when ready.",
+            error = null,
+          )
+      }.onFailure { error ->
+        _updateState.value =
+          _updateState.value.copy(
+            downloading = false,
+            progress = null,
+            downloadedApk = null,
+            error = error.message ?: "Download failed.",
+          )
+      }
+    }
+  }
+
+  fun installDownloadedUpdate() {
+    val apk = _updateState.value.downloadedApk ?: return
+    runCatching { updateInstaller.install(apk) }
+      .onFailure { error ->
+        _updateState.value = _updateState.value.copy(error = error.message ?: "Could not open installer.")
+      }
+  }
+
+  fun openUpdateReleasePage() {
+    val release = _updateState.value.latestRelease ?: return
+    runCatching { updateInstaller.openReleasePage(release) }
+      .onFailure { error ->
+        _updateState.value = _updateState.value.copy(error = error.message ?: "Could not open release page.")
+      }
   }
 
   fun deleteFocusRecord(id: String) = repository.deleteFocusRecord(id)

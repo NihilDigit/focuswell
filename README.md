@@ -32,6 +32,7 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Daily trackers and rule-based tracker progress.
 - Adjustable accounting rules and configurable tracker rewards.
 - JSON export/import.
+- In-app update checks against GitHub Releases, with ABI-specific APK download and checksum verification.
 - Local notifications and remote FCM reminders.
 - Minified release builds with scoped Room/R8 keep rules.
 - Material 3 Expressive-inspired shape, motion, typography, and icon treatment.

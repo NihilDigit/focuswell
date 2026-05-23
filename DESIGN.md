@@ -219,6 +219,7 @@ Settings:
 
 - Groups are plain filled surfaces.
 - Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
+- Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.

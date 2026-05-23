@@ -205,7 +205,7 @@ internal fun TodayScreen(
         }
       }
     }
-    if (activeMode != ActiveMode.None) {
+    if (activeMode != ActiveMode.None && activeMode !is ActiveMode.Leisure) {
       item { CompactReserveHeader(state.reserveMinutes) }
     }
     item {

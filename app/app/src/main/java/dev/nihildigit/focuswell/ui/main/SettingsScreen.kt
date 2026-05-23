@@ -124,6 +124,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
+import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
@@ -138,6 +139,7 @@ import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
+import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
@@ -659,6 +661,88 @@ internal fun SettingsDataActionRow(
   }
 }
 
+@Composable
+internal fun SettingsUpdateRow(
+  updateState: AppUpdateUiState,
+  onCheckUpdate: () -> Unit,
+  onDownloadUpdate: () -> Unit,
+  onInstallUpdate: () -> Unit,
+  onOpenReleasePage: () -> Unit,
+) {
+  val release = updateState.latestRelease
+  val title = release?.let { "FocusWell ${it.tagName}" } ?: "Current ${BuildConfig.VERSION_NAME}"
+  val supporting =
+    updateState.error
+      ?: updateState.message
+      ?: "Check GitHub Releases for a signed APK update."
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+          color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
+          contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+          shape = CircleShape,
+        ) {
+          Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Text(title, style = MaterialTheme.typography.titleMedium)
+          Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+      if (updateState.downloading) {
+        LinearProgressIndicator(
+          progress = { ((updateState.progress ?: 0) / 100f).coerceIn(0f, 1f) },
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+      Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
+        FilledTonalButton(
+          onClick = onCheckUpdate,
+          enabled = !updateState.checking && !updateState.downloading,
+          modifier = Modifier.weight(1f).height(44.dp),
+          shape = RoundedCornerShape(22.dp),
+        ) {
+          Text(if (updateState.checking) "Checking" else "Check")
+        }
+        when {
+          updateState.downloadedApk != null -> {
+            Button(onClick = onInstallUpdate, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(22.dp)) {
+              Text("Install")
+            }
+          }
+          updateState.selection != null -> {
+            Button(
+              onClick = onDownloadUpdate,
+              enabled = !updateState.downloading,
+              modifier = Modifier.weight(1f).height(44.dp),
+              shape = RoundedCornerShape(22.dp),
+            ) {
+              Text(if (updateState.downloading) "${updateState.progress ?: 0}%" else "Download")
+            }
+          }
+          release != null -> {
+            OutlinedButton(onClick = onOpenReleasePage, modifier = Modifier.weight(1f).height(44.dp), shape = RoundedCornerShape(22.dp)) {
+              Text("Release")
+            }
+          }
+        }
+      }
+      release?.body?.takeIf { it.isNotBlank() }?.lineSequence()?.firstOrNull()?.let { firstLine ->
+        Text(firstLine, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+    }
+  }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ThemeModePicker(
@@ -711,6 +795,11 @@ internal fun SettingsScreen(
   onImportJson: (String) -> Unit,
   onClearAllData: () -> Unit,
   onUpdateRules: (FocusWellRules) -> Unit,
+  updateState: AppUpdateUiState,
+  onCheckUpdate: () -> Unit,
+  onDownloadUpdate: () -> Unit,
+  onInstallUpdate: () -> Unit,
+  onOpenUpdateReleasePage: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
@@ -840,6 +929,18 @@ internal fun SettingsScreen(
           actionLabel = "Clear",
           onClick = { confirmClear = true },
           destructive = true,
+        )
+      }
+    }
+    item {
+      CalmPanel {
+        Text("Update", style = MaterialTheme.typography.titleLarge)
+        SettingsUpdateRow(
+          updateState = updateState,
+          onCheckUpdate = onCheckUpdate,
+          onDownloadUpdate = onDownloadUpdate,
+          onInstallUpdate = onInstallUpdate,
+          onOpenReleasePage = onOpenUpdateReleasePage,
         )
       }
     }

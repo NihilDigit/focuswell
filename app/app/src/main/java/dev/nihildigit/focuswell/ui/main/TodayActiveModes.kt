@@ -510,7 +510,9 @@ internal fun ActiveLeisureSurface(
   val normalizedRules = rules.normalized()
   val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now, rules = normalizedRules)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
-  val remaining = Duration.ofSeconds((liveRemainingMinutes * 60).roundToInt().toLong())
+  val depletionAt = TimeAccounting.instantWhenLeisureCostReaches(leisure.startedAt, reserveMinutes, rules = normalizedRules)
+  val totalDisplayDuration = Duration.between(leisure.startedAt, depletionAt).coerceAtLeast(Duration.ZERO)
+  val displayRemaining = Duration.between(now, depletionAt).coerceAtLeast(Duration.ZERO)
   val isSleepProtection = TimeAccounting.isSleepProtection(now, rules = normalizedRules)
   LaunchedEffect(liveRemainingMinutes) {
     when {
@@ -544,10 +546,15 @@ internal fun ActiveLeisureSurface(
     DepletedSurface(rules = normalizedRules, onEndLeisure = onEndLeisure, onStartWindDown = onStartWindDown)
     return
   }
-  val progress = if (reserveMinutes <= 0.0) 0f else (liveRemainingMinutes / reserveMinutes).toFloat().coerceIn(0f, 1f)
+  val progress =
+    if (totalDisplayDuration.isZero || totalDisplayDuration.isNegative) {
+      0f
+    } else {
+      (displayRemaining.toMillis().toDouble() / totalDisplayDuration.toMillis()).toFloat().coerceIn(0f, 1f)
+    }
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     LeisureTimerSurface(
-      remaining = formatDuration(remaining),
+      remaining = formatDuration(displayRemaining),
       progress = progress,
       supporting = lowBalanceText(liveRemainingMinutes),
       sleepProtection = isSleepProtection,
