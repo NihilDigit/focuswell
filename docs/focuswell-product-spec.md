@@ -38,6 +38,8 @@ FocusWell has one active mode at a time:
 All timestamps are stored in UTC. The app evaluates the FocusWell day using the
 device's current system time zone with the configured daily boundary.
 
+Default rules:
+
 ```text
 Daily window: 04:00 -> next day 03:59
 Daily grant: +60 minutes
@@ -46,6 +48,21 @@ Late-night leisure cost: 01:00-04:00 costs 2x
 
 The app stores canonical local state in Room. JSON export/import remains the
 manual backup and recovery path.
+
+## Navigation Model
+
+Primary destinations:
+
+- Today: current reserve, active mode, daily trackers, depleted state, and
+  wind-down.
+- Balance: ledger-backed account view, 7-day net chart, records, and record
+  editing or deletion.
+- Plan: focus tags, daily trackers, tracker rewards, and rule tracker targets.
+- Settings: appearance, accounting rules, JSON backup/restore, and destructive
+  reset.
+
+History is not a primary destination. Historical records are part of Balance so
+account review and record correction stay in the same place.
 
 ## Leisure Reserve
 
@@ -144,6 +161,7 @@ multiplier and type rate.
 Room is the canonical local persistence layer for:
 
 - active mode
+- accounting rules
 - tags
 - daily trackers
 - focus records

@@ -18,6 +18,8 @@ FocusWell uses configurable accounting rules with these defaults:
 
 Today is for the current reserve, active mode, and daily trackers. Balance combines the ledger, records, and record editing. Plan manages tags and trackers. Settings holds appearance, rules, backup, and reset.
 
+Rules are user-adjustable after install. Tags and trackers are part of the user's plan, not general app settings.
+
 The product concept and accounting boundaries live in [docs/focuswell-product-spec.md](docs/focuswell-product-spec.md). Exact behavior should be checked against the current code and tests. UI rules live in [DESIGN.md](DESIGN.md).
 
 ## Android App
@@ -28,6 +30,7 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Room-backed local persistence for timers, records, trackers, tags, and ledger entries.
 - Editable focus and leisure records in Balance.
 - Daily trackers and rule-based tracker progress.
+- Adjustable accounting rules and configurable tracker rewards.
 - JSON export/import.
 - Local notifications and remote FCM reminders.
 - Minified release builds with scoped Room/R8 keep rules.
