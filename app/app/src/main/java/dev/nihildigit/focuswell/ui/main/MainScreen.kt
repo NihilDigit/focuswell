@@ -42,6 +42,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -95,6 +96,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.font.FontFamily
@@ -1858,6 +1860,58 @@ private fun SettingsAddRuleTrackerForm(
 }
 
 @Composable
+private fun SettingsDataActionRow(
+  title: String,
+  supporting: String,
+  icon: ImageVector,
+  actionLabel: String,
+  onClick: () -> Unit,
+  destructive: Boolean = false,
+) {
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Surface(
+        color =
+          if (destructive) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+          else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
+        contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
+        shape = CircleShape,
+      ) {
+        Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+      }
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text(title, style = MaterialTheme.typography.titleMedium)
+        Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      if (destructive) {
+        OutlinedButton(
+          onClick = onClick,
+          modifier = Modifier.height(44.dp),
+          shape = RoundedCornerShape(22.dp),
+          colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
+        ) {
+          Text(actionLabel)
+        }
+      } else {
+        FilledTonalButton(onClick = onClick, modifier = Modifier.height(44.dp), shape = RoundedCornerShape(22.dp)) {
+          Text(actionLabel)
+        }
+      }
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
 private fun SettingsScreen(
   state: FocusWellUiState,
   onExportJson: () -> Unit,
@@ -1872,6 +1926,7 @@ private fun SettingsScreen(
   var confirmClear by remember { mutableStateOf(false) }
   var showImport by remember { mutableStateOf(false) }
   var importText by remember { mutableStateOf("") }
+  val importSheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   var tagName by remember { mutableStateOf("") }
   var tagMultiplier by remember { mutableStateOf("1.0") }
   var trackerLabel by remember { mutableStateOf("") }
@@ -1951,21 +2006,28 @@ private fun SettingsScreen(
     item {
       CalmPanel {
         Text("Data", style = MaterialTheme.typography.headlineSmall)
-        TextButton(onClick = onExportJson) {
-          Icon(Icons.Rounded.Download, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Export JSON")
-        }
-        TextButton(onClick = { showImport = true }) {
-          Icon(Icons.Rounded.Upload, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Import JSON")
-        }
-        TextButton(onClick = { confirmClear = true }) {
-          Icon(Icons.Rounded.Delete, contentDescription = null)
-          Spacer(Modifier.width(8.dp))
-          Text("Clear all data")
-        }
+        SettingsDataActionRow(
+          title = "Export",
+          supporting = "Copy a complete JSON backup.",
+          icon = Icons.Rounded.Download,
+          actionLabel = "Export",
+          onClick = onExportJson,
+        )
+        SettingsDataActionRow(
+          title = "Import",
+          supporting = "Restore from a JSON export.",
+          icon = Icons.Rounded.Upload,
+          actionLabel = "Import",
+          onClick = { showImport = true },
+        )
+        SettingsDataActionRow(
+          title = "Clear all data",
+          supporting = "Remove records, reserve history, trackers, and settings.",
+          icon = Icons.Rounded.Delete,
+          actionLabel = "Clear",
+          onClick = { confirmClear = true },
+          destructive = true,
+        )
       }
     }
   }
@@ -1990,32 +2052,69 @@ private fun SettingsScreen(
   }
 
   if (showImport) {
-    AlertDialog(
-      onDismissRequest = { showImport = false },
-      title = { Text("Import JSON") },
-      text = {
-        OutlinedTextField(
-          value = importText,
-          onValueChange = { importText = it },
-          minLines = 5,
-          maxLines = 10,
-          label = { Text("FocusWell export") },
-        )
+    ImportJsonSheet(
+      importText = importText,
+      onImportTextChange = { importText = it },
+      sheetState = importSheetState,
+      onDismiss = { showImport = false },
+      onImport = {
+        showImport = false
+        onImportJson(importText)
+        importText = ""
       },
-      confirmButton = {
-        TextButton(
+    )
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ImportJsonSheet(
+  importText: String,
+  onImportTextChange: (String) -> Unit,
+  sheetState: androidx.compose.material3.SheetState,
+  onDismiss: () -> Unit,
+  onImport: () -> Unit,
+) {
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    Column(
+      modifier =
+        Modifier
+          .padding(horizontal = 20.dp)
+          .imePadding()
+          .verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        Text("Import JSON", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+        Text(
+          "Paste a FocusWell export. Existing local data will be replaced.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+      }
+      OutlinedTextField(
+        value = importText,
+        onValueChange = onImportTextChange,
+        minLines = 7,
+        maxLines = 12,
+        label = { Text("FocusWell export") },
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Cancel")
+        }
+        Button(
           enabled = importText.isNotBlank(),
-          onClick = {
-            showImport = false
-            onImportJson(importText)
-            importText = ""
-          }
+          onClick = onImport,
+          modifier = Modifier.weight(1f).height(54.dp),
+          shape = ControlEndShape,
         ) {
           Text("Import")
         }
-      },
-      dismissButton = { TextButton(onClick = { showImport = false }) { Text("Cancel") } },
-    )
+      }
+      Spacer(Modifier.height(16.dp))
+    }
   }
 }
 
