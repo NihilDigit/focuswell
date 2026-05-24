@@ -1,0 +1,92 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>FocusWell</title>
+    <link rel="stylesheet" href="popup.css">
+  </head>
+  <body>
+    <main class="shell">
+      <section id="homeView" class="view active" aria-label="FocusWell 白名单">
+        <header class="topbar">
+          <div>
+            <p class="eyebrow">FocusWell</p>
+            <h1>浏览白名单</h1>
+          </div>
+          <button id="settingsButton" class="icon-button" type="button" aria-label="设置">⚙</button>
+        </header>
+
+        <section class="focus-card" aria-label="今日白名单状态">
+          <div class="timer-band">
+            <p>今日已开启</p>
+            <strong id="timer">00:00:00</strong>
+          </div>
+          <button id="toggleButton" class="power-button" type="button" aria-pressed="false">
+            <span id="toggleText">开启</span>
+          </button>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <h2>规则启用</h2>
+          </div>
+          <div id="quickRules" class="quick-rules"></div>
+        </section>
+
+        <p id="todayBlocked" class="today-blocked">今日已拦截 0 次</p>
+      </section>
+
+      <section id="settingsView" class="view" aria-label="设置">
+        <header class="topbar">
+          <button id="backButton" class="icon-button" type="button" aria-label="返回">‹</button>
+          <div class="settings-title">
+            <p class="eyebrow">FocusWell</p>
+            <h1>设置</h1>
+          </div>
+        </header>
+
+        <section class="stats-grid" aria-label="本地统计">
+          <div>
+            <span id="totalTime">00:00:00</span>
+            <p>总开启</p>
+          </div>
+          <div>
+            <span id="allowedCount">0</span>
+            <p>白名单使用</p>
+          </div>
+          <div>
+            <span id="blockedCount">0</span>
+            <p>拦截</p>
+          </div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <h2>白名单使用</h2>
+          </div>
+          <div id="usage" class="usage"></div>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <h2>规则 JSON</h2>
+            <button id="saveJsonButton" class="text-button" type="button">保存</button>
+          </div>
+          <textarea id="rulesJson" class="json-editor" rows="10" spellcheck="false" aria-label="规则 JSON"></textarea>
+          <p id="jsonStatus" class="status-line" role="status"></p>
+        </section>
+
+        <section class="section">
+          <div class="section-title">
+            <h2>最近行为</h2>
+            <button id="resetButton" class="text-button" type="button">清空统计</button>
+          </div>
+          <div id="events" class="events"></div>
+        </section>
+      </section>
+    </main>
+
+    <script src="popup.js"></script>
+  </body>
+</html>

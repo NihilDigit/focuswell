@@ -41,6 +41,8 @@ Product register: design serves the task. Earned familiarity is more important t
 
 Physical scene: the app is checked quickly on a phone at a desk, on a couch, or late at night when attention is limited. The UI should read in low energy moments without becoming dim, punitive, or celebratory.
 
+The browser extension is used inside Chrome or Edge as a brief control surface, often with touch or a small popup. It should expose the current whitelist state without inviting rule editing during a focus moment.
+
 The first viewport should answer:
 
 1. Can I spend leisure time now?
@@ -58,6 +60,8 @@ Plan is configurable. It owns user-defined earning inputs: tags, daily trackers,
 History is not a primary screen. Historical records are part of Balance.
 
 Settings is plain. It should be predictable, dense enough to scan, and cautious around destructive actions.
+
+The browser extension popup is narrower than the Android app and has only two surfaces: Home and Settings. Home owns today's whitelist timer, one round enable/disable control, a rule toggle grid rendered from the current JSON rules, and a single lightweight not-allowed count. Settings owns detailed stats, recent behavior, and JSON rule editing.
 
 ## Color And Elevation
 
@@ -223,6 +227,14 @@ Settings:
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.
+
+Browser extension:
+
+- The popup uses the Android app icon as the extension icon so the companion surface is recognizable.
+- Home keeps regex text hidden. Rules appear as large grid toggles generated from the saved JSON rule list.
+- The enable/disable control is circular and grouped with today's timer in one status card.
+- The blocked page uses restrained copy: "回到专注范围" and a larger status line. It should not lead the user toward Settings or rule editing.
+- Settings may expose the raw JSON editor because regex editing is an infrequent maintenance action.
 
 Component-specific rules:
 

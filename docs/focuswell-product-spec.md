@@ -190,6 +190,23 @@ Reminder callbacks use `sessionId + revision` to avoid notifying stale sessions.
 FCM payloads are data-only high-priority Android messages; the Android app
 renders local notifications.
 
+## Browser Extension
+
+The companion browser extension is a local Chrome/Edge whitelist gate. It is
+not part of the Android ledger, does not earn or spend reserve, and does not
+talk to the reminder backend.
+
+When enabled, the extension only allows top-level browser pages whose URLs
+match enabled regular-expression rules. The default rules cover Claude,
+ChatGPT, Google search result pages, and Wikipedia. The popup records local
+extension stats: today's enabled time, total enabled time, allowed whitelist
+navigations, blocked navigations, per-rule usage, and recent behavior.
+
+The extension UI keeps regex maintenance out of the main screen. Home shows a
+timer, a single enable/disable control, a rule toggle grid parsed from the
+current JSON rules, and today's not-allowed count. Settings contains the full
+stats and JSON rule editor.
+
 ## Clear All Data
 
 Clear all data removes local records, active mode, trackers, tags, and ledger
@@ -202,7 +219,8 @@ These are not part of the current implementation:
 
 - account sync
 - cross-device ledger merging
-- app or website blocking
+- automatic Android app blocking
+- syncing browser extension state into the Android ledger
 - interval-level pause audit
 - WorkManager-based daily maintenance
 - DataStore migration for lightweight settings

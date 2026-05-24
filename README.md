@@ -37,6 +37,19 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Minified release builds with scoped Room/R8 keep rules.
 - Material 3 Expressive-inspired shape, motion, typography, and icon treatment.
 
+## Browser Extension
+
+`browser-extension/` contains a companion Chrome/Edge extension. It is a local
+whitelist gate for focused browser sessions, separate from the Android ledger
+and reminder backend.
+
+When enabled, the extension only allows top-level pages that match enabled
+regular-expression rules. The default rules cover Claude, ChatGPT, Google
+search result pages, and Wikipedia. The popup keeps the touch-facing controls
+small: today's enabled time, a round on/off control, a rule toggle grid, and
+today's not-allowed count. Detailed stats and rule JSON editing live in
+Settings.
+
 ## Build
 
 ```powershell
