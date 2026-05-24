@@ -91,6 +91,7 @@ import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.History
 import androidx.compose.material.icons.rounded.LightMode
+import androidx.compose.material.icons.rounded.Notifications
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Remove
@@ -772,6 +773,72 @@ internal fun SettingsUpdateRow(
   }
 }
 
+@Composable
+internal fun SettingsPushRegistrationRow(
+  pushRegistrationState: PushRegistrationUiState,
+  onRefreshPushRegistration: () -> Unit,
+) {
+  val status = pushRegistrationState.status
+  val title = if (status.hasFcmToken) "Push registered" else "Push not registered"
+  val supporting =
+    when {
+      status.lastError != null -> status.lastError
+      status.lastRegisteredAt != null -> "Last checked ${status.lastRegisteredAt}"
+      else -> "Register this device for remote reminders."
+    }
+  Surface(
+    color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(18.dp),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Column(
+      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
+      verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+      Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
+        Surface(
+          color =
+            if (status.hasFcmToken) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)
+            else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+          contentColor =
+            if (status.hasFcmToken) MaterialTheme.colorScheme.onPrimaryContainer
+            else MaterialTheme.colorScheme.error,
+          shape = CircleShape,
+        ) {
+          Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+        }
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Text(title, style = MaterialTheme.typography.titleMedium)
+          Text(
+            supporting,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 2,
+            overflow = TextOverflow.Ellipsis,
+          )
+        }
+        Switch(
+          checked = status.hasFcmToken,
+          onCheckedChange = { if (!pushRegistrationState.refreshing) onRefreshPushRegistration() },
+          enabled = !pushRegistrationState.refreshing,
+        )
+      }
+      if (pushRegistrationState.refreshing) {
+        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+      }
+      FilledTonalButton(
+        onClick = onRefreshPushRegistration,
+        enabled = !pushRegistrationState.refreshing,
+        modifier = Modifier.fillMaxWidth().height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+      ) {
+        Text(if (pushRegistrationState.refreshing) "Registering" else "Register now")
+      }
+    }
+  }
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun ThemeModePicker(
@@ -825,10 +892,12 @@ internal fun SettingsScreen(
   onClearAllData: () -> Unit,
   onUpdateRules: (FocusWellRules) -> Unit,
   updateState: AppUpdateUiState,
+  pushRegistrationState: PushRegistrationUiState,
   onCheckUpdate: () -> Unit,
   onDownloadUpdate: () -> Unit,
   onInstallUpdate: () -> Unit,
   onOpenUpdateReleasePage: () -> Unit,
+  onRefreshPushRegistration: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
@@ -928,6 +997,16 @@ internal fun SettingsScreen(
           icon = Icons.Rounded.Timer,
           onDecrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier - 0.5)) },
           onIncrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier + 0.5)) },
+        )
+      }
+    }
+    item {
+      CalmPanel {
+        val rules = state.rules.normalized()
+        Text("Reminders", style = MaterialTheme.typography.titleLarge)
+        SettingsPushRegistrationRow(
+          pushRegistrationState = pushRegistrationState,
+          onRefreshPushRegistration = onRefreshPushRegistration,
         )
         SettingsSwitchRow(
           title = "Long reminders",

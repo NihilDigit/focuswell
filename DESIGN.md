@@ -235,6 +235,7 @@ Settings:
 - Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
 - Reminder preferences live with rules as compact switch rows. The long-session reminder switch should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
+- Push registration is a maintenance row in Settings. It should expose whether the current app has an FCM token, show the latest error when registration fails, and provide one explicit retry action.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.
 

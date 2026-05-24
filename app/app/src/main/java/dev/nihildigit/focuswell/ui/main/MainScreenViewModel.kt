@@ -13,6 +13,7 @@ import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.reminders.PushRegistrationStatus
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
@@ -27,6 +28,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
+data class PushRegistrationUiState(
+  val status: PushRegistrationStatus,
+  val refreshing: Boolean = false,
+)
+
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
   private val reminders = ReminderClient(application)
@@ -36,13 +42,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val importError = MutableStateFlow<String?>(null)
   private val _updateState = MutableStateFlow(AppUpdateUiState())
   val updateState: StateFlow<AppUpdateUiState> = _updateState
+  private val _pushRegistrationState =
+    MutableStateFlow(PushRegistrationUiState(status = reminders.cachedRegistrationStatus()))
+  val pushRegistrationState: StateFlow<PushRegistrationUiState> = _pushRegistrationState
 
   init {
-    viewModelScope.launch {
-      runCatching { reminders.refreshFcmRegistration() }
-        .onSuccess { Log.i("FocusWellPush", "Refreshed FCM registration") }
-        .onFailure { Log.e("FocusWellPush", "Failed to refresh FCM registration", it) }
-    }
+    refreshPushRegistration(forceTokenRefresh = false)
   }
 
   val uiState: StateFlow<FocusWellUiState> =
@@ -132,6 +137,30 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun clearAllData() {
     repository.clearAllData()
     reminders.rotateIdentity()
+    _pushRegistrationState.value = PushRegistrationUiState(status = reminders.cachedRegistrationStatus())
+  }
+
+  fun refreshPushRegistration(forceTokenRefresh: Boolean = true) {
+    if (_pushRegistrationState.value.refreshing) return
+    _pushRegistrationState.value = _pushRegistrationState.value.copy(refreshing = true)
+    viewModelScope.launch {
+      runCatching { reminders.refreshFcmRegistration(forceTokenRefresh = forceTokenRefresh) }
+        .onSuccess { status ->
+          _pushRegistrationState.value = PushRegistrationUiState(status = status)
+          if (status.hasFcmToken) {
+            Log.i("FocusWellPush", "Refreshed FCM registration with token")
+          } else {
+            Log.w("FocusWellPush", "Refreshed reminder registration without FCM token: ${status.lastError ?: "unknown"}")
+          }
+        }
+        .onFailure { error ->
+          Log.e("FocusWellPush", "Failed to refresh FCM registration", error)
+          _pushRegistrationState.value =
+            PushRegistrationUiState(
+              status = _pushRegistrationState.value.status.copy(lastError = error.message ?: "Registration failed"),
+            )
+        }
+    }
   }
 
   fun checkForUpdate() {

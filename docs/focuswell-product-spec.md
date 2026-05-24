@@ -231,6 +231,10 @@ hours, and 5 hours. These reminders are enabled by default and can be disabled
 from Settings. They are a time-sense aid only; they do not change settlement or
 ledger accounting.
 
+Settings shows the device's push registration state. If Firebase token
+registration fails, the user can manually retry registration without starting a
+focus or leisure session.
+
 ## Browser Extension
 
 The companion browser extension is a local Chrome/Edge whitelist gate. It is
