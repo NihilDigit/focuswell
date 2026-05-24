@@ -534,14 +534,19 @@ private fun IdeaQuadrantBadge(quadrant: IdeaQuadrant) {
       IdeaQuadrant.Contain -> colors.tertiaryContainer to colors.onTertiaryContainer
       IdeaQuadrant.Explore -> colors.surfaceContainer to colors.primary
     }
-  Surface(color = container, contentColor = content, shape = CircleShape) {
+  Surface(
+    color = container,
+    contentColor = content,
+    shape = CircleShape,
+    modifier = Modifier.width(108.dp),
+  ) {
     Row(
       modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(5.dp),
+      horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(quadrant.icon(), contentDescription = null, modifier = Modifier.size(15.dp))
-      Text(quadrant.label, style = MaterialTheme.typography.labelSmall, maxLines = 1)
+      Text(quadrant.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
   }
 }

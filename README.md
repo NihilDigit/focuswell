@@ -92,4 +92,4 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 Releases are manual-tag driven. Use a time-based tag such as `26.5.5`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
 
-The current public release is [26.5.8](https://github.com/NihilDigit/focuswell/releases/tag/26.5.8). It tightens the focus loop with app-usage correction, Ideas capture, clearer push registration, long-session reminders, Start Focus recent-task chips, and a more legible Leisure timer.
+The current public release is [26.5.9](https://github.com/NihilDigit/focuswell/releases/tag/26.5.9). It fixes debug Firebase registration, app-usage title/icon lookup, JSON import/export confirmation, focus-session navigation hiding, Ideas badge alignment, unordered Daily tracker progress, and the Push off switch.

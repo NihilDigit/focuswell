@@ -76,11 +76,10 @@ fun focusAppUsage(
   val packageManager = context.packageManager
   return totals
     .filterValues { it >= 10_000L }
-    .mapNotNull { (packageName, durationMillis) ->
-      val appName = packageManager.appLabel(packageName) ?: return@mapNotNull null
+    .map { (packageName, durationMillis) ->
       FocusAppUsage(
         packageName = packageName,
-        appName = appName,
+        appName = packageManager.appLabel(packageName) ?: packageName.fallbackAppName(),
         icon = packageManager.appIcon(packageName),
         durationMillis = durationMillis,
       )
@@ -96,3 +95,8 @@ private fun PackageManager.appLabel(packageName: String): String? =
 
 private fun PackageManager.appIcon(packageName: String): Drawable? =
   runCatching { getApplicationIcon(packageName) }.getOrNull()
+
+internal fun String.fallbackAppName(): String {
+  val compactName = substringAfterLast('.').replace('_', ' ').replace('-', ' ').trim()
+  return compactName.ifBlank { this }
+}

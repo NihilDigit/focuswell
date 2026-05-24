@@ -156,12 +156,6 @@ internal fun TrackerGrid(
   val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
   val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHigh
   val onSecondaryContainer = MaterialTheme.colorScheme.onSecondaryContainer
-  val completionTarget = if (trackers.isEmpty()) 0f else trackers.count { it.completed } / trackers.size.toFloat()
-  val completion by animateFloatAsState(
-    targetValue = completionTarget,
-    animationSpec = focusWellDefaultSpatialSpec(),
-    label = "tracker-rail-completion",
-  )
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -200,15 +194,6 @@ internal fun TrackerGrid(
           strokeWidth = 4.dp.toPx(),
           cap = StrokeCap.Round,
         )
-        if (completion > 0f) {
-          drawLine(
-            color = secondary.copy(alpha = 0.72f),
-            start = Offset(startX, centerY),
-            end = Offset(startX + trackWidth * completion.coerceIn(0f, 1f), centerY),
-            strokeWidth = 4.dp.toPx(),
-            cap = StrokeCap.Round,
-          )
-        }
         val count = trackers.size.coerceAtLeast(1)
         trackers.forEachIndexed { index, tracker ->
           val x = if (count == 1) size.width / 2f else startX + trackWidth * index / (count - 1)

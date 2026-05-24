@@ -241,9 +241,10 @@ hours, and 5 hours. These reminders are enabled by default and can be disabled
 from Settings. They are a time-sense aid only; they do not change settlement or
 ledger accounting.
 
-Settings has a Push switch for remote reminder readiness. Off means Firebase
-token registration or Android notification permission is missing. Turning it on
-requests notification permission when needed and refreshes FCM registration.
+Settings has a Push switch for remote reminder delivery. Off means the user has
+disabled remote reminders, Firebase token registration is missing, or Android
+notification permission is missing. Turning it on requests notification
+permission when needed and refreshes FCM registration.
 
 Debug builds use the normal Android debug key. Release builds, whether local or
 CI-built, must use the same release keystore. A release build should fail if the

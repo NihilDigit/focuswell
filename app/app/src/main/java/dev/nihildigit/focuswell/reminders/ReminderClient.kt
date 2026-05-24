@@ -27,6 +27,7 @@ data class DeviceIdentity(
 
 data class PushRegistrationStatus(
   val deviceId: String,
+  val enabled: Boolean = true,
   val hasFcmToken: Boolean,
   val lastRegisteredAt: Instant? = null,
   val lastError: String? = null,
@@ -59,6 +60,7 @@ class ReminderClient(context: Context) {
       .edit()
       .putString(KEY_DEVICE_ID, next.deviceId)
       .putString(KEY_INSTALL_SECRET, next.installSecret)
+      .putBoolean(KEY_PUSH_ENABLED, true)
       .remove(KEY_LAST_REGISTERED_AT)
       .remove(KEY_LAST_REGISTRATION_HAD_FCM_TOKEN)
       .remove(KEY_LAST_REGISTRATION_ERROR)
@@ -67,6 +69,7 @@ class ReminderClient(context: Context) {
   }
 
   suspend fun scheduleFocusReminders(sessionId: String, revision: Int, rules: FocusWellRules) {
+    if (!pushEnabled()) return
     ensureRegistered()
     val now = Instant.now()
     schedule(
@@ -91,6 +94,7 @@ class ReminderClient(context: Context) {
     reserveMinutes: Double,
     rules: FocusWellRules,
   ) {
+    if (!pushEnabled()) return
     ensureRegistered()
     val now = Instant.now()
     val reminders =
@@ -124,14 +128,31 @@ class ReminderClient(context: Context) {
   fun cachedRegistrationStatus(): PushRegistrationStatus =
     PushRegistrationStatus(
       deviceId = identity.deviceId,
+      enabled = pushEnabled(),
       hasFcmToken = prefs.getBoolean(KEY_LAST_REGISTRATION_HAD_FCM_TOKEN, false),
       lastRegisteredAt = prefs.getString(KEY_LAST_REGISTERED_AT, null)?.let { runCatching { Instant.parse(it) }.getOrNull() },
       lastError = prefs.getString(KEY_LAST_REGISTRATION_ERROR, null),
     )
 
   suspend fun refreshFcmRegistration(forceTokenRefresh: Boolean = true): PushRegistrationStatus {
+    prefs.edit().putBoolean(KEY_PUSH_ENABLED, true).apply()
     return ensureRegistered(forceTokenRefresh = forceTokenRefresh)
   }
+
+  suspend fun disablePush(): PushRegistrationStatus {
+    prefs
+      .edit()
+      .putBoolean(KEY_PUSH_ENABLED, false)
+      .putBoolean(KEY_LAST_REGISTRATION_HAD_FCM_TOKEN, false)
+      .remove(KEY_LAST_REGISTRATION_ERROR)
+      .apply()
+    withContext(Dispatchers.IO) {
+      runCatching { Tasks.await(FirebaseMessaging.getInstance().deleteToken()) }
+    }
+    return cachedRegistrationStatus()
+  }
+
+  private fun pushEnabled(): Boolean = prefs.getBoolean(KEY_PUSH_ENABLED, true)
 
   private suspend fun ensureRegistered(forceTokenRefresh: Boolean = false): PushRegistrationStatus {
     val identity = identity
@@ -153,6 +174,7 @@ class ReminderClient(context: Context) {
     val status =
       PushRegistrationStatus(
         deviceId = identity.deviceId,
+        enabled = pushEnabled(),
         hasFcmToken = token != null,
         lastRegisteredAt = registeredAt,
         lastError = tokenError?.message,
@@ -238,6 +260,7 @@ class ReminderClient(context: Context) {
   private companion object {
     const val KEY_DEVICE_ID = "deviceId"
     const val KEY_INSTALL_SECRET = "installSecret"
+    const val KEY_PUSH_ENABLED = "pushEnabled"
     const val KEY_LAST_REGISTERED_AT = "lastRegisteredAt"
     const val KEY_LAST_REGISTRATION_HAD_FCM_TOKEN = "lastRegistrationHadFcmToken"
     const val KEY_LAST_REGISTRATION_ERROR = "lastRegistrationError"

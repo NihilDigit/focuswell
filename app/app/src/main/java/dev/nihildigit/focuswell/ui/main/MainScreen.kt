@@ -282,6 +282,7 @@ fun MainScreen(
     onInstallUpdate = viewModel::installDownloadedUpdate,
     onOpenUpdateReleasePage = viewModel::openUpdateReleasePage,
     onRefreshPushRegistration = viewModel::refreshPushRegistration,
+    onDisablePush = viewModel::disablePush,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -328,6 +329,7 @@ internal fun MainScreen(
   onInstallUpdate: () -> Unit,
   onOpenUpdateReleasePage: () -> Unit,
   onRefreshPushRegistration: () -> Unit,
+  onDisablePush: () -> Unit = {},
   notificationPermissionGranted: Boolean = true,
   onEnablePush: () -> Unit = {},
   themeMode: ThemeMode,
@@ -338,6 +340,7 @@ internal fun MainScreen(
   val context = LocalContext.current
   var showUsageAccessPrompt by remember { mutableStateOf(!hasUsageAccess(context)) }
   var notificationPermissionReady by remember { mutableStateOf(notificationPermissionGranted && canPostNotifications(context)) }
+  val pushEnabled = pushRegistrationState.status.enabled
   val notificationPermissionLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
       notificationPermissionReady = granted || canPostNotifications(context)
@@ -347,6 +350,7 @@ internal fun MainScreen(
       // Timer reminders are best effort; the timestamp ledger remains correct without notifications.
     }
   fun requestReminderPermissionIfNeeded() {
+    if (!pushEnabled) return
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !canPostNotifications(context)) {
       notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
     } else {
@@ -364,10 +368,11 @@ internal fun MainScreen(
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val useRail = maxWidth >= 600.dp
+    val navigationHidden = state.activeMode is ActiveMode.Focus
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
-        if (!useRail) {
+        if (!useRail && !navigationHidden) {
           FocusWellNavigationBar(selected = state.destination, onDestination = onDestination)
         }
       },
@@ -379,7 +384,7 @@ internal fun MainScreen(
             .padding(innerPadding)
             .consumeWindowInsets(innerPadding),
       ) {
-        if (useRail) {
+        if (useRail && !navigationHidden) {
           FocusWellNavigationRail(selected = state.destination, onDestination = onDestination)
         }
         DestinationContent(
@@ -422,6 +427,7 @@ internal fun MainScreen(
           onOpenUpdateReleasePage = onOpenUpdateReleasePage,
           notificationPermissionGranted = notificationPermissionReady,
           onEnablePush = ::enablePush,
+          onDisablePush = onDisablePush,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
           modifier = Modifier.weight(1f),
@@ -517,6 +523,7 @@ private fun DestinationContent(
   onOpenUpdateReleasePage: () -> Unit,
   notificationPermissionGranted: Boolean,
   onEnablePush: () -> Unit,
+  onDisablePush: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -584,6 +591,7 @@ private fun DestinationContent(
           onOpenUpdateReleasePage = onOpenUpdateReleasePage,
           notificationPermissionGranted = notificationPermissionGranted,
           onEnablePush = onEnablePush,
+          onDisablePush = onDisablePush,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
         )
@@ -973,6 +981,7 @@ internal fun MainScreenPreview() {
       onInstallUpdate = {},
       onOpenUpdateReleasePage = {},
       onRefreshPushRegistration = {},
+      onDisablePush = {},
       notificationPermissionGranted = false,
       onEnablePush = {},
       themeMode = ThemeMode.System,

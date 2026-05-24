@@ -7,6 +7,7 @@ import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.data.FocusWellRepository
+import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
@@ -160,6 +161,39 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
               status = _pushRegistrationState.value.status.copy(lastError = error.message ?: "Registration failed"),
             )
         }
+    }
+  }
+
+  fun disablePush() {
+    if (_pushRegistrationState.value.refreshing) return
+    _pushRegistrationState.value = _pushRegistrationState.value.copy(refreshing = true)
+    val activeSessionId =
+      when (val active = repository.state.value.activeMode) {
+        is ActiveMode.Focus -> active.reminderSessionId
+        is ActiveMode.Leisure -> active.reminderSessionId
+        else -> null
+      }
+    viewModelScope.launch {
+      runCatching {
+        activeSessionId?.let {
+          runCatching { reminders.cancelSession(it) }
+            .onFailure { error -> Log.e("FocusWellPush", "Failed to cancel active reminders while disabling push", error) }
+        }
+        reminders.disablePush()
+      }.onSuccess { status ->
+        _pushRegistrationState.value = PushRegistrationUiState(status = status)
+      }.onFailure { error ->
+        Log.e("FocusWellPush", "Failed to disable push", error)
+        _pushRegistrationState.value =
+          PushRegistrationUiState(
+            status =
+              reminders.cachedRegistrationStatus().copy(
+                enabled = false,
+                hasFcmToken = false,
+                lastError = error.message ?: "Could not disable push",
+              ),
+          )
+      }
     }
   }
 

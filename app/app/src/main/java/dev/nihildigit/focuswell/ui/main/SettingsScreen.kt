@@ -778,11 +778,14 @@ internal fun SettingsPushRegistrationRow(
   pushRegistrationState: PushRegistrationUiState,
   notificationPermissionGranted: Boolean,
   onEnablePush: () -> Unit,
+  onDisablePush: () -> Unit,
 ) {
   val status = pushRegistrationState.status
-  val checked = status.hasFcmToken && notificationPermissionGranted
+  val checked = status.enabled
+  val ready = status.enabled && status.hasFcmToken && notificationPermissionGranted
   val supporting =
     when {
+      !status.enabled -> "Remote reminder delivery is off."
       !notificationPermissionGranted -> "Notification permission is missing."
       status.lastError != null -> status.lastError
       status.hasFcmToken -> "Registered for remote reminders."
@@ -799,10 +802,10 @@ internal fun SettingsPushRegistrationRow(
     ) {
       Surface(
         color =
-          if (checked) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f)
+          if (ready) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f)
           else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
         contentColor =
-          if (checked) MaterialTheme.colorScheme.onSecondaryContainer
+          if (ready) MaterialTheme.colorScheme.onSecondaryContainer
           else MaterialTheme.colorScheme.error,
         shape = CircleShape,
       ) {
@@ -820,7 +823,11 @@ internal fun SettingsPushRegistrationRow(
       }
       Switch(
         checked = checked,
-        onCheckedChange = { if (it && !pushRegistrationState.refreshing) onEnablePush() },
+        onCheckedChange = {
+          if (!pushRegistrationState.refreshing) {
+            if (it) onEnablePush() else onDisablePush()
+          }
+        },
         enabled = !pushRegistrationState.refreshing,
       )
     }
@@ -890,11 +897,14 @@ internal fun SettingsScreen(
   onOpenUpdateReleasePage: () -> Unit,
   notificationPermissionGranted: Boolean,
   onEnablePush: () -> Unit,
+  onDisablePush: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
   val context = LocalContext.current
   var confirmClear by remember { mutableStateOf(false) }
+  var confirmExport by remember { mutableStateOf(false) }
+  var pendingImportText by remember { mutableStateOf<String?>(null) }
   var pendingExportText by remember { mutableStateOf<String?>(null) }
   val exportLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")) { uri ->
@@ -913,7 +923,7 @@ internal fun SettingsScreen(
           context.contentResolver.openInputStream(uri)?.use { stream ->
             stream.bufferedReader().use { it.readText() }
           }
-        imported?.let(onImportJson)
+        pendingImportText = imported
       }
     }
   var clearPhrase by remember { mutableStateOf("") }
@@ -1000,6 +1010,7 @@ internal fun SettingsScreen(
           pushRegistrationState = pushRegistrationState,
           notificationPermissionGranted = notificationPermissionGranted,
           onEnablePush = onEnablePush,
+          onDisablePush = onDisablePush,
         )
         SettingsSwitchRow(
           title = "Long reminders",
@@ -1018,10 +1029,7 @@ internal fun SettingsScreen(
           supporting = "Save a complete JSON backup.",
           icon = Icons.Rounded.Download,
           actionLabel = "Export",
-          onClick = {
-            pendingExportText = onExportJson()
-            exportLauncher.launch("focuswell-export.json")
-          },
+          onClick = { confirmExport = true },
         )
         SettingsDataActionRow(
           title = "Import",
@@ -1052,6 +1060,55 @@ internal fun SettingsScreen(
         )
       }
     }
+  }
+
+  if (confirmExport) {
+    AlertDialog(
+      onDismissRequest = { confirmExport = false },
+      title = { Text("Export JSON backup?") },
+      text = {
+        Text("This creates a complete FocusWell backup file with records, reserve history, ideas, trackers, tags, rules, and ledger entries.")
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            confirmExport = false
+            pendingExportText = onExportJson()
+            exportLauncher.launch("focuswell-export.json")
+          },
+        ) {
+          Text("Export")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { confirmExport = false }) {
+          Text("Cancel")
+        }
+      },
+    )
+  }
+
+  pendingImportText?.let { importText ->
+    AlertDialog(
+      onDismissRequest = { pendingImportText = null },
+      title = { Text("Import JSON backup?") },
+      text = { Text("Import replaces the current FocusWell state on this device. Export first if you may need the current records later.") },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            pendingImportText = null
+            onImportJson(importText)
+          },
+        ) {
+          Text("Import")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { pendingImportText = null }) {
+          Text("Cancel")
+        }
+      },
+    )
   }
 
 }
