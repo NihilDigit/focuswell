@@ -14,6 +14,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Configure Git defaults
+        run: git config --global init.defaultBranch main
+
       - name: Check out repository
         id: checkout
         uses: actions/checkout@v5
@@ -30,7 +33,7 @@ jobs:
           auth_header="$(printf 'x-access-token:%s' "$GH_TOKEN" | base64 -w 0)"
           for attempt in 1 2 3 4 5; do
             echo "Manual checkout attempt $attempt"
-            git init .
+            git init --initial-branch=main .
             git remote remove origin 2>/dev/null || true
             git remote add origin "https://github.com/${GITHUB_REPOSITORY}.git"
             if git -c "http.https://github.com/.extraheader=AUTHORIZATION: basic $auth_header" \
