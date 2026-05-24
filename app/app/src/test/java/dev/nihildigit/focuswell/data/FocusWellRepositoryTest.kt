@@ -5,6 +5,8 @@ import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
+import dev.nihildigit.focuswell.domain.IdeaChecklistItem
+import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
@@ -191,6 +193,60 @@ class FocusWellRepositoryTest {
     assertEquals(clock.instant, state.leisureRecords.first { it.id == leisure.id }.deletedAt)
     assertEquals(20.0, state.ledger.first().deltaMinutes, 0.0001)
     assertEquals("Deleted leisure", state.ledger.first().title)
+  }
+
+  @Test
+  fun endFocus_subtractsCorrectionBeforeOutcomeMultiplier() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(baseState(ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)))),
+        clock::now,
+      )
+
+    repo.startFocus("Math", SessionType.Input, tagId = null)
+    clock.instant = Instant.parse("2026-05-20T06:00:00Z")
+    repo.endFocus("Drifted", correctionMinutes = 20.0)
+
+    val record = repo.state.value.focusRecords.first()
+    assertEquals(40.0, record.activeDurationMinutes, 0.0001)
+    assertEquals(6.0, record.earnedMinutes, 0.0001)
+    assertEquals(6.0, repo.state.value.ledger.first().deltaMinutes, 0.0001)
+  }
+
+  @Test
+  fun ideas_moveArchiveAndRoundTripThroughJson() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(baseState()),
+        clock::now,
+      )
+
+    repo.addIdea("Try a visual proof")
+    val ideaId = repo.state.value.ideas.first().id
+    repo.moveIdea(ideaId, IdeaQuadrant.Explore)
+    repo.updateIdea(
+      ideaId,
+      "Try a visual proof",
+      listOf(
+        IdeaChecklistItem(id = "task-1", text = "Sketch matrix", checked = true),
+        IdeaChecklistItem(id = "task-2", text = "Check edge cases"),
+      ),
+    )
+    repo.archiveIdea(ideaId)
+
+    val idea = repo.state.value.ideas.first()
+    assertEquals("Try a visual proof", idea.text)
+    assertEquals(IdeaQuadrant.Explore, idea.quadrant)
+    assertEquals(listOf("Sketch matrix", "Check edge cases"), idea.checklist.map { it.text })
+    assertEquals(listOf(true, false), idea.checklist.map { it.checked })
+    assertEquals(clock.instant, idea.archivedAt)
+
+    val imported = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    assertTrue(imported.importJson(repo.exportJson()))
+    assertEquals(IdeaQuadrant.Explore, imported.state.value.ideas.first().quadrant)
+    assertEquals(listOf("Sketch matrix", "Check edge cases"), imported.state.value.ideas.first().checklist.map { it.text })
+    assertEquals(listOf(true, false), imported.state.value.ideas.first().checklist.map { it.checked })
+    assertEquals(clock.instant, imported.state.value.ideas.first().archivedAt)
   }
 
   @Test

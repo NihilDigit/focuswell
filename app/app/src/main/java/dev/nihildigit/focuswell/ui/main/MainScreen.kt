@@ -1,7 +1,9 @@
 package dev.nihildigit.focuswell.ui.main
 
 import android.Manifest
+import android.content.Intent
 import android.os.Build
+import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
@@ -96,6 +98,7 @@ import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.History
+import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.LightMode
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
@@ -135,7 +138,10 @@ import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
+import dev.nihildigit.focuswell.domain.FocusOutcome
 import dev.nihildigit.focuswell.domain.FocusRecord
+import dev.nihildigit.focuswell.domain.IdeaChecklistItem
+import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
@@ -145,6 +151,7 @@ import dev.nihildigit.focuswell.notifications.canPostNotifications
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
+import dev.nihildigit.focuswell.usage.hasUsageAccess
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import kotlinx.coroutines.delay
 import java.time.Duration
@@ -163,7 +170,7 @@ internal val ControlStartShape = RoundedCornerShape(topStart = 26.dp, topEnd = 1
 internal val ControlEndShape = RoundedCornerShape(topStart = 14.dp, topEnd = 26.dp, bottomEnd = 26.dp, bottomStart = 22.dp)
 internal val CalmPanelShape = RoundedCornerShape(16.dp)
 internal val LedgerRowShape = RoundedCornerShape(14.dp)
-internal val FocusOutcomeOptions = listOf("As planned", "Partial", "Drifted", "Interrupted")
+internal val FocusOutcomeOptions = FocusOutcome.entries.map { it.label }
 
 internal enum class ActiveModeMotionKey {
   Idle,
@@ -200,8 +207,9 @@ internal fun destinationOrder(destination: Destination): Int {
   return when (destination) {
     Destination.Today -> 0
     Destination.Reserve -> 1
-    Destination.Plan -> 2
-    Destination.Settings -> 3
+    Destination.Ideas -> 2
+    Destination.Plan -> 3
+    Destination.Settings -> 4
   }
 }
 
@@ -243,6 +251,7 @@ fun MainScreen(
     onPauseFocus = viewModel::pauseFocus,
     onResumeFocus = viewModel::resumeFocus,
     onEndFocus = viewModel::endFocus,
+    onAddIdea = viewModel::addIdea,
     onStartLeisure = viewModel::startLeisure,
     onEndLeisure = viewModel::endLeisure,
     onEndDepleted = viewModel::endDepleted,
@@ -253,6 +262,9 @@ fun MainScreen(
     onDeleteFocusRecord = viewModel::deleteFocusRecord,
     onUpdateFocusRecord = viewModel::updateFocusRecord,
     onDeleteLeisureRecord = viewModel::deleteLeisureRecord,
+    onMoveIdea = viewModel::moveIdea,
+    onUpdateIdea = viewModel::updateIdea,
+    onArchiveIdea = viewModel::archiveIdea,
     onAddTag = viewModel::addTag,
     onArchiveTag = viewModel::archiveTag,
     onAddBooleanTracker = viewModel::addBooleanTracker,
@@ -282,7 +294,8 @@ internal fun MainScreen(
   onStartFocus: (String, SessionType, String?) -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
-  onEndFocus: (String) -> Unit,
+  onEndFocus: (String, Double) -> Unit,
+  onAddIdea: (String) -> Unit,
   onStartLeisure: () -> Unit,
   onEndLeisure: () -> Unit,
   onEndDepleted: () -> Unit,
@@ -293,6 +306,9 @@ internal fun MainScreen(
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
+  onMoveIdea: (String, IdeaQuadrant) -> Unit,
+  onUpdateIdea: (String, String, List<IdeaChecklistItem>) -> Unit,
+  onArchiveIdea: (String) -> Unit,
   onAddTag: (String, Double) -> Unit,
   onArchiveTag: (String) -> Unit,
   onAddBooleanTracker: (String, Double) -> Unit,
@@ -312,6 +328,7 @@ internal fun MainScreen(
 ) {
   var showFocusSheet by remember { mutableStateOf(false) }
   val context = LocalContext.current
+  var showUsageAccessPrompt by remember { mutableStateOf(!hasUsageAccess(context)) }
   val notificationPermissionLauncher =
     rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
       // Timer reminders are best effort; the timestamp ledger remains correct without notifications.
@@ -353,11 +370,15 @@ internal fun MainScreen(
           onPauseFocus = onPauseFocus,
           onResumeFocus = onResumeFocus,
           onEndFocus = onEndFocus,
+          onAddIdea = onAddIdea,
           onEndLeisure = onEndLeisure,
           onEndDepleted = onEndDepleted,
           onDeleteFocusRecord = onDeleteFocusRecord,
           onUpdateFocusRecord = onUpdateFocusRecord,
           onDeleteLeisureRecord = onDeleteLeisureRecord,
+          onMoveIdea = onMoveIdea,
+          onUpdateIdea = onUpdateIdea,
+          onArchiveIdea = onArchiveIdea,
           onExportJson = onExportJson,
           onImportJson = onImportJson,
           onClearAllData = onClearAllData,
@@ -403,6 +424,33 @@ internal fun MainScreen(
       confirmButton = { TextButton(onClick = onDismissImportError) { Text("Done") } },
     )
   }
+
+  if (showUsageAccessPrompt && !hasUsageAccess(context)) {
+    AlertDialog(
+      onDismissRequest = { showUsageAccessPrompt = false },
+      title = { Text("Enable app correction") },
+      text = {
+        Text(
+          "FocusWell can use Android usage access to show app time at focus settlement. Usage data stays local.",
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick = {
+            showUsageAccessPrompt = false
+            context.startActivity(Intent(Settings.ACTION_USAGE_ACCESS_SETTINGS))
+          },
+        ) {
+          Text("Open settings")
+        }
+      },
+      dismissButton = {
+        TextButton(onClick = { showUsageAccessPrompt = false }) {
+          Text("Not now")
+        }
+      },
+    )
+  }
 }
 
 @Composable
@@ -414,12 +462,16 @@ private fun DestinationContent(
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
-  onEndFocus: (String) -> Unit,
+  onEndFocus: (String, Double) -> Unit,
+  onAddIdea: (String) -> Unit,
   onEndLeisure: () -> Unit,
   onEndDepleted: () -> Unit,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
+  onMoveIdea: (String, IdeaQuadrant) -> Unit,
+  onUpdateIdea: (String, String, List<IdeaChecklistItem>) -> Unit,
+  onArchiveIdea: (String) -> Unit,
   onExportJson: () -> String,
   onImportJson: (String) -> Unit,
   onClearAllData: () -> Unit,
@@ -456,6 +508,7 @@ private fun DestinationContent(
           onPauseFocus = onPauseFocus,
           onResumeFocus = onResumeFocus,
           onEndFocus = onEndFocus,
+          onAddIdea = onAddIdea,
           onEndLeisure = onEndLeisure,
           onEndDepleted = onEndDepleted,
         )
@@ -466,6 +519,14 @@ private fun DestinationContent(
           onDeleteFocusRecord = onDeleteFocusRecord,
           onUpdateFocusRecord = onUpdateFocusRecord,
           onDeleteLeisureRecord = onDeleteLeisureRecord,
+        )
+      Destination.Ideas ->
+        IdeasScreen(
+          ideas = state.ideas,
+          onAddIdea = onAddIdea,
+          onMoveIdea = onMoveIdea,
+          onUpdateIdea = onUpdateIdea,
+          onArchiveIdea = onArchiveIdea,
         )
       Destination.Plan ->
         PlanScreen(
@@ -724,6 +785,7 @@ internal fun DestinationIcon(destination: Destination) {
     when (destination) {
       Destination.Today -> Icons.Rounded.Today
       Destination.Reserve -> Icons.Rounded.AccountBalanceWallet
+      Destination.Ideas -> Icons.Rounded.Lightbulb
       Destination.Plan -> Icons.AutoMirrored.Rounded.EventNote
       Destination.Settings -> Icons.Rounded.Settings
     }
@@ -842,7 +904,8 @@ internal fun MainScreenPreview() {
       onStartFocus = { _, _, _ -> },
       onPauseFocus = {},
       onResumeFocus = {},
-      onEndFocus = {},
+      onEndFocus = { _, _ -> },
+      onAddIdea = {},
       onStartLeisure = {},
       onEndLeisure = {},
       onEndDepleted = {},
@@ -853,6 +916,9 @@ internal fun MainScreenPreview() {
       onDeleteFocusRecord = {},
       onUpdateFocusRecord = { _, _, _ -> },
       onDeleteLeisureRecord = {},
+      onMoveIdea = { _, _ -> },
+      onUpdateIdea = { _, _, _ -> },
+      onArchiveIdea = {},
       onAddTag = { _, _ -> },
       onArchiveTag = {},
       onAddBooleanTracker = { _, _ -> },

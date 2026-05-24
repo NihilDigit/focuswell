@@ -22,6 +22,9 @@ internal abstract class FocusWellDao {
   @Query("SELECT * FROM leisure_records ORDER BY endedAt DESC, id DESC")
   abstract suspend fun leisureRecords(): List<LeisureRecordEntity>
 
+  @Query("SELECT * FROM ideas ORDER BY updatedAt DESC, id DESC")
+  abstract suspend fun ideas(): List<IdeaEntity>
+
   @Query("SELECT * FROM ledger_entries ORDER BY createdAt DESC, id DESC")
   abstract suspend fun ledger(): List<LedgerEntryEntity>
 
@@ -41,6 +44,9 @@ internal abstract class FocusWellDao {
   abstract suspend fun upsertLeisureRecords(records: List<LeisureRecordEntity>)
 
   @Upsert
+  abstract suspend fun upsertIdeas(ideas: List<IdeaEntity>)
+
+  @Upsert
   abstract suspend fun upsertLedger(entries: List<LedgerEntryEntity>)
 
   @Query("DELETE FROM tag_configs WHERE id IN (:ids)")
@@ -54,6 +60,9 @@ internal abstract class FocusWellDao {
 
   @Query("DELETE FROM leisure_records WHERE id IN (:ids)")
   abstract suspend fun deleteLeisureRecords(ids: List<String>)
+
+  @Query("DELETE FROM ideas WHERE id IN (:ids)")
+  abstract suspend fun deleteIdeas(ids: List<String>)
 
   @Query("DELETE FROM ledger_entries WHERE id IN (:ids)")
   abstract suspend fun deleteLedgerEntries(ids: List<String>)
@@ -73,12 +82,16 @@ internal abstract class FocusWellDao {
   @Query("DELETE FROM leisure_records")
   abstract suspend fun deleteAllLeisureRecords()
 
+  @Query("DELETE FROM ideas")
+  abstract suspend fun deleteAllIdeas()
+
   @Query("DELETE FROM ledger_entries")
   abstract suspend fun deleteAllLedgerEntries()
 
   @Transaction
   open suspend fun clearAll() {
     deleteAllLedgerEntries()
+    deleteAllIdeas()
     deleteAllLeisureRecords()
     deleteAllFocusRecords()
     deleteAllTrackers()
@@ -93,6 +106,7 @@ internal abstract class FocusWellDao {
     trackers: List<DailyTrackerEntity>,
     focusRecords: List<FocusRecordEntity>,
     leisureRecords: List<LeisureRecordEntity>,
+    ideas: List<IdeaEntity>,
     ledger: List<LedgerEntryEntity>,
   ) {
     clearAll()
@@ -101,6 +115,7 @@ internal abstract class FocusWellDao {
     upsertTrackers(trackers)
     upsertFocusRecords(focusRecords)
     upsertLeisureRecords(leisureRecords)
+    upsertIdeas(ideas)
     upsertLedger(ledger)
   }
 
@@ -115,6 +130,8 @@ internal abstract class FocusWellDao {
     removedFocusRecordIds: List<String>,
     changedLeisureRecords: List<LeisureRecordEntity>,
     removedLeisureRecordIds: List<String>,
+    changedIdeas: List<IdeaEntity>,
+    removedIdeaIds: List<String>,
     changedLedgerEntries: List<LedgerEntryEntity>,
     removedLedgerEntryIds: List<String>,
   ) {
@@ -127,6 +144,8 @@ internal abstract class FocusWellDao {
     if (removedFocusRecordIds.isNotEmpty()) deleteFocusRecords(removedFocusRecordIds)
     if (changedLeisureRecords.isNotEmpty()) upsertLeisureRecords(changedLeisureRecords)
     if (removedLeisureRecordIds.isNotEmpty()) deleteLeisureRecords(removedLeisureRecordIds)
+    if (changedIdeas.isNotEmpty()) upsertIdeas(changedIdeas)
+    if (removedIdeaIds.isNotEmpty()) deleteIdeas(removedIdeaIds)
     if (changedLedgerEntries.isNotEmpty()) upsertLedger(changedLedgerEntries)
     if (removedLedgerEntryIds.isNotEmpty()) deleteLedgerEntries(removedLedgerEntryIds)
   }

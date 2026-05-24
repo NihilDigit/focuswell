@@ -77,6 +77,17 @@ internal data class LeisureRecordEntity(
   val deletedAt: String?,
 )
 
+@Entity(tableName = "ideas")
+internal data class IdeaEntity(
+  @PrimaryKey val id: String,
+  val text: String,
+  val quadrant: String,
+  val checklistJson: String = "[]",
+  val createdAt: String,
+  val updatedAt: String,
+  val archivedAt: String?,
+)
+
 @Entity(tableName = "ledger_entries")
 internal data class LedgerEntryEntity(
   @PrimaryKey val id: String,

@@ -14,9 +14,10 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     DailyTrackerEntity::class,
     FocusRecordEntity::class,
     LeisureRecordEntity::class,
+    IdeaEntity::class,
     LedgerEntryEntity::class,
   ],
-  version = 4,
+  version = 6,
   exportSchema = true,
 )
 internal abstract class FocusWellDatabase : RoomDatabase() {
@@ -34,6 +35,7 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
             "focuswell.db",
           )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
+            .addMigrations(MIGRATION_4_5, MIGRATION_5_6)
             .build()
             .also { instance = it }
       }
@@ -60,6 +62,33 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
         override fun migrate(db: SupportSQLiteDatabase) {
           db.execSQL("UPDATE daily_trackers SET rewardMinutes = 15.0 WHERE id IN ('aerobic', 'wake', 'vocabulary', 'codewars') AND rewardMinutes = 10.0")
           db.execSQL("UPDATE daily_trackers SET rewardMinutes = 60.0 WHERE id IN ('math-3h', '408-3h') AND rewardMinutes = 10.0")
+        }
+      }
+
+    private val MIGRATION_4_5 =
+      object : Migration(4, 5) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL(
+            """
+            CREATE TABLE IF NOT EXISTS `ideas` (
+              `id` TEXT NOT NULL,
+              `text` TEXT NOT NULL,
+              `quadrant` TEXT NOT NULL,
+              `checklistJson` TEXT NOT NULL DEFAULT '[]',
+              `createdAt` TEXT NOT NULL,
+              `updatedAt` TEXT NOT NULL,
+              `archivedAt` TEXT,
+              PRIMARY KEY(`id`)
+            )
+            """.trimIndent()
+          )
+        }
+      }
+
+    private val MIGRATION_5_6 =
+      object : Migration(5, 6) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL("ALTER TABLE ideas ADD COLUMN checklistJson TEXT NOT NULL DEFAULT '[]'")
         }
       }
   }

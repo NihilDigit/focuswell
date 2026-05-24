@@ -10,6 +10,8 @@ import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
+import dev.nihildigit.focuswell.domain.IdeaChecklistItem
+import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
@@ -75,8 +77,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun resumeFocus() = repository.resumeFocus()
 
-  fun endFocus(result: String) {
-    repository.endFocus(result)?.let { sessionId ->
+  fun endFocus(result: String, correctionMinutes: Double) {
+    repository.endFocus(result, correctionMinutes)?.let { sessionId ->
       viewModelScope.launch {
         runCatching { reminders.cancelSession(sessionId) }
           .onFailure { Log.e("FocusWellPush", "Failed to cancel focus reminder", it) }
@@ -213,6 +215,14 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     repository.updateFocusRecord(id, result, activeMinutes)
 
   fun deleteLeisureRecord(id: String) = repository.deleteLeisureRecord(id)
+
+  fun addIdea(text: String) = repository.addIdea(text)
+
+  fun moveIdea(id: String, quadrant: IdeaQuadrant) = repository.moveIdea(id, quadrant)
+
+  fun updateIdea(id: String, text: String, checklist: List<IdeaChecklistItem>) = repository.updateIdea(id, text, checklist)
+
+  fun archiveIdea(id: String) = repository.archiveIdea(id)
 
   fun addTag(name: String, multiplier: Double) = repository.addTag(name, multiplier)
 

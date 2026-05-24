@@ -23,9 +23,19 @@ object TimeAccounting {
     activeDuration: Duration,
     type: SessionType,
     tagMultiplier: Double,
+    outcomeMultiplier: Double = 1.0,
   ): Double {
     val minutes = activeDuration.toMillis() / 60_000.0
-    return max(0.0, minutes * type.rate * tagMultiplier)
+    return focusEarnedMinutes(minutes, type.rate, tagMultiplier, outcomeMultiplier)
+  }
+
+  fun focusEarnedMinutes(
+    activeDurationMinutes: Double,
+    typeRate: Double,
+    tagMultiplier: Double,
+    outcomeMultiplier: Double = 1.0,
+  ): Double {
+    return max(0.0, activeDurationMinutes.coerceAtLeast(0.0) * typeRate * tagMultiplier * outcomeMultiplier.coerceAtLeast(0.0))
   }
 
   fun leisureCostMinutes(

@@ -152,7 +152,8 @@ internal fun TodayScreen(
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
-  onEndFocus: (String) -> Unit,
+  onEndFocus: (String, Double) -> Unit,
+  onAddIdea: (String) -> Unit,
   onEndLeisure: () -> Unit,
   onEndDepleted: () -> Unit,
 ) {
@@ -184,6 +185,7 @@ internal fun TodayScreen(
               onPauseFocus = onPauseFocus,
               onResumeFocus = onResumeFocus,
               onEndFocus = onEndFocus,
+              onAddIdea = onAddIdea,
             )
 
           is ActiveMode.Leisure ->

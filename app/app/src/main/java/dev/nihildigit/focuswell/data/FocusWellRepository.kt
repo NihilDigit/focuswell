@@ -7,6 +7,9 @@ import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusRecord
+import dev.nihildigit.focuswell.domain.Idea
+import dev.nihildigit.focuswell.domain.IdeaChecklistItem
+import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
@@ -14,6 +17,7 @@ import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.domain.defaultTags
 import dev.nihildigit.focuswell.domain.defaultTrackers
+import dev.nihildigit.focuswell.domain.focusOutcomeMultiplier
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.update
@@ -248,7 +252,7 @@ class FocusWellRepository internal constructor(
     }
   }
 
-  fun endFocus(result: String): String? {
+  fun endFocus(result: String, correctionMinutes: Double = 0.0): String? {
     var reminderSessionId: String? = null
     mutate { state ->
       val focus = state.activeMode as? ActiveMode.Focus ?: return@mutate state
@@ -264,24 +268,28 @@ class FocusWellRepository internal constructor(
         Duration.between(focus.startedAt, now)
           .minusMillis(focus.pausedDurationMillis + currentPauseMillis)
           .coerceAtLeast(Duration.ZERO)
+      val activeDurationMinutes = activeDuration.toMillis() / 60_000.0
+      val adjustedActiveMinutes = (activeDurationMinutes - correctionMinutes.coerceAtLeast(0.0)).coerceAtLeast(0.0)
+      val savedResult = result.ifBlank { "As planned" }
       val earned =
         TimeAccounting.focusEarnedMinutes(
-          activeDuration = activeDuration,
-          type = focus.type,
+          activeDurationMinutes = adjustedActiveMinutes,
+          typeRate = focus.type.rate,
           tagMultiplier = focus.tag?.multiplier ?: 1.0,
+          outcomeMultiplier = focusOutcomeMultiplier(savedResult),
         )
       val record =
         FocusRecord(
           id = "focus-${now.toEpochMilli()}",
           task = focus.task,
-          result = result.ifBlank { "As planned" },
+          result = savedResult,
           type = focus.type,
           tagName = focus.tag?.name,
           tagMultiplier = focus.tag?.multiplier ?: 1.0,
           typeRate = focus.type.rate,
           startedAt = focus.startedAt,
           endedAt = now,
-          activeDurationMinutes = activeDuration.toMillis() / 60_000.0,
+          activeDurationMinutes = adjustedActiveMinutes,
           earnedMinutes = earned,
           dailyDate = TimeAccounting.dailyDate(now, rules = state.rules).toString(),
         )
@@ -375,6 +383,72 @@ class FocusWellRepository internal constructor(
     rollDailyState()
   }
 
+  fun addIdea(text: String) {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return
+    val createdAt = now()
+    mutate { state ->
+      state.copy(
+        ideas =
+          listOf(
+            Idea(
+              id = "idea-${createdAt.toEpochMilli()}",
+              text = trimmed,
+              quadrant = IdeaQuadrant.Inbox,
+              createdAt = createdAt,
+              updatedAt = createdAt,
+            )
+          ) + state.ideas
+      )
+    }
+  }
+
+  fun moveIdea(id: String, quadrant: IdeaQuadrant) {
+    val updatedAt = now()
+    mutate { state ->
+      state.copy(
+        ideas =
+          state.ideas.map {
+            if (it.id == id && it.archivedAt == null) it.copy(quadrant = quadrant, updatedAt = updatedAt) else it
+          }
+      )
+    }
+  }
+
+  fun updateIdea(id: String, text: String, checklist: List<IdeaChecklistItem>) {
+    val trimmed = text.trim()
+    if (trimmed.isEmpty()) return
+    val updatedAt = now()
+    val cleanedChecklist =
+      checklist
+        .map { it.copy(text = it.text.trim()) }
+        .filter { it.text.isNotEmpty() }
+    mutate { state ->
+      state.copy(
+        ideas =
+          state.ideas.map {
+            if (it.id == id && it.archivedAt == null) {
+              it.copy(text = trimmed, checklist = cleanedChecklist, updatedAt = updatedAt)
+            } else {
+              it
+            }
+          }
+      )
+    }
+  }
+
+  fun archiveIdea(id: String) {
+    val archivedAt = now()
+    mutate { state ->
+      state.copy(
+        ideas =
+          state.ideas.map {
+            if (it.id == id && it.archivedAt == null) it.copy(archivedAt = archivedAt, updatedAt = archivedAt) else it
+          }
+      )
+    }
+  }
+
   fun exportJson(): String = stateToJson(_state.value).toString(2)
 
   fun importJson(raw: String): Boolean {
@@ -413,12 +487,19 @@ class FocusWellRepository internal constructor(
     mutate { state ->
       val record = state.focusRecords.firstOrNull { it.id == id && it.deletedAt == null } ?: return@mutate state
       val safeMinutes = activeMinutes.coerceAtLeast(0.0)
-      val newEarned = safeMinutes * record.typeRate * record.tagMultiplier
+      val savedResult = result.ifBlank { record.result }
+      val newEarned =
+        TimeAccounting.focusEarnedMinutes(
+          activeDurationMinutes = safeMinutes,
+          typeRate = record.typeRate,
+          tagMultiplier = record.tagMultiplier,
+          outcomeMultiplier = focusOutcomeMultiplier(savedResult),
+        )
       val delta = newEarned - record.earnedMinutes
       val now = now()
       val updated =
         record.copy(
-          result = result.ifBlank { record.result },
+          result = savedResult,
           activeDurationMinutes = safeMinutes,
           earnedMinutes = newEarned,
         )
@@ -556,6 +637,7 @@ class FocusWellRepository internal constructor(
       trackers = defaultTrackers,
       focusRecords = emptyList(),
       leisureRecords = emptyList(),
+      ideas = emptyList(),
       ledger = emptyList(),
     )
 
@@ -576,6 +658,7 @@ class FocusWellRepository internal constructor(
       .put("trackers", JSONArray(state.trackers.map(::trackerToJson)))
       .put("focusRecords", JSONArray(state.focusRecords.map(::focusRecordToJson)))
       .put("leisureRecords", JSONArray(state.leisureRecords.map(::leisureRecordToJson)))
+      .put("ideas", JSONArray(state.ideas.map(::ideaToJson)))
       .put("ledger", JSONArray(state.ledger.map(::ledgerToJson)))
 
   private fun jsonToState(json: JSONObject): FocusWellUiState =
@@ -591,6 +674,7 @@ class FocusWellRepository internal constructor(
         },
       focusRecords = json.optJSONArray("focusRecords")?.mapObjects(::jsonToFocusRecord).orEmpty(),
       leisureRecords = json.optJSONArray("leisureRecords")?.mapObjects(::jsonToLeisureRecord).orEmpty(),
+      ideas = json.optJSONArray("ideas")?.mapObjects(::jsonToIdea).orEmpty(),
       ledger = json.optJSONArray("ledger")?.mapObjects(::jsonToLedger).orEmpty(),
     ).withComputedTrackers().withLedgerBackedReserve()
 
@@ -768,6 +852,40 @@ class FocusWellRepository internal constructor(
       .put("costMinutes", record.costMinutes)
       .put("dailyDate", record.dailyDate)
       .put("deletedAt", record.deletedAt?.toString())
+
+  private fun ideaToJson(idea: Idea): JSONObject =
+    JSONObject()
+      .put("id", idea.id)
+      .put("text", idea.text)
+      .put("quadrant", idea.quadrant.name)
+      .put("checklist", JSONArray(idea.checklist.map(::ideaChecklistItemToJson)))
+      .put("createdAt", idea.createdAt.toString())
+      .put("updatedAt", idea.updatedAt.toString())
+      .put("archivedAt", idea.archivedAt?.toString())
+
+  private fun ideaChecklistItemToJson(item: IdeaChecklistItem): JSONObject =
+    JSONObject()
+      .put("id", item.id)
+      .put("text", item.text)
+      .put("checked", item.checked)
+
+  private fun jsonToIdea(json: JSONObject): Idea =
+    Idea(
+      id = json.optString("id"),
+      text = json.optString("text"),
+      quadrant = runCatching { IdeaQuadrant.valueOf(json.optString("quadrant")) }.getOrDefault(IdeaQuadrant.Inbox),
+      checklist = json.optJSONArray("checklist")?.mapObjects(::jsonToIdeaChecklistItem).orEmpty(),
+      createdAt = json.optInstant("createdAt"),
+      updatedAt = json.optNullableInstant("updatedAt") ?: json.optInstant("createdAt"),
+      archivedAt = json.optNullableInstant("archivedAt"),
+    )
+
+  private fun jsonToIdeaChecklistItem(json: JSONObject): IdeaChecklistItem =
+    IdeaChecklistItem(
+      id = json.optString("id"),
+      text = json.optString("text"),
+      checked = json.optBoolean("checked"),
+    )
 
   private fun jsonToLeisureRecord(json: JSONObject): LeisureRecord =
     LeisureRecord(

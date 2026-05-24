@@ -130,11 +130,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import android.widget.Toast
+import androidx.compose.foundation.Image
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
+import dev.nihildigit.focuswell.domain.focusOutcomeMultiplier
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
@@ -144,7 +146,16 @@ import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
+import dev.nihildigit.focuswell.usage.FocusAppUsage
+import dev.nihildigit.focuswell.usage.focusAppUsage
+import dev.nihildigit.focuswell.usage.hasUsageAccess
+import androidx.compose.material.icons.rounded.Lightbulb
+import androidx.compose.material3.Checkbox
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.core.graphics.drawable.toBitmap
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.withContext
 import java.time.Duration
 import java.time.Instant
 import kotlin.math.PI
@@ -210,11 +221,13 @@ internal fun ActiveFocusSurface(
   focus: ActiveMode.Focus,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
-  onEndFocus: (String) -> Unit,
+  onEndFocus: (String, Double) -> Unit,
+  onAddIdea: (String) -> Unit,
 ) {
   var showEnd by remember { mutableStateOf(false) }
+  var showIdeaCapture by remember { mutableStateOf(false) }
   var outcome by remember { mutableStateOf(FocusOutcomeOptions.first()) }
-  var outcomeNote by remember { mutableStateOf("") }
+  var pendingResult by remember { mutableStateOf<Pair<String, Double>?>(null) }
   val haptics = LocalHapticFeedback.current
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   val now = rememberNow(paused = focus.paused)
@@ -225,6 +238,18 @@ internal fun ActiveFocusSurface(
       .coerceAtLeast(Duration.ZERO)
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     FocusTimerSurface(focus = focus, elapsed = elapsed)
+    FilledTonalButton(
+      onClick = {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        showIdeaCapture = true
+      },
+      modifier = Modifier.fillMaxWidth().height(50.dp),
+      shape = RoundedCornerShape(22.dp),
+    ) {
+      Icon(Icons.Rounded.Lightbulb, contentDescription = null)
+      Spacer(Modifier.width(8.dp))
+      Text("Capture idea")
+    }
     Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
       if (focus.paused) {
         Button(
@@ -271,15 +296,39 @@ internal fun ActiveFocusSurface(
   if (showEnd) {
     FocusResultSheet(
       outcome = outcome,
-      note = outcomeNote,
+      focus = focus,
       onOutcomeChange = { outcome = it },
-      onNoteChange = { outcomeNote = it },
       sheetState = sheetState,
       onDismiss = { showEnd = false },
       onSave = {
         showEnd = false
         haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        onEndFocus(formatOutcomeResult(outcome, outcomeNote))
+        pendingResult = outcome to it
+      },
+    )
+  }
+
+  pendingResult?.let { result ->
+    FocusResultNoteDialog(
+      outcome = result.first,
+      onSkip = {
+        pendingResult = null
+        onEndFocus(result.first, result.second)
+      },
+      onSave = { note ->
+        pendingResult = null
+        onEndFocus(formatOutcomeResult(result.first, note), result.second)
+      },
+    )
+  }
+
+  if (showIdeaCapture) {
+    IdeaCaptureSheet(
+      onDismiss = { showIdeaCapture = false },
+      onSave = {
+        showIdeaCapture = false
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onAddIdea(it)
       },
     )
   }
@@ -393,13 +442,34 @@ internal fun FocusFieldDrawing(tone: Color, modifier: Modifier = Modifier) {
 @Composable
 internal fun FocusResultSheet(
   outcome: String,
-  note: String,
+  focus: ActiveMode.Focus,
   onOutcomeChange: (String) -> Unit,
-  onNoteChange: (String) -> Unit,
   sheetState: androidx.compose.material3.SheetState,
   onDismiss: () -> Unit,
-  onSave: () -> Unit,
+  onSave: (Double) -> Unit,
 ) {
+  val context = LocalContext.current
+  val hasCorrection = remember { hasUsageAccess(context) }
+  var appUsages by remember(focus.startedAt) { mutableStateOf<List<FocusAppUsage>>(emptyList()) }
+  var focusPackages by remember(focus.startedAt) { mutableStateOf(setOf<String>()) }
+  val correctionMinutes = appUsages.filterNot { it.packageName in focusPackages }.sumOf { it.durationMillis } / 60_000.0
+  val activeEnd = remember { Instant.now() }
+  val rawMinutes =
+    Duration.between(focus.startedAt, activeEnd)
+      .minusMillis(focus.pausedDurationMillis)
+      .coerceAtLeast(Duration.ZERO)
+      .toMillis() / 60_000.0
+  val adjustedMinutes = (rawMinutes - correctionMinutes).coerceAtLeast(0.0)
+  val tagMultiplier = focus.tag?.multiplier ?: 1.0
+  val outcomeMultiplier = focusOutcomeMultiplier(outcome)
+  val projectedEarned = adjustedMinutes * focus.type.rate * tagMultiplier * outcomeMultiplier
+
+  LaunchedEffect(hasCorrection, focus.startedAt, activeEnd) {
+    if (hasCorrection) {
+      appUsages = withContext(Dispatchers.Default) { focusAppUsage(context, focus.startedAt, activeEnd) }
+    }
+  }
+
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(
       modifier =
@@ -422,6 +492,7 @@ internal fun FocusResultSheet(
           rowOptions.forEach { option ->
             ResultChoice(
               label = option,
+              supporting = "${focusOutcomeMultiplier(option).formatOne()}x",
               selected = outcome == option,
               onClick = { onOutcomeChange(option) },
               modifier = Modifier.weight(1f),
@@ -432,22 +503,34 @@ internal fun FocusResultSheet(
           }
         }
       }
-      OutlinedTextField(
-        value = note,
-        onValueChange = onNoteChange,
-        label = { Text("Optional note") },
-        placeholder = { Text(outcome) },
-        minLines = 2,
-        maxLines = 4,
-        modifier = Modifier.fillMaxWidth(),
-      )
+      if (hasCorrection && appUsages.isNotEmpty()) {
+        FocusUsageCorrection(
+          appUsages = appUsages,
+          focusPackages = focusPackages,
+          onToggleFocusPackage = { packageName ->
+            focusPackages =
+              if (packageName in focusPackages) focusPackages - packageName else focusPackages + packageName
+          },
+        )
+      }
+      CalmPanel {
+        SettlementFormula(
+          rawMinutes = rawMinutes,
+          correctionMinutes = correctionMinutes,
+          adjustedMinutes = adjustedMinutes,
+          typeRate = focus.type.rate,
+          tagMultiplier = tagMultiplier,
+          outcomeMultiplier = outcomeMultiplier,
+          projectedEarned = projectedEarned,
+        )
+      }
       Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
         OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
           Text("Cancel")
         }
         Button(
           enabled = outcome.isNotBlank(),
-          onClick = onSave,
+          onClick = { onSave(correctionMinutes) },
           modifier = Modifier.weight(1f).height(54.dp),
           shape = ControlEndShape,
         ) {
@@ -460,8 +543,164 @@ internal fun FocusResultSheet(
 }
 
 @Composable
+internal fun SettlementFormula(
+  rawMinutes: Double,
+  correctionMinutes: Double,
+  adjustedMinutes: Double,
+  typeRate: Double,
+  tagMultiplier: Double,
+  outcomeMultiplier: Double,
+  projectedEarned: Double,
+) {
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text("Settlement", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    FormulaLine("Raw focus", "${rawMinutes.roundToInt()}m")
+    FormulaLine("Deducted app time", "-${correctionMinutes.roundToInt()}m")
+    FormulaLine("Counted focus", "${adjustedMinutes.roundToInt()}m")
+    FormulaLine("Type rate", "${typeRate.formatThree()}x")
+    FormulaLine("Tag multiplier", "${tagMultiplier.formatThree()}x")
+    FormulaLine("Outcome multiplier", "${outcomeMultiplier.formatOne()}x")
+    HorizontalDivider()
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+      Text("Formula", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      Text(
+        "${adjustedMinutes.roundToInt()}m × ${typeRate.formatThree()} × ${tagMultiplier.formatThree()} × ${outcomeMultiplier.formatOne()}",
+        style = tabularNumbers(MaterialTheme.typography.labelLarge),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+      Text("Earned reserve", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+      Text(
+        "+${projectedEarned.roundToInt()}m",
+        style = tabularNumbers(MaterialTheme.typography.titleMedium),
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
+  }
+}
+
+@Composable
+private fun FormulaLine(label: String, value: String) {
+  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(value, style = tabularNumbers(MaterialTheme.typography.bodyMedium), fontWeight = FontWeight.SemiBold)
+  }
+}
+
+@Composable
+internal fun FocusResultNoteDialog(
+  outcome: String,
+  onSkip: () -> Unit,
+  onSave: (String) -> Unit,
+) {
+  var note by remember { mutableStateOf("") }
+  AlertDialog(
+    onDismissRequest = onSkip,
+    title = { Text("Add a note?") },
+    text = {
+      Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Text(
+          "Optional context for this $outcome session.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+        OutlinedTextField(
+          value = note,
+          onValueChange = { note = it },
+          label = { Text("Note") },
+          minLines = 2,
+          maxLines = 4,
+          modifier = Modifier.fillMaxWidth(),
+        )
+      }
+    },
+    confirmButton = {
+      TextButton(onClick = { onSave(note) }) {
+        Text(if (note.isBlank()) "Save without note" else "Save note")
+      }
+    },
+  )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun IdeaCaptureSheet(
+  onDismiss: () -> Unit,
+  onSave: (String) -> Unit,
+) {
+  var text by remember { mutableStateOf("") }
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)) {
+    Column(
+      modifier = Modifier.padding(horizontal = 20.dp).imePadding().verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Text("Capture idea", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+      OutlinedTextField(
+        value = text,
+        onValueChange = { text = it },
+        label = { Text("Idea") },
+        minLines = 3,
+        maxLines = 5,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Cancel")
+        }
+        Button(
+          enabled = text.isNotBlank(),
+          onClick = { onSave(text) },
+          modifier = Modifier.weight(1f).height(54.dp),
+          shape = ControlEndShape,
+        ) {
+          Text("Save")
+        }
+      }
+      Spacer(Modifier.height(16.dp))
+    }
+  }
+}
+
+@Composable
+internal fun FocusUsageCorrection(
+  appUsages: List<FocusAppUsage>,
+  focusPackages: Set<String>,
+  onToggleFocusPackage: (String) -> Unit,
+) {
+  CalmPanel {
+    Text("App correction", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    appUsages.forEach { usage ->
+      Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+      ) {
+        usage.icon?.let { icon ->
+          val bitmap = remember(icon) { icon.toBitmap(width = 48, height = 48).asImageBitmap() }
+          Image(bitmap = bitmap, contentDescription = null, modifier = Modifier.size(32.dp))
+        } ?: Icon(Icons.Rounded.RadioButtonUnchecked, contentDescription = null, modifier = Modifier.size(32.dp))
+        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Text(usage.appName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+          Text("${(usage.durationMillis / 60_000.0).roundToInt()}m", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Row(verticalAlignment = Alignment.CenterVertically) {
+          Checkbox(
+            checked = usage.packageName in focusPackages,
+            onCheckedChange = { onToggleFocusPackage(usage.packageName) },
+          )
+          Text("Count", style = MaterialTheme.typography.labelMedium)
+        }
+      }
+    }
+  }
+}
+
+@Composable
 internal fun ResultChoice(
   label: String,
+  supporting: String = "${focusOutcomeMultiplier(label).formatOne()}x",
   selected: Boolean,
   onClick: () -> Unit,
   modifier: Modifier = Modifier,
@@ -487,7 +726,10 @@ internal fun ResultChoice(
       verticalAlignment = Alignment.CenterVertically,
     ) {
       Icon(icon, contentDescription = null, modifier = Modifier.size(20.dp), tint = if (selected) tone else MaterialTheme.colorScheme.onSurfaceVariant)
-      Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+        Text(label, style = MaterialTheme.typography.labelLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        Text(supporting, style = MaterialTheme.typography.labelSmall, color = if (selected) tone else MaterialTheme.colorScheme.onSurfaceVariant)
+      }
     }
   }
 }

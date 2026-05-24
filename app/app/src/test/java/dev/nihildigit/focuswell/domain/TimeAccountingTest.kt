@@ -62,6 +62,19 @@ class TimeAccountingTest {
   }
 
   @Test
+  fun focusEarnedMinutes_appliesOutcomeMultiplierAfterAdjustedDuration() {
+    val earned =
+      TimeAccounting.focusEarnedMinutes(
+        activeDurationMinutes = 40.0,
+        typeRate = SessionType.Input.rate,
+        tagMultiplier = 1.5,
+        outcomeMultiplier = focusOutcomeMultiplier("Drifted"),
+      )
+
+    assertEquals(9.0, earned, 0.0001)
+  }
+
+  @Test
   fun leisureCostMinutes_splitsAtSleepProtectionStart() {
     val startedAt = Instant.parse("2026-05-21T16:40:00Z") // 00:40 Shanghai
     val endedAt = Instant.parse("2026-05-21T17:20:00Z") // 01:20 Shanghai

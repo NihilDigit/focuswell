@@ -9,10 +9,15 @@ import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.Idea
+import dev.nihildigit.focuswell.domain.IdeaChecklistItem
+import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runBlocking
+import org.json.JSONArray
+import org.json.JSONObject
 import java.time.Instant
 
 internal class RoomFocusWellStore(
@@ -37,6 +42,7 @@ internal class RoomFocusWellStore(
         trackers = dao.trackers().map { it.toDomain() },
         focusRecords = dao.focusRecords().map { it.toDomain() },
         leisureRecords = dao.leisureRecords().map { it.toDomain() },
+        ideas = dao.ideas().map { it.toDomain() },
         ledger = dao.ledger().map { it.toDomain() },
       ).withLedgerBackedReserve()
     }
@@ -50,6 +56,7 @@ internal class RoomFocusWellStore(
           trackers = next.trackers.mapIndexed { index, tracker -> tracker.toEntity(index) },
           focusRecords = next.focusRecords.map { it.toEntity() },
           leisureRecords = next.leisureRecords.map { it.toEntity() },
+          ideas = next.ideas.map { it.toEntity() },
           ledger = next.ledger.map { it.toEntity() },
         )
         return@runBlocking
@@ -79,6 +86,12 @@ internal class RoomFocusWellStore(
           next = next.leisureRecords.map { it.toEntity() },
           id = LeisureRecordEntity::id,
         )
+      val ideaDiff =
+        listDiff(
+          previous = previous.ideas.map { it.toEntity() },
+          next = next.ideas.map { it.toEntity() },
+          id = IdeaEntity::id,
+        )
       val ledgerDiff =
         listDiff(
           previous = previous.ledger.map { it.toEntity() },
@@ -95,6 +108,8 @@ internal class RoomFocusWellStore(
         removedFocusRecordIds = focusRecordDiff.removedIds,
         changedLeisureRecords = leisureRecordDiff.changed,
         removedLeisureRecordIds = leisureRecordDiff.removedIds,
+        changedIdeas = ideaDiff.changed,
+        removedIdeaIds = ideaDiff.removedIds,
         changedLedgerEntries = ledgerDiff.changed,
         removedLedgerEntryIds = ledgerDiff.removedIds,
       )
@@ -333,6 +348,51 @@ private fun LeisureRecordEntity.toDomain(): LeisureRecord =
     dailyDate = dailyDate,
     deletedAt = deletedAt?.let(Instant::parse),
   )
+
+private fun Idea.toEntity(): IdeaEntity =
+  IdeaEntity(
+    id = id,
+    text = text,
+    quadrant = quadrant.name,
+    checklistJson = checklistToJson(checklist).toString(),
+    createdAt = createdAt.toString(),
+    updatedAt = updatedAt.toString(),
+    archivedAt = archivedAt?.toString(),
+  )
+
+private fun IdeaEntity.toDomain(): Idea =
+  Idea(
+    id = id,
+    text = text,
+    quadrant = runCatching { IdeaQuadrant.valueOf(quadrant) }.getOrDefault(IdeaQuadrant.Inbox),
+    checklist = jsonToChecklist(checklistJson),
+    createdAt = Instant.parse(createdAt),
+    updatedAt = Instant.parse(updatedAt),
+    archivedAt = archivedAt?.let(Instant::parse),
+  )
+
+private fun checklistToJson(items: List<IdeaChecklistItem>): JSONArray =
+  JSONArray(
+    items.map { item ->
+      JSONObject()
+        .put("id", item.id)
+        .put("text", item.text)
+        .put("checked", item.checked)
+    }
+  )
+
+private fun jsonToChecklist(raw: String): List<IdeaChecklistItem> =
+  runCatching {
+    val array = JSONArray(raw)
+    List(array.length()) { index ->
+      val item = array.getJSONObject(index)
+      IdeaChecklistItem(
+        id = item.optString("id", "task-$index"),
+        text = item.optString("text"),
+        checked = item.optBoolean("checked"),
+      )
+    }.filter { it.text.isNotBlank() }
+  }.getOrDefault(emptyList())
 
 private fun LedgerEntry.toEntity(): LedgerEntryEntity =
   LedgerEntryEntity(

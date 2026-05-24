@@ -8,6 +8,29 @@ enum class SessionType(val label: String, val rate: Double) {
   Output("Output", 0.25),
 }
 
+enum class FocusOutcome(val label: String, val multiplier: Double) {
+  AsPlanned("As planned", 1.0),
+  Partial("Partial", 0.8),
+  Drifted("Drifted", 0.3),
+  Interrupted("Interrupted", 1.0),
+}
+
+fun focusOutcomeMultiplier(result: String): Double {
+  val trimmed = result.trim()
+  val outcome =
+    FocusOutcome.entries.firstOrNull { it.label == trimmed }
+      ?: FocusOutcome.entries.firstOrNull { trimmed.startsWith("${it.label} · ") }
+  return outcome?.multiplier ?: FocusOutcome.AsPlanned.multiplier
+}
+
+enum class IdeaQuadrant(val label: String, val supporting: String) {
+  Inbox("Inbox", "Captured, not sorted"),
+  DoNow("Do now", "Important and urgent"),
+  Schedule("Schedule", "Important, not urgent"),
+  Contain("Contain", "Urgent, but keep it bounded"),
+  Explore("Explore", "Interesting without pressure"),
+}
+
 data class TagConfig(
   val id: String,
   val name: String,
@@ -96,6 +119,22 @@ data class LedgerEntry(
   val sourceId: String? = null,
 )
 
+data class Idea(
+  val id: String,
+  val text: String,
+  val quadrant: IdeaQuadrant = IdeaQuadrant.Inbox,
+  val checklist: List<IdeaChecklistItem> = emptyList(),
+  val createdAt: Instant,
+  val updatedAt: Instant,
+  val archivedAt: Instant? = null,
+)
+
+data class IdeaChecklistItem(
+  val id: String,
+  val text: String,
+  val checked: Boolean = false,
+)
+
 data class FocusRecord(
   val id: String,
   val task: String,
@@ -125,6 +164,7 @@ data class LeisureRecord(
 enum class Destination(val label: String) {
   Today("Today"),
   Reserve("Balance"),
+  Ideas("Ideas"),
   Plan("Plan"),
   Settings("Settings"),
 }
@@ -139,6 +179,7 @@ data class FocusWellUiState(
   val trackers: List<DailyTracker> = defaultTrackers,
   val focusRecords: List<FocusRecord> = emptyList(),
   val leisureRecords: List<LeisureRecord> = emptyList(),
+  val ideas: List<Idea> = emptyList(),
   val ledger: List<LedgerEntry> = emptyList(),
   val importError: String? = null,
 )

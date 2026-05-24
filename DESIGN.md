@@ -57,6 +57,8 @@ Balance is auditable. Rows are amount-first and compact.
 
 Plan is configurable. It owns user-defined earning inputs: tags, daily trackers, tracker rewards, and rule tracker targets.
 
+Ideas is an organizing surface. It holds captured thoughts separately from focus settlement so the user can sort them later without interrupting the current session.
+
 History is not a primary screen. Historical records are part of Balance.
 
 Settings is plain. It should be predictable, dense enough to scan, and cautious around destructive actions.
@@ -178,7 +180,7 @@ Global shell:
 
 - Use short navigation bar on compact phone widths.
 - Use navigation rail on wider widths when the implementation can adapt safely.
-- Primary destinations are Today, Balance, Plan, and Settings.
+- Primary destinations are Today, Balance, Ideas, Plan, and Settings.
 - Do not add a navigation drawer for new UI. Material 3 Expressive recommends expanded navigation rail instead.
 - Do not add a bottom app bar for new UI. Use a docked toolbar when bottom actions are needed.
 - Use app bars to describe the current page and hold at most one or two essential actions.
@@ -189,6 +191,7 @@ Today:
 - Reserve summary: custom status surface with the well motif.
 - Start actions: two large labeled buttons.
 - Focus active state: a primary-container task surface with elapsed time, session type/tag, and the current projected earning if ended now.
+- Focus active state may include a quiet idea-capture action. Captured ideas go to Ideas Inbox and do not appear in focus settlement.
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
@@ -214,6 +217,13 @@ Plan:
 - Tracker rewards are not high-frequency controls. Show them in row metadata and edit them in the tracker sheet.
 - Add actions live in section headers. Avoid permanently visible creation forms.
 - Section add actions use icon buttons with clear content descriptions; avoid making them look like primary task buttons.
+
+Ideas:
+
+- Ideas uses grouped list sections for Inbox, Do now, Schedule, Contain, and Explore.
+- Idea rows are quiet filled surfaces with compact quadrant chips. Do not use a draggable board until the interaction can be made reliable on phone widths.
+- Idea edit sheets own the idea text and small checklist items. Quadrant changes stay on the organizing surface, not inside the edit sheet.
+- Explore means low-pressure curiosity, not deletion. Archive is the explicit removal action.
 
 History:
 

@@ -55,6 +55,7 @@ Primary destinations:
 - Today: current reserve, active mode, daily trackers, and depleted state.
 - Balance: ledger-backed account view, 7-day net chart, records, and record
   editing or deletion.
+- Ideas: captured ideas, an inbox, and four sorting quadrants.
 - Plan: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Settings: appearance, accounting rules, app update checks, JSON
   backup/restore, and destructive reset.
@@ -87,21 +88,37 @@ Inputs:
 - task, with a default title when omitted
 - session type: input or output
 - optional tag multiplier
+- optional local usage correction when Android usage access is already granted
+- outcome: as planned, partial, drifted, or interrupted
 
 Settlement:
 
 ```text
-earned = activeDurationMinutes * sessionTypeRate * tagMultiplier
+adjustedActiveMinutes = max(0, activeDurationMinutes - nonFocusAppMinutes)
+earned = adjustedActiveMinutes * sessionTypeRate * tagMultiplier * outcomeMultiplier
 ```
 
 Paused time does not count toward active duration. The current implementation
 stores accumulated pause duration rather than interval-level pause history.
+
+Usage correction is local-only and appears only when Android usage access has
+already been granted. The user can mark app usage as focus-related during
+settlement so it is excluded from the deduction.
 
 Session type rates:
 
 ```text
 Input:  0.5
 Output: 0.25
+```
+
+Outcome multipliers:
+
+```text
+As planned:  1.0
+Partial:     0.8
+Drifted:     0.3
+Interrupted: 1.0
 ```
 
 Tag multipliers are snapshotted onto records so later tag changes do not
@@ -140,6 +157,24 @@ Default tracker rewards:
 - `math` and `408` rule trackers: 60 minutes each.
 - `Aerobic`, `Vocabulary`, `CodeWars`, and `Wake by 9`: 15 minutes each.
 
+## Ideas
+
+Ideas are separate from focus settlement. During an active focus session, the
+user can quickly capture a single idea at a time. Captured ideas go directly to
+the Ideas inbox and do not require review at the end of the focus session.
+
+Ideas can be sorted into:
+
+- Inbox: captured, not sorted.
+- Do now: important and urgent.
+- Schedule: important, not urgent.
+- Contain: urgent, but keep it bounded.
+- Explore: interesting without pressure.
+
+An idea may contain a small local checklist. These items stay inside the idea
+for later consideration and do not become daily trackers, focus settlement
+notes, or ledger entries.
+
 ## Records And Ledger
 
 Current editable records:
@@ -164,6 +199,7 @@ Room is the canonical local persistence layer for:
 - daily trackers
 - focus records
 - leisure records
+- ideas
 - ledger entries
 
 Room schema files are exported under `app/app/schemas` so future schema changes
