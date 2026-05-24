@@ -82,6 +82,7 @@ import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BrightnessAuto
+import androidx.compose.material.icons.rounded.Check
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
@@ -152,10 +153,13 @@ internal fun TrackerGrid(
   rules: FocusWellRules,
   onToggleTracker: (String) -> Unit,
 ) {
-  val secondary = MaterialTheme.colorScheme.secondary
-  val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
-  val surfaceContainerHigh = MaterialTheme.colorScheme.surfaceContainerHigh
-  val onSecondaryContainer = MaterialTheme.colorScheme.onSecondaryContainer
+  val completedCount = trackers.count { it.completed }
+  val trackerCount = trackers.size
+  val dailyProgress by animateFloatAsState(
+    targetValue = if (trackerCount == 0) 0f else completedCount / trackerCount.toFloat(),
+    animationSpec = focusWellDefaultSpatialSpec(),
+    label = "daily-completion-progress",
+  )
   Surface(
     color = MaterialTheme.colorScheme.surfaceContainer,
     contentColor = MaterialTheme.colorScheme.onSurface,
@@ -177,46 +181,12 @@ internal fun TrackerGrid(
           )
         }
         Text(
-          "${trackers.count { it.completed }}/${trackers.size}",
+          "$completedCount/$trackerCount",
           style = tabularNumbers(MaterialTheme.typography.titleMedium),
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
       }
-      Canvas(modifier = Modifier.fillMaxWidth().height(28.dp)) {
-        val centerY = size.height / 2f
-        val startX = 10.dp.toPx()
-        val endX = size.width - 10.dp.toPx()
-        val trackWidth = (endX - startX).coerceAtLeast(1f)
-        drawLine(
-          color = onSurfaceVariant.copy(alpha = 0.16f),
-          start = Offset(startX, centerY),
-          end = Offset(endX, centerY),
-          strokeWidth = 4.dp.toPx(),
-          cap = StrokeCap.Round,
-        )
-        val count = trackers.size.coerceAtLeast(1)
-        trackers.forEachIndexed { index, tracker ->
-          val x = if (count == 1) size.width / 2f else startX + trackWidth * index / (count - 1)
-          val completed = tracker.completed
-          drawCircle(
-            color = if (completed) secondary.copy(alpha = 0.18f) else surfaceContainerHigh,
-            radius = 8.dp.toPx(),
-            center = Offset(x, centerY),
-          )
-          drawCircle(
-            color = if (completed) secondary else onSurfaceVariant.copy(alpha = 0.36f),
-            radius = if (completed) 4.9.dp.toPx() else 3.7.dp.toPx(),
-            center = Offset(x, centerY),
-          )
-          if (completed) {
-            drawCircle(
-              color = onSecondaryContainer.copy(alpha = 0.92f),
-              radius = 1.8.dp.toPx(),
-              center = Offset(x, centerY),
-            )
-          }
-        }
-      }
+      DailyCompletionProgress(progress = dailyProgress)
       trackers.forEach { tracker ->
         DailyTrackerTile(
           tracker = tracker,
@@ -228,13 +198,21 @@ internal fun TrackerGrid(
   }
 }
 
+@Composable
+private fun DailyCompletionProgress(progress: Float) {
+  LinearProgressIndicator(
+    progress = { progress.coerceIn(0f, 1f) },
+    modifier = Modifier.fillMaxWidth().height(8.dp),
+  )
+}
+
 private fun Int.todayHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
 
 @Composable
 internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
   val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
   val targetContainer =
-    if (tracker.completed) MaterialTheme.colorScheme.secondaryContainer
+    if (tracker.completed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
     else MaterialTheme.colorScheme.surfaceContainerHigh
   val container by animateColorAsState(
     targetValue = targetContainer,
@@ -242,37 +220,11 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
     label = "tracker-tile-container",
   )
   val targetContent =
-    if (tracker.completed) MaterialTheme.colorScheme.onSecondaryContainer
-    else MaterialTheme.colorScheme.onSurface
+    MaterialTheme.colorScheme.onSurface
   val content by animateColorAsState(
     targetValue = targetContent,
     animationSpec = focusWellFastEffectsSpec(),
     label = "tracker-tile-content",
-  )
-  val topStart by animateDpAsState(
-    targetValue = if (tracker.completed) 26.dp else 18.dp,
-    animationSpec = focusWellFastSpatialSpec(),
-    label = "tracker-tile-top-start",
-  )
-  val topEnd by animateDpAsState(
-    targetValue = if (tracker.completed) 18.dp else 24.dp,
-    animationSpec = focusWellFastSpatialSpec(),
-    label = "tracker-tile-top-end",
-  )
-  val bottomEnd by animateDpAsState(
-    targetValue = if (tracker.completed) 26.dp else 18.dp,
-    animationSpec = focusWellFastSpatialSpec(),
-    label = "tracker-tile-bottom-end",
-  )
-  val bottomStart by animateDpAsState(
-    targetValue = if (tracker.completed) 20.dp else 22.dp,
-    animationSpec = focusWellFastSpatialSpec(),
-    label = "tracker-tile-bottom-start",
-  )
-  val iconSize by animateDpAsState(
-    targetValue = if (tracker.completed) 30.dp else 26.dp,
-    animationSpec = focusWellFastSpatialSpec(),
-    label = "tracker-icon-size",
   )
   val trackerProgress by animateFloatAsState(
     targetValue = trackerProgress(tracker),
@@ -284,35 +236,96 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
     enabled = !isRuleTracker,
     color = container,
     contentColor = content,
-    shape = RoundedCornerShape(topStart = topStart, topEnd = topEnd, bottomEnd = bottomEnd, bottomStart = bottomStart),
-    modifier = modifier.heightIn(min = 76.dp),
+    shape = RoundedCornerShape(16.dp),
+    modifier = modifier.heightIn(min = 68.dp),
   ) {
     Row(
-      modifier = Modifier.padding(14.dp),
-      horizontalArrangement = Arrangement.spacedBy(10.dp),
+      modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      Icon(
-        when {
-          isRuleTracker -> Icons.Rounded.Timer
-          tracker.completed -> Icons.Rounded.CheckCircle
-          else -> Icons.Rounded.RadioButtonUnchecked
-        },
-        contentDescription = null,
-        tint = if (tracker.completed) MaterialTheme.colorScheme.secondary else MaterialTheme.colorScheme.outline,
-        modifier = Modifier.size(iconSize),
-      )
+      DailyTrackerLeadingState(tracker = tracker, isRuleTracker = isRuleTracker, progress = trackerProgress)
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
-        Text(
-          "${trackerStatusText(tracker)} · +${tracker.rewardMinutes.roundToInt()}m",
-          style = MaterialTheme.typography.labelMedium,
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-          maxLines = 1,
-          overflow = TextOverflow.Ellipsis,
+        Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+          Text(
+            trackerStatusText(tracker),
+            style = MaterialTheme.typography.labelMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+          )
+          Text(
+            if (tracker.completed) "+${tracker.rewardMinutes.roundToInt()}m" else "${tracker.rewardMinutes.roundToInt()}m",
+            style = MaterialTheme.typography.labelMedium,
+            color =
+              if (tracker.completed) MaterialTheme.colorScheme.primary
+              else MaterialTheme.colorScheme.onSurfaceVariant,
+            maxLines = 1,
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun DailyTrackerLeadingState(tracker: DailyTracker, isRuleTracker: Boolean, progress: Float) {
+  if (isRuleTracker) {
+    val indicatorColor =
+      if (tracker.completed) MaterialTheme.colorScheme.primary
+      else MaterialTheme.colorScheme.onSurfaceVariant
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
+      Canvas(modifier = Modifier.fillMaxSize()) {
+        val stroke = 3.dp.toPx()
+        val radius = (size.minDimension - stroke) / 2f
+        drawCircle(
+          color = indicatorColor.copy(alpha = 0.18f),
+          radius = radius,
+          style = Stroke(width = stroke),
         )
-        if (isRuleTracker) {
-          LinearProgressIndicator(progress = { trackerProgress.coerceIn(0f, 1f) }, modifier = Modifier.fillMaxWidth())
+        drawArc(
+          color = indicatorColor,
+          startAngle = -90f,
+          sweepAngle = 360f * progress.coerceIn(0f, 1f),
+          useCenter = false,
+          style = Stroke(width = stroke, cap = StrokeCap.Round),
+          size = Size(radius * 2f, radius * 2f),
+          topLeft = Offset((size.width - radius * 2f) / 2f, (size.height - radius * 2f) / 2f),
+        )
+      }
+      Surface(
+        color =
+          if (tracker.completed) MaterialTheme.colorScheme.primaryContainer
+          else MaterialTheme.colorScheme.surfaceContainer,
+        contentColor = indicatorColor,
+        shape = CircleShape,
+        modifier = Modifier.size(30.dp),
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(Icons.Rounded.Timer, contentDescription = null, modifier = Modifier.size(18.dp))
+        }
+      }
+    }
+  } else {
+    Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
+      Surface(
+        color =
+          if (tracker.completed) MaterialTheme.colorScheme.primary
+          else Color.Transparent,
+        contentColor =
+          if (tracker.completed) MaterialTheme.colorScheme.onPrimary
+          else MaterialTheme.colorScheme.outline,
+        shape = CircleShape,
+        border =
+          if (tracker.completed) null
+          else androidx.compose.foundation.BorderStroke(2.dp, MaterialTheme.colorScheme.outline),
+        modifier = Modifier.size(30.dp),
+      ) {
+        Box(contentAlignment = Alignment.Center) {
+          if (tracker.completed) {
+            Icon(Icons.Rounded.Check, contentDescription = null, modifier = Modifier.size(18.dp))
+          }
         }
       }
     }

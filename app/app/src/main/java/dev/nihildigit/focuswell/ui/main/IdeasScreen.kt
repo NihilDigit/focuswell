@@ -29,7 +29,6 @@ import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.CheckCircle
 import androidx.compose.material.icons.rounded.Delete
-import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.Lightbulb
 import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Timer
@@ -105,6 +104,7 @@ internal fun IdeasScreen(
   var draggingIdeaId by remember { mutableStateOf<String?>(null) }
   var showAddIdea by remember { mutableStateOf(false) }
   var dragPosition by remember { mutableStateOf(Offset.Zero) }
+  var dragTarget by remember { mutableStateOf<IdeaQuadrant?>(null) }
   var containerOrigin by remember { mutableStateOf(Offset.Zero) }
   val chipBounds = remember { mutableStateMapOf<IdeaQuadrant, Rect>() }
   val rowBounds = remember { mutableStateMapOf<String, Rect>() }
@@ -117,26 +117,27 @@ internal fun IdeasScreen(
     } else {
       activeIdeas.filter { it.quadrant in selectedQuadrants }
     }
-  val hoveredQuadrant =
-    if (selectedQuadrants.isEmpty()) {
-      draggingIdeaId?.let { dropTargetAt(dragPosition, chipBounds, chipDropSlopPx) }
-    } else {
-      null
-    }
+  val hoveredQuadrant = if (selectedQuadrants.isEmpty()) dragTarget else null
 
-  fun finishDrag() {
-    val idea = activeIdeas.firstOrNull { it.id == draggingIdeaId }
-    val target =
+  fun updateDragPosition(position: Offset) {
+    dragPosition = position
+    dragTarget =
       if (selectedQuadrants.isEmpty()) {
-        dropTargetAt(dragPosition, chipBounds, chipDropSlopPx)
+        dropTargetAt(position, chipBounds, chipDropSlopPx)
       } else {
         null
       }
+  }
+
+  fun finishDrag() {
+    val idea = activeIdeas.firstOrNull { it.id == draggingIdeaId }
+    val target = dragTarget
     if (idea != null && target != null && target != idea.quadrant) {
       onMoveIdea(idea.id, target)
     }
     draggingIdeaId = null
     dragPosition = Offset.Zero
+    dragTarget = null
   }
 
   Box(
@@ -169,13 +170,14 @@ internal fun IdeasScreen(
             dragging = draggingIdeaId == idea.id,
             dragEnabled = selectedQuadrants.isEmpty(),
             onClick = { editingIdeaId = idea.id },
+            onArchive = { onArchiveIdea(idea.id) },
             onPositioned = { bounds -> rowBounds[idea.id] = bounds },
             onDragStart = { localOffset ->
               draggingIdeaId = idea.id
-              dragPosition = (rowBounds[idea.id]?.topLeft ?: Offset.Zero) + localOffset
+              updateDragPosition((rowBounds[idea.id]?.topLeft ?: Offset.Zero) + localOffset)
             },
             onDrag = { amount ->
-              dragPosition += amount
+              updateDragPosition(dragPosition + amount)
             },
             onDragEnd = ::finishDrag,
           )
@@ -231,14 +233,21 @@ private fun dropTargetAt(
   chipBounds: Map<IdeaQuadrant, Rect>,
   slopPx: Float,
 ): IdeaQuadrant? =
-  chipBounds.entries.firstOrNull { (_, bounds) ->
-    Rect(
-      left = bounds.left - slopPx,
-      top = bounds.top - slopPx,
-      right = bounds.right + slopPx,
-      bottom = bounds.bottom + slopPx,
-    ).contains(position)
-  }?.key
+  chipBounds.entries
+    .filter { (_, bounds) ->
+      Rect(
+        left = bounds.left - slopPx,
+        top = bounds.top - slopPx,
+        right = bounds.right + slopPx,
+        bottom = bounds.bottom + slopPx,
+      ).contains(position)
+    }
+    .minByOrNull { (_, bounds) ->
+      val dx = position.x - bounds.center.x
+      val dy = position.y - bounds.center.y
+      dx * dx + dy * dy
+    }
+    ?.key
 
 @Composable
 private fun IdeasHeader(
@@ -408,6 +417,7 @@ private fun IdeaRow(
   dragging: Boolean,
   dragEnabled: Boolean,
   onClick: () -> Unit,
+  onArchive: () -> Unit,
   onPositioned: (Rect) -> Unit,
   onDragStart: (Offset) -> Unit,
   onDrag: (Offset) -> Unit,
@@ -449,7 +459,7 @@ private fun IdeaRow(
       horizontalArrangement = Arrangement.spacedBy(10.dp),
       verticalAlignment = Alignment.Top,
     ) {
-      IdeaQuadrantBadge(quadrant = idea.quadrant)
+      IdeaQuadrantLabel(quadrant = idea.quadrant)
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Text(
           idea.text,
@@ -469,7 +479,9 @@ private fun IdeaRow(
           )
         }
       }
-      Icon(Icons.Rounded.Edit, contentDescription = null, tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+      IconButton(onClick = onArchive, modifier = Modifier.size(36.dp)) {
+        Icon(Icons.Rounded.Archive, contentDescription = "Archive idea", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
+      }
     }
   }
 }
@@ -524,30 +536,29 @@ private fun IdeaDragArrow(
 }
 
 @Composable
-private fun IdeaQuadrantBadge(quadrant: IdeaQuadrant) {
+private fun IdeaQuadrantLabel(quadrant: IdeaQuadrant) {
   val colors = MaterialTheme.colorScheme
-  val (container, content) =
+  val content =
     when (quadrant) {
-      IdeaQuadrant.Inbox -> colors.surfaceContainerHigh to colors.onSurfaceVariant
-      IdeaQuadrant.DoNow -> colors.primaryContainer to colors.onPrimaryContainer
-      IdeaQuadrant.Schedule -> colors.secondaryContainer to colors.onSecondaryContainer
-      IdeaQuadrant.Contain -> colors.tertiaryContainer to colors.onTertiaryContainer
-      IdeaQuadrant.Explore -> colors.surfaceContainer to colors.primary
+      IdeaQuadrant.Inbox -> colors.onSurfaceVariant
+      IdeaQuadrant.DoNow -> colors.primary
+      IdeaQuadrant.Schedule -> colors.secondary
+      IdeaQuadrant.Contain -> colors.tertiary
+      IdeaQuadrant.Explore -> colors.primary
     }
-  Surface(
-    color = container,
-    contentColor = content,
-    shape = CircleShape,
-    modifier = Modifier.width(108.dp),
+  Row(
+    modifier = Modifier.width(68.dp).padding(top = 1.dp),
+    horizontalArrangement = Arrangement.spacedBy(3.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
-      horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      Icon(quadrant.icon(), contentDescription = null, modifier = Modifier.size(15.dp))
-      Text(quadrant.label, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis)
-    }
+    Icon(quadrant.icon(), contentDescription = null, tint = content, modifier = Modifier.size(14.dp))
+    Text(
+      quadrant.label,
+      style = MaterialTheme.typography.labelSmall,
+      color = content,
+      maxLines = 1,
+      overflow = TextOverflow.Ellipsis,
+    )
   }
 }
 

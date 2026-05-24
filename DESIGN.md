@@ -197,7 +197,7 @@ Today:
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
-- Daily trackers: compact rail plus scannable tracker tiles. Completion has accounting meaning because each tracker has a configurable minute reward settled at the configured day boundary.
+- Daily trackers: compact determinate progress plus scannable list rows. The summary progress represents completed count only, independent of which tracker was completed. Individual tracker rows own the specific completion state through circular checkbox/timer leading controls; rule trackers show progress as a readable ring around the timer icon, not as a second row bar. Reward minutes are neutral while open and become green `+Xm` when completed. Completion has accounting meaning because each tracker has a configurable minute reward settled at the configured day boundary.
 - Indeterminate short waits use the new loading indicator when available; otherwise keep Material progress small and contextual.
 
 Balance:
@@ -222,7 +222,8 @@ Plan:
 Ideas:
 
 - Ideas uses grouped list sections for Inbox, Do now, Schedule, Contain, and Explore.
-- Idea rows are quiet filled surfaces with compact quadrant chips. Do not use a draggable board until the interaction can be made reliable on phone widths.
+- Idea rows are quiet filled surfaces with compact colored quadrant labels on the left. Tapping the row edits the idea; the trailing archive icon is the explicit removal action.
+- Retagging stays drag-to-chip from the list surface. The bottom drag guidance and the final drop action must read from the same resolved target.
 - Idea edit sheets own the idea text and small checklist items. Quadrant changes stay on the organizing surface, not inside the edit sheet.
 - Explore means low-pressure curiosity, not deletion. Archive is the explicit removal action.
 
