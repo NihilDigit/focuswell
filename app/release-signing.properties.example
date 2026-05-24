@@ -1,0 +1,4 @@
+storeFile=C:\\path\\to\\focuswell-release.jks
+storePassword=change-me
+keyAlias=focuswell
+keyPassword=change-me

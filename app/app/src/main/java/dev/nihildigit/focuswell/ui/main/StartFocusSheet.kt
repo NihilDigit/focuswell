@@ -25,8 +25,10 @@ import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -46,6 +48,7 @@ import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -157,6 +160,18 @@ internal fun StartFocusSheet(
   var tagId by remember { mutableStateOf<String?>(null) }
   val tag = tagId?.let { selectedId -> activeTags.firstOrNull { it.id == selectedId } }
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  val recentTasks =
+    remember(state.focusRecords) {
+      state.focusRecords
+        .asSequence()
+        .filter { it.deletedAt == null }
+        .sortedByDescending { it.startedAt }
+        .map { it.task.trim() }
+        .filter { it.isNotBlank() }
+        .distinct()
+        .take(5)
+        .toList()
+    }
 
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(
@@ -175,6 +190,13 @@ internal fun StartFocusSheet(
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
       )
+      if (recentTasks.isNotEmpty()) {
+        RecentFocusTaskRow(
+          tasks = recentTasks,
+          selectedTask = task.trim(),
+          onSelectTask = { task = it },
+        )
+      }
       ConnectedSessionTypeGroup(selected = type, onSelected = { type = it })
       FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         FilterChip(
@@ -190,16 +212,11 @@ internal fun StartFocusSheet(
           )
         }
       }
-      Surface(
-        color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.46f),
-        contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = RoundedCornerShape(18.dp),
-        modifier = Modifier.fillMaxWidth(),
-      ) {
-        Text(
-          "${type.label} · ${tag?.name ?: "No tag"} · earns ${effectiveRate(type, tag?.multiplier ?: 1.0)}x real time",
-          modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
-          style = MaterialTheme.typography.bodyMedium,
+      CalmPanel {
+        StartFocusSettlementPreview(
+          type = type,
+          tagName = tag?.name ?: "No tag",
+          tagMultiplier = tag?.multiplier ?: 1.0,
         )
       }
       Button(
@@ -213,6 +230,91 @@ internal fun StartFocusSheet(
         Text("Start")
       }
       Spacer(Modifier.height(16.dp))
+    }
+  }
+}
+
+@Composable
+internal fun StartFocusSettlementPreview(
+  type: SessionType,
+  tagName: String,
+  tagMultiplier: Double,
+) {
+  val earnedPerMinute = type.rate * tagMultiplier
+  Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Text("Settlement", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+    StartFormulaLine("Session type", type.label)
+    StartFormulaLine("Tag", tagName)
+    StartFormulaLine("Type rate", "${type.rate.formatThree()}x")
+    StartFormulaLine("Tag multiplier", "${tagMultiplier.formatThree()}x")
+    HorizontalDivider()
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+      Text("Formula", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      Text(
+        "1 min × ${type.rate.formatThree()} × ${tagMultiplier.formatThree()}",
+        style = tabularNumbers(MaterialTheme.typography.labelLarge),
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+      )
+    }
+    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+      Text("Earned per min", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+      Text(
+        "+${earnedPerMinute.formatThree()} min",
+        style = tabularNumbers(MaterialTheme.typography.titleMedium),
+        fontWeight = FontWeight.Bold,
+        color = MaterialTheme.colorScheme.primary,
+      )
+    }
+  }
+}
+
+@Composable
+private fun StartFormulaLine(label: String, value: String) {
+  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(value, style = tabularNumbers(MaterialTheme.typography.bodyMedium), fontWeight = FontWeight.SemiBold)
+  }
+}
+
+@Composable
+internal fun RecentFocusTaskRow(
+  tasks: List<String>,
+  selectedTask: String,
+  onSelectTask: (String) -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
+    horizontalArrangement = Arrangement.spacedBy(6.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    tasks.take(5).forEach { recentTask ->
+      val selected = selectedTask == recentTask
+      Surface(
+        color =
+          if (selected) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.78f)
+          else MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.72f),
+        contentColor =
+          if (selected) MaterialTheme.colorScheme.onSecondaryContainer
+          else MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = CircleShape,
+        modifier =
+          Modifier
+            .height(34.dp)
+            .clickable { onSelectTask(recentTask) },
+      ) {
+        Row(
+          modifier = Modifier.padding(horizontal = 12.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            recentTask,
+            style = MaterialTheme.typography.labelMedium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = 132.dp),
+          )
+        }
+      }
     }
   }
 }

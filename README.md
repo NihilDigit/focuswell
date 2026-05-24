@@ -29,11 +29,13 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Focus, leisure, and depleted modes.
 - Room-backed local persistence for timers, records, trackers, tags, and ledger entries.
 - Editable focus and leisure records in Balance.
+- Focus settlement with local app-usage correction when Android usage access is granted.
+- Ideas inbox and sorting surface for thoughts captured during focus.
 - Daily trackers and rule-based tracker progress.
 - Adjustable accounting rules and configurable tracker rewards.
 - JSON export/import.
 - In-app update checks against GitHub Releases, with ABI-specific APK download and checksum verification.
-- Local notifications and remote FCM reminders.
+- Local notifications and remote FCM reminders, including long-session check-ins.
 - Minified release builds with scoped Room/R8 keep rules.
 - Material 3 Expressive-inspired shape, motion, typography, and icon treatment.
 
@@ -64,11 +66,12 @@ cd app
 .\gradlew.bat installDebug
 ```
 
-Build a signed release when signing environment variables are available:
+Build a signed release with the same release key used by CI:
 
 ```powershell
-cd app
-.\gradlew.bat testDebugUnitTest assembleRelease "-PfocuswellVersionName=26.5.5"
+Copy-Item app\release-signing.properties.example app\release-signing.properties
+# Fill app\release-signing.properties with the same keystore and passwords stored in GitHub Secrets.
+.\scripts\build-local-release.ps1 -VersionName 26.5.5
 ```
 
 Release APKs are split by ABI: `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
@@ -83,10 +86,10 @@ bun run check
 bun test
 ```
 
-Production backend secrets live in Vercel. Android release signing secrets live in GitHub Secrets.
+Production backend secrets live in Vercel. Android release signing secrets live in GitHub Secrets. GitHub Secrets cannot be read back with `gh`; the local release script only verifies that the required secret names exist, then uses the untracked local signing file. Release builds fail when signing material is missing so local release APKs do not drift to another key.
 
 ## Release
 
 Releases are manual-tag driven. Use a time-based tag such as `26.5.5`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
 
-The current public release is [26.5.7](https://github.com/NihilDigit/focuswell/releases/tag/26.5.7). It simplifies the depleted Leisure flow, removes WindDown, and keeps release APKs split by ABI.
+The current public release is [26.5.8](https://github.com/NihilDigit/focuswell/releases/tag/26.5.8). It tightens the focus loop with app-usage correction, Ideas capture, clearer push registration, long-session reminders, Start Focus recent-task chips, and a more legible Leisure timer.

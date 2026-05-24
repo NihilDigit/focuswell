@@ -124,6 +124,12 @@ Interrupted: 1.0
 Tag multipliers are snapshotted onto records so later tag changes do not
 silently recalculate historical sessions.
 
+Start Focus may offer up to five recent focus task chips. Choosing one only
+fills the task field; it does not start a session.
+
+While focus is running, the main timer shows seconds. Settlement and ledger
+amounts use minute units because the accounting model is minute-based.
+
 ## Leisure Sessions
 
 A leisure session spends reserve from its timestamped duration.
@@ -135,6 +141,10 @@ Rules:
 - If the reserve is exhausted, the leisure record ends at the depletion instant.
 - The app enters depleted mode when active leisure drains the reserve.
 - The depleted state can be dismissed by the user.
+
+While leisure is running, the main remaining-time display shows seconds. The
+elapsed-time badge uses minute units as a coarse usage statistic. The progress
+bar represents remaining leisure time and shrinks from right to left.
 
 ## Daily Trackers
 
@@ -231,9 +241,13 @@ hours, and 5 hours. These reminders are enabled by default and can be disabled
 from Settings. They are a time-sense aid only; they do not change settlement or
 ledger accounting.
 
-Settings shows the device's push registration state. If Firebase token
-registration fails, the user can manually retry registration without starting a
-focus or leisure session.
+Settings has a Push switch for remote reminder readiness. Off means Firebase
+token registration or Android notification permission is missing. Turning it on
+requests notification permission when needed and refreshes FCM registration.
+
+Debug builds use the normal Android debug key. Release builds, whether local or
+CI-built, must use the same release keystore. A release build should fail if the
+release signing material is not available.
 
 ## Browser Extension
 

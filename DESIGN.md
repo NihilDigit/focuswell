@@ -190,6 +190,7 @@ Today:
 
 - Reserve summary: custom status surface with the well motif.
 - Start actions: two large labeled buttons.
+- Start Focus sheet may show a single horizontal row of up to five recent task chips. Chips fill the task field only; they do not start the session.
 - Focus active state: a primary-container task surface with elapsed time, session type/tag, and the current projected earning if ended now.
 - Focus active state may include a quiet idea-capture action. Captured ideas go to Ideas Inbox and do not appear in focus settlement.
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
@@ -234,8 +235,7 @@ Settings:
 - Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
 - Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
-- Reminder preferences live with rules as compact switch rows. The long-session reminder switch should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
-- Push registration is a maintenance row in Settings. It should expose whether the current app has an FCM token, show the latest error when registration fails, and provide one explicit retry action.
+- Reminder preferences live with rules as compact switch rows. The Push row sits beside Long reminders; off means FCM registration or notification permission is missing, and turning it on should request permission and refresh registration. Long reminders should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.
 

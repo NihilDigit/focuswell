@@ -776,65 +776,56 @@ internal fun SettingsUpdateRow(
 @Composable
 internal fun SettingsPushRegistrationRow(
   pushRegistrationState: PushRegistrationUiState,
-  onRefreshPushRegistration: () -> Unit,
+  notificationPermissionGranted: Boolean,
+  onEnablePush: () -> Unit,
 ) {
   val status = pushRegistrationState.status
-  val title = if (status.hasFcmToken) "Push registered" else "Push not registered"
+  val checked = status.hasFcmToken && notificationPermissionGranted
   val supporting =
     when {
+      !notificationPermissionGranted -> "Notification permission is missing."
       status.lastError != null -> status.lastError
-      status.lastRegisteredAt != null -> "Last checked ${status.lastRegisteredAt}"
-      else -> "Register this device for remote reminders."
+      status.hasFcmToken -> "Registered for remote reminders."
+      else -> "Register FCM and allow notifications."
     }
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = RoundedCornerShape(18.dp),
+  Column(
     modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(8.dp),
   ) {
-    Column(
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-      verticalArrangement = Arrangement.spacedBy(10.dp),
+    Row(
+      modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+      verticalAlignment = Alignment.CenterVertically,
     ) {
-      Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
-        Surface(
-          color =
-            if (status.hasFcmToken) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)
-            else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
-          contentColor =
-            if (status.hasFcmToken) MaterialTheme.colorScheme.onPrimaryContainer
-            else MaterialTheme.colorScheme.error,
-          shape = CircleShape,
-        ) {
-          Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
-        }
-        Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-          Text(title, style = MaterialTheme.typography.titleMedium)
-          Text(
-            supporting,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 2,
-            overflow = TextOverflow.Ellipsis,
-          )
-        }
-        Switch(
-          checked = status.hasFcmToken,
-          onCheckedChange = { if (!pushRegistrationState.refreshing) onRefreshPushRegistration() },
-          enabled = !pushRegistrationState.refreshing,
+      Surface(
+        color =
+          if (checked) MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f)
+          else MaterialTheme.colorScheme.error.copy(alpha = 0.12f),
+        contentColor =
+          if (checked) MaterialTheme.colorScheme.onSecondaryContainer
+          else MaterialTheme.colorScheme.error,
+        shape = CircleShape,
+      ) {
+        Icon(Icons.Rounded.Notifications, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+      }
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text("Push", style = MaterialTheme.typography.titleMedium)
+        Text(
+          supporting,
+          style = MaterialTheme.typography.bodySmall,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          maxLines = 2,
+          overflow = TextOverflow.Ellipsis,
         )
       }
-      if (pushRegistrationState.refreshing) {
-        LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
-      }
-      FilledTonalButton(
-        onClick = onRefreshPushRegistration,
+      Switch(
+        checked = checked,
+        onCheckedChange = { if (it && !pushRegistrationState.refreshing) onEnablePush() },
         enabled = !pushRegistrationState.refreshing,
-        modifier = Modifier.fillMaxWidth().height(44.dp),
-        shape = RoundedCornerShape(22.dp),
-      ) {
-        Text(if (pushRegistrationState.refreshing) "Registering" else "Register now")
-      }
+      )
+    }
+    if (pushRegistrationState.refreshing) {
+      LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
     }
   }
 }
@@ -897,7 +888,8 @@ internal fun SettingsScreen(
   onDownloadUpdate: () -> Unit,
   onInstallUpdate: () -> Unit,
   onOpenUpdateReleasePage: () -> Unit,
-  onRefreshPushRegistration: () -> Unit,
+  notificationPermissionGranted: Boolean,
+  onEnablePush: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
 ) {
@@ -1006,7 +998,8 @@ internal fun SettingsScreen(
         Text("Reminders", style = MaterialTheme.typography.titleLarge)
         SettingsPushRegistrationRow(
           pushRegistrationState = pushRegistrationState,
-          onRefreshPushRegistration = onRefreshPushRegistration,
+          notificationPermissionGranted = notificationPermissionGranted,
+          onEnablePush = onEnablePush,
         )
         SettingsSwitchRow(
           title = "Long reminders",

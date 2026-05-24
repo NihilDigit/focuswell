@@ -387,7 +387,7 @@ internal fun FocusTimerSurface(
           Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("Elapsed", style = MaterialTheme.typography.labelLarge, color = content)
             Text(
-              formatDuration(elapsed),
+              formatPreciseDuration(elapsed),
               style = tabularNumbers(MaterialTheme.typography.displayMedium),
               maxLines = 1,
               softWrap = false,
@@ -746,6 +746,7 @@ internal fun ActiveLeisureSurface(
   val normalizedRules = rules.normalized()
   val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now, rules = normalizedRules)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
+  val elapsed = Duration.between(leisure.startedAt, now).coerceAtLeast(Duration.ZERO)
   val depletionAt = TimeAccounting.instantWhenLeisureCostReaches(leisure.startedAt, reserveMinutes, rules = normalizedRules)
   val totalDisplayDuration = Duration.between(leisure.startedAt, depletionAt).coerceAtLeast(Duration.ZERO)
   val displayRemaining = Duration.between(now, depletionAt).coerceAtLeast(Duration.ZERO)
@@ -765,7 +766,8 @@ internal fun ActiveLeisureSurface(
     }
   Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     LeisureTimerSurface(
-      remaining = formatDuration(displayRemaining),
+      remaining = formatPreciseDuration(displayRemaining),
+      elapsed = formatDuration(elapsed),
       progress = progress,
       supporting = lowBalanceText(liveRemainingMinutes),
       sleepProtection = isSleepProtection,
@@ -870,6 +872,7 @@ internal fun HoldToEndLeisureButton(
 @Composable
 internal fun LeisureTimerSurface(
   remaining: String,
+  elapsed: String,
   progress: Float,
   supporting: String?,
   sleepProtection: Boolean,
@@ -917,8 +920,14 @@ internal fun LeisureTimerSurface(
           verticalAlignment = Alignment.CenterVertically,
         ) {
           StatusBadge("Leisure running", tone)
-          if (sleepProtection) {
-            StatusBadge("Sleep protection ${sleepProtectionMultiplier.formatOne()}x", tone)
+          FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+          ) {
+            StatusBadge("$elapsed elapsed", tone)
+            if (sleepProtection) {
+              StatusBadge("Sleep protection ${sleepProtectionMultiplier.formatOne()}x", tone)
+            }
           }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -944,6 +953,12 @@ internal fun LeisureTimerSurface(
 
 @Composable
 internal fun ExpressiveProgressIndicator(progress: Float, tone: Color, modifier: Modifier = Modifier) {
+  val sparkPhase by rememberInfiniteTransition(label = "leisure-sparks").animateFloat(
+    initialValue = 0f,
+    targetValue = (PI * 2).toFloat(),
+    animationSpec = infiniteRepeatable(animation = tween(durationMillis = 900, easing = LinearEasing)),
+    label = "leisure-spark-phase",
+  )
   val actualProgress by animateFloatAsState(
     targetValue = progress.coerceIn(0f, 1f),
     animationSpec = focusWellDefaultSpatialSpec(),
@@ -951,14 +966,15 @@ internal fun ExpressiveProgressIndicator(progress: Float, tone: Color, modifier:
   )
   val trackColor = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f)
   val stopColor = MaterialTheme.colorScheme.surface
+  val emberColor = MaterialTheme.colorScheme.tertiary
   Canvas(modifier = modifier.fillMaxWidth().height(28.dp)) {
     val stroke = 8.dp.toPx()
     val centerY = size.height / 2f
     val startX = stroke / 2f
     val endX = size.width - stroke / 2f
     val trackWidth = endX - startX
-    val activeProgress = actualProgress.coerceIn(0f, 1f)
-    val activeEndX = startX + trackWidth * activeProgress
+    val remainingProgress = actualProgress.coerceIn(0f, 1f)
+    val burnX = startX + trackWidth * remainingProgress
     drawLine(
       color = trackColor,
       start = Offset(startX, centerY),
@@ -966,24 +982,36 @@ internal fun ExpressiveProgressIndicator(progress: Float, tone: Color, modifier:
       strokeWidth = stroke,
       cap = StrokeCap.Round,
     )
-    if (activeProgress > 0.01f) {
+    if (remainingProgress > 0.01f) {
       val wave = Path().apply {
         moveTo(startX, centerY)
         var x = startX
-        while (x <= activeEndX) {
+        while (x <= burnX) {
           val normalized = (x - startX) / trackWidth
           val y = centerY + sin(normalized * PI.toFloat() * 8f) * 3.dp.toPx()
           lineTo(x, y)
           x += 6.dp.toPx()
         }
-        lineTo(activeEndX, centerY)
+        lineTo(burnX, centerY)
       }
       drawPath(wave, color = tone, style = Stroke(width = stroke, cap = StrokeCap.Round))
     }
     drawCircle(color = tone, radius = 4.dp.toPx(), center = Offset(endX, centerY))
     drawCircle(color = stopColor, radius = 2.dp.toPx(), center = Offset(endX, centerY))
-    if (activeProgress in 0.02f..0.98f) {
-      drawCircle(color = tone, radius = 5.dp.toPx(), center = Offset(activeEndX, centerY))
+    if (remainingProgress > 0.01f) {
+      drawCircle(color = emberColor, radius = 5.5.dp.toPx(), center = Offset(burnX, centerY))
+      drawCircle(color = stopColor.copy(alpha = 0.65f), radius = 2.2.dp.toPx(), center = Offset(burnX, centerY))
+      repeat(4) { index ->
+        val phase = sparkPhase + index * 1.7f
+        val drift = (sin(phase) * 4.dp.toPx()) - index * 2.dp.toPx()
+        val lift = -5.dp.toPx() - index * 1.8.dp.toPx() - sin(phase * 1.4f) * 3.dp.toPx()
+        val alpha = 0.72f - index * 0.13f
+        drawCircle(
+          color = emberColor.copy(alpha = alpha.coerceIn(0.18f, 0.72f)),
+          radius = (2.5f - index * 0.28f).dp.toPx(),
+          center = Offset(burnX + drift, centerY + lift),
+        )
+      }
     }
   }
 }

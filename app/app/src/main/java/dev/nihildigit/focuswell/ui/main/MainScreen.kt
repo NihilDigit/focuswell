@@ -328,6 +328,8 @@ internal fun MainScreen(
   onInstallUpdate: () -> Unit,
   onOpenUpdateReleasePage: () -> Unit,
   onRefreshPushRegistration: () -> Unit,
+  notificationPermissionGranted: Boolean = true,
+  onEnablePush: () -> Unit = {},
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -335,13 +337,28 @@ internal fun MainScreen(
   var showFocusSheet by remember { mutableStateOf(false) }
   val context = LocalContext.current
   var showUsageAccessPrompt by remember { mutableStateOf(!hasUsageAccess(context)) }
+  var notificationPermissionReady by remember { mutableStateOf(notificationPermissionGranted && canPostNotifications(context)) }
   val notificationPermissionLauncher =
-    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) {
+    rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+      notificationPermissionReady = granted || canPostNotifications(context)
+      if (notificationPermissionReady) {
+        onRefreshPushRegistration()
+      }
       // Timer reminders are best effort; the timestamp ledger remains correct without notifications.
     }
   fun requestReminderPermissionIfNeeded() {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !canPostNotifications(context)) {
       notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+      notificationPermissionReady = true
+    }
+  }
+  fun enablePush() {
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU && !canPostNotifications(context)) {
+      notificationPermissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
+    } else {
+      notificationPermissionReady = true
+      onRefreshPushRegistration()
     }
   }
 
@@ -403,7 +420,8 @@ internal fun MainScreen(
           onDownloadUpdate = onDownloadUpdate,
           onInstallUpdate = onInstallUpdate,
           onOpenUpdateReleasePage = onOpenUpdateReleasePage,
-          onRefreshPushRegistration = onRefreshPushRegistration,
+          notificationPermissionGranted = notificationPermissionReady,
+          onEnablePush = ::enablePush,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
           modifier = Modifier.weight(1f),
@@ -497,7 +515,8 @@ private fun DestinationContent(
   onDownloadUpdate: () -> Unit,
   onInstallUpdate: () -> Unit,
   onOpenUpdateReleasePage: () -> Unit,
-  onRefreshPushRegistration: () -> Unit,
+  notificationPermissionGranted: Boolean,
+  onEnablePush: () -> Unit,
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
   modifier: Modifier = Modifier,
@@ -563,7 +582,8 @@ private fun DestinationContent(
           onDownloadUpdate = onDownloadUpdate,
           onInstallUpdate = onInstallUpdate,
           onOpenUpdateReleasePage = onOpenUpdateReleasePage,
-          onRefreshPushRegistration = onRefreshPushRegistration,
+          notificationPermissionGranted = notificationPermissionGranted,
+          onEnablePush = onEnablePush,
           themeMode = themeMode,
           onThemeModeChange = onThemeModeChange,
         )
@@ -821,6 +841,13 @@ internal fun rememberNow(paused: Boolean = false): Instant {
 
 internal fun formatDuration(duration: Duration): String {
   val totalSeconds = duration.seconds.coerceAtLeast(0)
+  if (totalSeconds < 60) return "<1 min"
+  val totalMinutes = (totalSeconds / 60).coerceAtLeast(0)
+  return "$totalMinutes min"
+}
+
+internal fun formatPreciseDuration(duration: Duration): String {
+  val totalSeconds = duration.seconds.coerceAtLeast(0)
   val hours = totalSeconds / 3600
   val minutes = (totalSeconds % 3600) / 60
   val seconds = totalSeconds % 60
@@ -946,6 +973,8 @@ internal fun MainScreenPreview() {
       onInstallUpdate = {},
       onOpenUpdateReleasePage = {},
       onRefreshPushRegistration = {},
+      notificationPermissionGranted = false,
+      onEnablePush = {},
       themeMode = ThemeMode.System,
       onThemeModeChange = {},
     )

@@ -1,5 +1,8 @@
 *-adminsdk*.json
 serviceAccountKey.json
+app/release-signing.properties
+*.jks
+*.keystore
 .env
 .env.*
 !.env.example

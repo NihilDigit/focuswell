@@ -1,3 +1,5 @@
+import java.util.Properties
+
 plugins {
   alias(libs.plugins.android.application)
   alias(libs.plugins.compose.compiler)
@@ -21,15 +23,39 @@ val focusWellVersionName =
 val focusWellVersionCode =
   providers.gradleProperty("focuswellVersionCode").orNull?.toIntOrNull()
     ?: versionCodeFromVersionName(focusWellVersionName)
-val releaseStoreFile = System.getenv("FOCUSWELL_RELEASE_STORE_FILE")
-val releaseStorePassword = System.getenv("FOCUSWELL_RELEASE_STORE_PASSWORD")
-val releaseKeyAlias = System.getenv("FOCUSWELL_RELEASE_KEY_ALIAS")
-val releaseKeyPassword = System.getenv("FOCUSWELL_RELEASE_KEY_PASSWORD")
+val localReleaseSigningFile = rootProject.file("release-signing.properties")
+val localReleaseSigning = Properties().apply {
+    if (localReleaseSigningFile.isFile) {
+        localReleaseSigningFile.inputStream().use(::load)
+    }
+}
+
+fun releaseSigningValue(envName: String, propertyName: String): String? =
+    System.getenv(envName)?.takeIf { it.isNotBlank() }
+        ?: localReleaseSigning.getProperty(propertyName)?.takeIf { it.isNotBlank() }
+
+val releaseStoreFile = releaseSigningValue("FOCUSWELL_RELEASE_STORE_FILE", "storeFile")
+val releaseStorePassword = releaseSigningValue("FOCUSWELL_RELEASE_STORE_PASSWORD", "storePassword")
+val releaseKeyAlias = releaseSigningValue("FOCUSWELL_RELEASE_KEY_ALIAS", "keyAlias")
+val releaseKeyPassword = releaseSigningValue("FOCUSWELL_RELEASE_KEY_PASSWORD", "keyPassword")
 val hasReleaseSigning =
   !releaseStoreFile.isNullOrBlank() &&
     !releaseStorePassword.isNullOrBlank() &&
     !releaseKeyAlias.isNullOrBlank() &&
     !releaseKeyPassword.isNullOrBlank()
+
+gradle.taskGraph.whenReady {
+    val buildsRelease = allTasks.any { task ->
+        task.name.contains("Release") &&
+            (task.name.startsWith("assemble") || task.name.startsWith("package") || task.name.startsWith("install"))
+    }
+    if (buildsRelease && !hasReleaseSigning) {
+        throw GradleException(
+            "Release signing is required. Provide FOCUSWELL_RELEASE_* environment variables " +
+                "or app/release-signing.properties with the same keystore used by GitHub Actions.",
+        )
+    }
+}
 
 android {
     namespace = "dev.nihildigit.focuswell"

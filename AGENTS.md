@@ -25,6 +25,17 @@ cd app
 .\gradlew.bat installDebug
 ```
 
+Local signed release builds must use the same release key as CI. Put the
+untracked signing file at `app/release-signing.properties` from
+`app/release-signing.properties.example`, then run:
+
+```powershell
+.\scripts\build-local-release.ps1 -VersionName 26.5.8
+```
+
+`assembleRelease` must fail when release signing material is missing. Do not
+allow local release APKs to fall back to debug signing or any alternate key.
+
 Backend:
 
 ```powershell
@@ -82,6 +93,9 @@ The release CI should build signed APKs for:
 - `x86_64`
 
 Signing material belongs in GitHub Secrets. Never commit keystores, passwords, service account JSON, or token files.
+Local copies of the release keystore and `app/release-signing.properties` are
+machine-private and must remain untracked. GitHub Secrets cannot be read back
+with `gh`; local release builds need a local copy of the same keystore.
 
 ## Agent Notes
 
