@@ -66,9 +66,10 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun setWakeTime(value: String) = repository.setWakeTime(value)
 
   fun startFocus(task: String, type: SessionType, tagId: String?) {
+    val rules = uiState.value.rules
     val focus = repository.startFocus(task, type, tagId) ?: return
     viewModelScope.launch {
-      runCatching { reminders.scheduleFocusStaleReminder(focus.reminderSessionId, revision = focus.revision) }
+      runCatching { reminders.scheduleFocusReminders(focus.reminderSessionId, revision = focus.revision, rules = rules) }
         .onFailure { Log.e("FocusWellPush", "Failed to schedule focus reminder", it) }
     }
   }

@@ -4,7 +4,7 @@ import { ReminderService } from "./service";
 import { MemoryReminderStore } from "./store";
 import type { FcmClient } from "./fcm";
 import type { QStashClient } from "./qstash";
-import type { ReminderMessage, ReminderPayload } from "./types";
+import type { ReminderDeliveryTelemetry, ReminderMessage, ReminderPayload } from "./types";
 
 class FakeQStashClient implements QStashClient {
   published: ReminderPayload[] = [];
@@ -25,10 +25,10 @@ class FakeQStashClient implements QStashClient {
 }
 
 class FakeFcmClient implements FcmClient {
-  sent: Array<{ token: string; message: ReminderMessage }> = [];
+  sent: Array<{ token: string; message: ReminderMessage; telemetry: ReminderDeliveryTelemetry }> = [];
 
-  async send(token: string, message: ReminderMessage): Promise<"sent"> {
-    this.sent.push({ token, message });
+  async send(token: string, message: ReminderMessage, telemetry: ReminderDeliveryTelemetry): Promise<"sent"> {
+    this.sent.push({ token, message, telemetry });
     return "sent";
   }
 }
@@ -145,6 +145,12 @@ test("pending callback sends the matching reminder message and marks plan fired"
         title: "1 min left",
         body: "Your leisure reserve is almost used up.",
         tag: "focuswell-leisure",
+      },
+      telemetry: {
+        reminderId: plan.reminderId,
+        kind: "leisure_1m_left",
+        dueAtUtc: plan.dueAtUtc,
+        firedAtUtc: expect.any(String),
       },
     },
   ]);

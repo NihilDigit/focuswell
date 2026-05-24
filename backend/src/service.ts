@@ -100,15 +100,35 @@ export class ReminderService {
     }
     const device = await this.store.getDevice(plan.deviceId);
     if (!device?.fcmToken) {
-      console.log("reminder_fire", JSON.stringify({ reminderId: plan.reminderId, kind: plan.kind, result: "disabled" }));
+      const firedAtUtc = new Date().toISOString();
+      console.log(
+        "reminder_fire",
+        JSON.stringify({
+          reminderId: plan.reminderId,
+          kind: plan.kind,
+          dueAtUtc: plan.dueAtUtc,
+          firedAtUtc,
+          delayMs: Date.parse(firedAtUtc) - Date.parse(plan.dueAtUtc),
+          result: "disabled",
+        }),
+      );
       return "disabled";
     }
-    const result = await this.fcm.send(device.fcmToken, messageFor(plan.kind));
+    const firedAtUtc = new Date().toISOString();
+    const result = await this.fcm.send(device.fcmToken, messageFor(plan.kind), {
+      reminderId: plan.reminderId,
+      kind: plan.kind,
+      dueAtUtc: plan.dueAtUtc,
+      firedAtUtc,
+    });
     console.log(
       "reminder_fire",
       JSON.stringify({
         reminderId: plan.reminderId,
         kind: plan.kind,
+        dueAtUtc: plan.dueAtUtc,
+        firedAtUtc,
+        delayMs: Date.parse(firedAtUtc) - Date.parse(plan.dueAtUtc),
         result,
       }),
     );

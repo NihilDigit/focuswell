@@ -1,8 +1,8 @@
 import { createSign } from "node:crypto";
-import type { ReminderMessage } from "./types";
+import type { ReminderDeliveryTelemetry, ReminderMessage } from "./types";
 
 export type FcmClient = {
-  send(token: string, message: ReminderMessage): Promise<"sent" | "expired" | "disabled">;
+  send(token: string, message: ReminderMessage, telemetry: ReminderDeliveryTelemetry): Promise<"sent" | "expired" | "disabled">;
 };
 
 export class DisabledFcmClient implements FcmClient {
@@ -20,7 +20,7 @@ export class HttpV1FcmClient implements FcmClient {
     private readonly privateKey: string,
   ) {}
 
-  async send(token: string, message: ReminderMessage): Promise<"sent" | "expired"> {
+  async send(token: string, message: ReminderMessage, telemetry: ReminderDeliveryTelemetry): Promise<"sent" | "expired"> {
     const accessToken = await this.accessToken();
     const response = await fetch(`https://fcm.googleapis.com/v1/projects/${this.projectId}/messages:send`, {
       method: "POST",
@@ -28,7 +28,7 @@ export class HttpV1FcmClient implements FcmClient {
         authorization: `Bearer ${accessToken}`,
         "content-type": "application/json",
       },
-      body: JSON.stringify(fcmRequestBody(token, message)),
+      body: JSON.stringify(fcmRequestBody(token, message, telemetry)),
     });
 
     if (response.ok) return "sent";
@@ -63,7 +63,7 @@ export class HttpV1FcmClient implements FcmClient {
   }
 }
 
-export function fcmRequestBody(token: string, message: ReminderMessage): unknown {
+export function fcmRequestBody(token: string, message: ReminderMessage, telemetry: ReminderDeliveryTelemetry): unknown {
   return {
     message: {
       token,
@@ -71,6 +71,10 @@ export function fcmRequestBody(token: string, message: ReminderMessage): unknown
         tag: message.tag,
         title: message.title,
         body: message.body,
+        reminderId: telemetry.reminderId,
+        kind: telemetry.kind,
+        dueAtUtc: telemetry.dueAtUtc,
+        firedAtUtc: telemetry.firedAtUtc,
       },
       android: {
         priority: "HIGH",

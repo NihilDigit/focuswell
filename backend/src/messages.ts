@@ -8,6 +8,18 @@ export function messageFor(kind: ReminderKind): ReminderMessage {
         body: "This session has been running for a while. Open FocusWell when you are ready to review it.",
         tag: "focuswell-focus-stale",
       };
+    case "focus_duration_1h":
+      return durationMessage("Focus", "1h", "focuswell-focus-duration");
+    case "focus_duration_3h":
+      return durationMessage("Focus", "3h", "focuswell-focus-duration");
+    case "focus_duration_5h":
+      return durationMessage("Focus", "5h", "focuswell-focus-duration");
+    case "leisure_duration_1h":
+      return durationMessage("Leisure", "1h", "focuswell-leisure-duration");
+    case "leisure_duration_3h":
+      return durationMessage("Leisure", "3h", "focuswell-leisure-duration");
+    case "leisure_duration_5h":
+      return durationMessage("Leisure", "5h", "focuswell-leisure-duration");
     case "leisure_10m_left":
       return {
         title: "10 min left",
@@ -39,4 +51,12 @@ export function messageFor(kind: ReminderKind): ReminderMessage {
         tag: "focuswell-sleep-protection",
       };
   }
+}
+
+function durationMessage(mode: "Focus" | "Leisure", duration: string, tag: string): ReminderMessage {
+  return {
+    title: `${mode} ${duration}`,
+    body: "This mode has been running for a while. Open FocusWell if you want to check the time.",
+    tag,
+  };
 }

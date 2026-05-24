@@ -685,6 +685,7 @@ class FocusWellRepository internal constructor(
       .put("dayBoundaryHour", normalizedRules.dayBoundaryHour)
       .put("sleepProtectionStartHour", normalizedRules.sleepProtectionStartHour)
       .put("sleepProtectionMultiplier", normalizedRules.sleepProtectionMultiplier)
+      .put("longSessionRemindersEnabled", normalizedRules.longSessionRemindersEnabled)
   }
 
   private fun jsonToRules(json: JSONObject): FocusWellRules =
@@ -693,6 +694,7 @@ class FocusWellRepository internal constructor(
       dayBoundaryHour = json.optInt("dayBoundaryHour", 4),
       sleepProtectionStartHour = json.optInt("sleepProtectionStartHour", 1),
       sleepProtectionMultiplier = json.optDouble("sleepProtectionMultiplier", 2.0),
+      longSessionRemindersEnabled = json.optBoolean("longSessionRemindersEnabled", true),
     )
 
   private fun activeModeToJson(mode: ActiveMode): JSONObject =

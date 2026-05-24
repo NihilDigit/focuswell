@@ -143,7 +143,6 @@ import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
-import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
 import dev.nihildigit.focuswell.usage.FocusAppUsage
@@ -744,10 +743,6 @@ internal fun ActiveLeisureSurface(
   val now = rememberNow()
   val context = LocalContext.current
   val haptics = LocalHapticFeedback.current
-  var notified10 by remember(leisure.startedAt) { mutableStateOf(false) }
-  var notified5 by remember(leisure.startedAt) { mutableStateOf(false) }
-  var notified1 by remember(leisure.startedAt) { mutableStateOf(false) }
-  var notifiedDepleted by remember(leisure.startedAt) { mutableStateOf(false) }
   val normalizedRules = rules.normalized()
   val spent = TimeAccounting.leisureCostMinutes(leisure.startedAt, now, rules = normalizedRules)
   val liveRemainingMinutes = (reserveMinutes - spent).coerceAtLeast(0.0)
@@ -755,31 +750,6 @@ internal fun ActiveLeisureSurface(
   val totalDisplayDuration = Duration.between(leisure.startedAt, depletionAt).coerceAtLeast(Duration.ZERO)
   val displayRemaining = Duration.between(now, depletionAt).coerceAtLeast(Duration.ZERO)
   val isSleepProtection = TimeAccounting.isSleepProtection(now, rules = normalizedRules)
-  LaunchedEffect(liveRemainingMinutes) {
-    when {
-      liveRemainingMinutes <= 0.0 && !notifiedDepleted -> {
-        notifiedDepleted = true
-        postFocusWellNotification(
-          context,
-          400,
-          "Balance used up",
-          "Another ${normalizedRules.dailyGrantMinutes.roundToInt()} min arrives at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}.",
-        )
-      }
-      liveRemainingMinutes <= 1.0 && !notified1 -> {
-        notified1 = true
-        postFocusWellNotification(context, 401, "1 min left", "Your leisure reserve is almost used up.")
-      }
-      liveRemainingMinutes <= 5.0 && !notified5 -> {
-        notified5 = true
-        postFocusWellNotification(context, 405, "5 min left", "Your leisure reserve is running low.")
-      }
-      liveRemainingMinutes <= 10.0 && !notified10 -> {
-        notified10 = true
-        postFocusWellNotification(context, 410, "10 min left", "Your leisure reserve is running low.")
-      }
-    }
-  }
   if (liveRemainingMinutes <= 0.0) {
     LaunchedEffect(leisure.startedAt) {
       onEndLeisure()

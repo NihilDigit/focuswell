@@ -226,6 +226,11 @@ Reminder callbacks use `sessionId + revision` to avoid notifying stale sessions.
 FCM payloads are data-only high-priority Android messages; the Android app
 renders local notifications.
 
+Focus and leisure sessions may also schedule persistent check-ins at 1 hour, 3
+hours, and 5 hours. These reminders are enabled by default and can be disabled
+from Settings. They are a time-sense aid only; they do not change settlement or
+ledger accounting.
+
 ## Browser Extension
 
 The companion browser extension is a local Chrome/Edge whitelist gate. It is

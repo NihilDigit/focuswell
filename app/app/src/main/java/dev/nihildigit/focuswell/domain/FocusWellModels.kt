@@ -55,6 +55,7 @@ data class FocusWellRules(
   val dayBoundaryHour: Int = 4,
   val sleepProtectionStartHour: Int = 1,
   val sleepProtectionMultiplier: Double = 2.0,
+  val longSessionRemindersEnabled: Boolean = true,
 ) {
   val safeDailyGrantMinutes: Double
     get() = dailyGrantMinutes.coerceIn(0.0, 24.0 * 60.0)
@@ -83,6 +84,7 @@ data class FocusWellRules(
       dayBoundaryHour = safeDayBoundaryHour,
       sleepProtectionStartHour = safeSleepProtectionStartHour,
       sleepProtectionMultiplier = safeSleepProtectionMultiplier,
+      longSessionRemindersEnabled = longSessionRemindersEnabled,
     )
 }
 

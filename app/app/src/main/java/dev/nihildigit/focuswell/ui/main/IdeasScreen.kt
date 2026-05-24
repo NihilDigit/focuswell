@@ -62,6 +62,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -107,6 +108,8 @@ internal fun IdeasScreen(
   var containerOrigin by remember { mutableStateOf(Offset.Zero) }
   val chipBounds = remember { mutableStateMapOf<IdeaQuadrant, Rect>() }
   val rowBounds = remember { mutableStateMapOf<String, Rect>() }
+  val density = LocalDensity.current
+  val chipDropSlopPx = with(density) { 24.dp.toPx() }
   val activeIdeas = ideas.filter { it.archivedAt == null }
   val filteredIdeas =
     if (selectedQuadrants.isEmpty()) {
@@ -116,16 +119,19 @@ internal fun IdeasScreen(
     }
   val hoveredQuadrant =
     if (selectedQuadrants.isEmpty()) {
-      draggingIdeaId?.let {
-      chipBounds.entries.firstOrNull { (_, bounds) -> bounds.contains(dragPosition) }?.key
-      }
+      draggingIdeaId?.let { dropTargetAt(dragPosition, chipBounds, chipDropSlopPx) }
     } else {
       null
     }
 
   fun finishDrag() {
     val idea = activeIdeas.firstOrNull { it.id == draggingIdeaId }
-    val target = hoveredQuadrant
+    val target =
+      if (selectedQuadrants.isEmpty()) {
+        dropTargetAt(dragPosition, chipBounds, chipDropSlopPx)
+      } else {
+        null
+      }
     if (idea != null && target != null && target != idea.quadrant) {
       onMoveIdea(idea.id, target)
     }
@@ -219,6 +225,20 @@ internal fun IdeasScreen(
     )
   }
 }
+
+private fun dropTargetAt(
+  position: Offset,
+  chipBounds: Map<IdeaQuadrant, Rect>,
+  slopPx: Float,
+): IdeaQuadrant? =
+  chipBounds.entries.firstOrNull { (_, bounds) ->
+    Rect(
+      left = bounds.left - slopPx,
+      top = bounds.top - slopPx,
+      right = bounds.right + slopPx,
+      bottom = bounds.bottom + slopPx,
+    ).contains(position)
+  }?.key
 
 @Composable
 private fun IdeasHeader(

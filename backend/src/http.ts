@@ -3,6 +3,12 @@ import type { ReminderKind, ReminderPayload } from "./types";
 
 export const reminderKinds = new Set<ReminderKind>([
   "focus_stale_3h",
+  "focus_duration_1h",
+  "focus_duration_3h",
+  "focus_duration_5h",
+  "leisure_duration_1h",
+  "leisure_duration_3h",
+  "leisure_duration_5h",
   "leisure_10m_left",
   "leisure_5m_left",
   "leisure_1m_left",

@@ -87,13 +87,6 @@ internal fun PlanScreen(
   ) {
     item { Text("Plan", style = MaterialTheme.typography.headlineSmall) }
     item {
-      PlanSummary(
-        trackerCount = trackers.size,
-        possibleReward = trackers.sumOf { it.rewardMinutes },
-        tagCount = tags.size,
-      )
-    }
-    item {
       PlanSectionHeader(
         title = "Tags",
         subtitle = "${tags.size} active focus tags",
@@ -198,34 +191,6 @@ internal fun PlanScreen(
       },
       onArchive = null,
     )
-  }
-}
-
-@Composable
-internal fun PlanSummary(trackerCount: Int, possibleReward: Double, tagCount: Int) {
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainer,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = TodayPanelShape,
-    modifier = Modifier.fillMaxWidth(),
-  ) {
-    Row(
-      modifier = Modifier.padding(18.dp),
-      horizontalArrangement = Arrangement.spacedBy(12.dp),
-      verticalAlignment = Alignment.CenterVertically,
-    ) {
-      PlanSummaryMetric("${trackerCount}", "trackers", Modifier.weight(1f))
-      PlanSummaryMetric("${possibleReward.roundToInt()}m", "daily rewards", Modifier.weight(1f))
-      PlanSummaryMetric("${tagCount}", "tags", Modifier.weight(1f))
-    }
-  }
-}
-
-@Composable
-internal fun PlanSummaryMetric(value: String, label: String, modifier: Modifier = Modifier) {
-  Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-    Text(value, style = tabularNumbers(MaterialTheme.typography.titleLarge), fontWeight = FontWeight.Bold)
-    Text(label, style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
   }
 }
 

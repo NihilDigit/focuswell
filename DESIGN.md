@@ -212,7 +212,6 @@ Balance:
 Plan:
 
 - Plan is the management surface for earning structure. Keep it calmer than Today but more operational than Settings.
-- Top summary shows active tracker count, possible daily rewards, and active tag count.
 - Tags and Daily trackers use scannable rows. Details and edits live in bottom sheets, not inline form rows.
 - Tracker rewards are not high-frequency controls. Show them in row metadata and edit them in the tracker sheet.
 - Add actions live in section headers. Avoid permanently visible creation forms.
@@ -235,6 +234,7 @@ Settings:
 - Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
 - Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
+- Reminder preferences live with rules as compact switch rows. The long-session reminder switch should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.
 

@@ -286,6 +286,7 @@ class FocusWellRepositoryTest {
       FocusWellRepository(
         InMemoryFocusWellStore(
           baseState(
+            rules = FocusWellRules(longSessionRemindersEnabled = false),
             focusRecords = listOf(focusRecord()),
             ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1")),
           )
@@ -304,6 +305,7 @@ class FocusWellRepositoryTest {
       JSONObject(exported).getJSONArray("focusRecords").getJSONObject(0).getString("id"),
       roundTrip.getJSONArray("focusRecords").getJSONObject(0).getString("id"),
     )
+    assertEquals(false, roundTrip.getJSONObject("rules").getBoolean("longSessionRemindersEnabled"))
 
     val invalid =
       JSONObject(exported)
@@ -317,12 +319,14 @@ class FocusWellRepositoryTest {
 
   private fun baseState(
     activeMode: ActiveMode = ActiveMode.None,
+    rules: FocusWellRules = FocusWellRules(),
     focusRecords: List<FocusRecord> = emptyList(),
     leisureRecords: List<LeisureRecord> = emptyList(),
     ledger: List<LedgerEntry> = emptyList(),
   ): FocusWellUiState =
     FocusWellUiState(
       dailyDate = "2026-05-20",
+      rules = rules,
       activeMode = activeMode,
       tags = defaultTags,
       trackers = defaultTrackers,

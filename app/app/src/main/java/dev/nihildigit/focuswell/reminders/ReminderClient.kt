@@ -56,15 +56,22 @@ class ReminderClient(context: Context) {
     return next
   }
 
-  suspend fun scheduleFocusStaleReminder(sessionId: String, revision: Int) {
+  suspend fun scheduleFocusReminders(sessionId: String, revision: Int, rules: FocusWellRules) {
     ensureRegistered()
+    val now = Instant.now()
     schedule(
       sessionId = sessionId,
       revision = revision,
       reminders =
-        listOf(
-          reminder("focus_stale_3h", Instant.now().plus(Duration.ofHours(3))),
-        ),
+        buildList {
+          if (rules.normalized().longSessionRemindersEnabled) {
+            add(reminder("focus_duration_1h", now.plus(Duration.ofHours(1))))
+            add(reminder("focus_duration_3h", now.plus(Duration.ofHours(3))))
+            add(reminder("focus_duration_5h", now.plus(Duration.ofHours(5))))
+          } else {
+            add(reminder("focus_stale_3h", now.plus(Duration.ofHours(3))))
+          }
+        },
     )
   }
 
@@ -78,6 +85,11 @@ class ReminderClient(context: Context) {
     val now = Instant.now()
     val reminders =
       buildList {
+        if (rules.normalized().longSessionRemindersEnabled) {
+          add(reminder("leisure_duration_1h", now.plus(Duration.ofHours(1))))
+          add(reminder("leisure_duration_3h", now.plus(Duration.ofHours(3))))
+          add(reminder("leisure_duration_5h", now.plus(Duration.ofHours(5))))
+        }
         if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", leisureCostDueAt(now, reserveMinutes - 10.0, rules)))
         if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", leisureCostDueAt(now, reserveMinutes - 5.0, rules)))
         if (reserveMinutes > 1.0) add(reminder("leisure_1m_left", leisureCostDueAt(now, reserveMinutes - 1.0, rules)))

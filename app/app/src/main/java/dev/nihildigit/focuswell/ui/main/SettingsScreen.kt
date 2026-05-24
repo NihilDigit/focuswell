@@ -73,6 +73,7 @@ import androidx.compose.material3.ShortNavigationBar
 import androidx.compose.material3.ShortNavigationBarItem
 import androidx.compose.material3.ShortNavigationBarItemDefaults
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -313,6 +314,34 @@ internal fun SettingsRuleControlRow(
       Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     RuleStepper(value = value, onDecrease = onDecrease, onIncrease = onIncrease)
+  }
+}
+
+@Composable
+internal fun SettingsSwitchRow(
+  title: String,
+  supporting: String,
+  icon: ImageVector,
+  checked: Boolean,
+  onCheckedChange: (Boolean) -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Surface(
+      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f),
+      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      shape = CircleShape,
+    ) {
+      Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+    }
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Switch(checked = checked, onCheckedChange = onCheckedChange)
   }
 }
 
@@ -899,6 +928,13 @@ internal fun SettingsScreen(
           icon = Icons.Rounded.Timer,
           onDecrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier - 0.5)) },
           onIncrease = { onUpdateRules(rules.copy(sleepProtectionMultiplier = rules.sleepProtectionMultiplier + 0.5)) },
+        )
+        SettingsSwitchRow(
+          title = "Long reminders",
+          supporting = "Notify at 1h, 3h, and 5h during focus or leisure.",
+          icon = Icons.Rounded.Timer,
+          checked = rules.longSessionRemindersEnabled,
+          onCheckedChange = { onUpdateRules(rules.copy(longSessionRemindersEnabled = it)) },
         )
       }
     }
