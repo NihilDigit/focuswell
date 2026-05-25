@@ -167,6 +167,40 @@ Default tracker rewards:
 - `math` and `408` rule trackers: 60 minutes each.
 - `Aerobic`, `Vocabulary`, `CodeWars`, and `Wake by 9`: 15 minutes each.
 
+## Morning Check-In
+
+The first app open of a new FocusWell day requires a morning check-in. The
+check-in reviews local Android usage events from the previous business day and
+clusters non-Leisure foreground phone use while the screen is interactive into
+review segments.
+
+MVP clustering rules:
+
+- A minute is occupied when foreground app usage reaches at least 50 seconds.
+- Five or more occupied minutes create a review segment.
+- Occupied runs separated by one minute or less are merged.
+- Existing Leisure records are excluded from phone-use review.
+- Cost is the actual foreground duration inside occupied minutes, not the
+  rounded count of occupied minutes.
+
+The user marks necessary segments as Fair Use. Unmarked segments are settled as
+a negative ledger entry, capped at the current reserve so overdraft is still not
+allowed. If the phone-use cost exceeds the available reserve, the check-in
+clears the reserve and pauses unconditional Daily Grant entries for three
+business days. Focus earnings, tracker rewards, and wake/check-in bonuses remain
+active during the pause.
+
+The check-in UI is a three-step flow:
+
+1. Income: animate completed earning items into checked rows with `+Xm`
+   amounts. This screen is reward-only and does not show phone correction.
+2. Correction: show compact phone-use segments in local clock order. The user
+   selects Fair Use; app names stay hidden and Top 3 apps are represented by
+   icons only.
+3. Settlement: animate correction and final accounting as checked rows and
+   transparent numbers. Do not show the reserve well here. If the Daily Grant is
+   paused, show an ice/freeze treatment on a `+60 x3` grant component.
+
 ## Ideas
 
 Ideas are separate from focus settlement. During an active focus session, the

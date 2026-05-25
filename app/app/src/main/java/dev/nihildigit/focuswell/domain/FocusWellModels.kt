@@ -121,6 +121,29 @@ data class LedgerEntry(
   val sourceId: String? = null,
 )
 
+data class PhoneUsageApp(
+  val packageName: String,
+  val appName: String,
+  val durationMillis: Long,
+)
+
+data class PhoneUsageSlice(
+  val packageName: String,
+  val appName: String,
+  val startedAt: Instant,
+  val endedAt: Instant,
+  val durationMillis: Long,
+)
+
+data class PhoneUsageSegment(
+  val id: String,
+  val startedAt: Instant,
+  val endedAt: Instant,
+  val costMinutes: Double,
+  val topApps: List<PhoneUsageApp>,
+  val slices: List<PhoneUsageSlice> = emptyList(),
+)
+
 data class Idea(
   val id: String,
   val text: String,
@@ -183,6 +206,8 @@ data class FocusWellUiState(
   val leisureRecords: List<LeisureRecord> = emptyList(),
   val ideas: List<Idea> = emptyList(),
   val ledger: List<LedgerEntry> = emptyList(),
+  val lastCheckInDailyDate: String? = null,
+  val dailyGrantPausedUntilDate: String? = null,
   val importError: String? = null,
 )
 

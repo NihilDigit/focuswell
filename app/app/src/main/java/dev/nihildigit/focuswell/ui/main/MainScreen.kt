@@ -27,8 +27,10 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -48,11 +50,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -63,7 +68,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilledTonalButton
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -88,6 +92,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.rounded.EventNote
 import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BrightnessAuto
@@ -116,14 +121,22 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.StrokeCap
+import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -133,6 +146,8 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
+import androidx.core.graphics.drawable.toBitmap
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
@@ -144,6 +159,8 @@ import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.PhoneUsageSegment
+import dev.nihildigit.focuswell.domain.PhoneUsageSlice
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
@@ -154,10 +171,17 @@ import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
 import dev.nihildigit.focuswell.usage.hasUsageAccess
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
+import com.materialkolor.blend.Blend
+import com.materialkolor.hct.Hct
 import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import kotlin.math.PI
+import kotlin.math.abs
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -179,6 +203,25 @@ internal enum class ActiveModeMotionKey {
   Leisure,
   Depleted,
 }
+
+private enum class CheckInStep {
+  Income,
+  Correction,
+  Settlement,
+}
+
+private data class CheckInIncomeItem(
+  val label: String,
+  val minutes: Double,
+)
+
+private data class TimelineAppGroup(
+  val packageName: String,
+  val appName: String,
+  val slices: List<PhoneUsageSlice>,
+  val durationMillis: Long,
+  val isOthers: Boolean = false,
+)
 
 internal fun AnimatedContentTransitionScope<Destination>.destinationMotionTransform(): ContentTransform =
   fadeIn(animationSpec = tween(durationMillis = 140, delayMillis = 40)) togetherWith
@@ -244,10 +287,15 @@ fun MainScreen(
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val updateState by viewModel.updateState.collectAsStateWithLifecycle()
   val pushRegistrationState by viewModel.pushRegistrationState.collectAsStateWithLifecycle()
+  val morningCheckInState by viewModel.morningCheckInState.collectAsStateWithLifecycle()
+  LaunchedEffect(state.dailyDate, state.lastCheckInDailyDate) {
+    viewModel.loadMorningCheckInIfNeeded()
+  }
   MainScreen(
     state = state,
     updateState = updateState,
     pushRegistrationState = pushRegistrationState,
+    morningCheckInState = morningCheckInState,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
     onStartFocus = viewModel::startFocus,
@@ -283,6 +331,7 @@ fun MainScreen(
     onOpenUpdateReleasePage = viewModel::openUpdateReleasePage,
     onRefreshPushRegistration = viewModel::refreshPushRegistration,
     onDisablePush = viewModel::disablePush,
+    onCompleteMorningCheckIn = viewModel::completeMorningCheckIn,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -295,6 +344,7 @@ internal fun MainScreen(
   state: FocusWellUiState,
   updateState: AppUpdateUiState,
   pushRegistrationState: PushRegistrationUiState,
+  morningCheckInState: MorningCheckInUiState,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
   onStartFocus: (String, SessionType, String?) -> Unit,
@@ -330,6 +380,7 @@ internal fun MainScreen(
   onOpenUpdateReleasePage: () -> Unit,
   onRefreshPushRegistration: () -> Unit,
   onDisablePush: () -> Unit = {},
+  onCompleteMorningCheckIn: (Set<String>) -> Unit = {},
   notificationPermissionGranted: Boolean = true,
   onEnablePush: () -> Unit = {},
   themeMode: ThemeMode,
@@ -368,7 +419,8 @@ internal fun MainScreen(
 
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val useRail = maxWidth >= 600.dp
-    val navigationHidden = state.activeMode is ActiveMode.Focus
+    val checkInRequired = state.lastCheckInDailyDate != state.dailyDate
+    val navigationHidden = state.activeMode is ActiveMode.Focus || checkInRequired
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
@@ -387,51 +439,60 @@ internal fun MainScreen(
         if (useRail && !navigationHidden) {
           FocusWellNavigationRail(selected = state.destination, onDestination = onDestination)
         }
-        DestinationContent(
-          state = state,
-          onToggleTracker = onToggleTracker,
-          onStartFocusClick = { showFocusSheet = true },
-          onStartLeisure = {
-            requestReminderPermissionIfNeeded()
-            onStartLeisure()
-          },
-          onPauseFocus = onPauseFocus,
-          onResumeFocus = onResumeFocus,
-          onEndFocus = onEndFocus,
-          onAddIdea = onAddIdea,
-          onEndLeisure = onEndLeisure,
-          onEndDepleted = onEndDepleted,
-          onDeleteFocusRecord = onDeleteFocusRecord,
-          onUpdateFocusRecord = onUpdateFocusRecord,
-          onDeleteLeisureRecord = onDeleteLeisureRecord,
-          onMoveIdea = onMoveIdea,
-          onUpdateIdea = onUpdateIdea,
-          onArchiveIdea = onArchiveIdea,
-          onExportJson = onExportJson,
-          onImportJson = onImportJson,
-          onClearAllData = onClearAllData,
-          onAddTag = onAddTag,
-          onArchiveTag = onArchiveTag,
-          onAddBooleanTracker = onAddBooleanTracker,
-          onAddRuleTracker = onAddRuleTracker,
-          onArchiveTracker = onArchiveTracker,
-          onUpdateTag = onUpdateTag,
-          onUpdateManualTracker = onUpdateManualTracker,
-          onUpdateRuleTracker = onUpdateRuleTracker,
-          onUpdateRules = onUpdateRules,
-          updateState = updateState,
-          pushRegistrationState = pushRegistrationState,
-          onCheckUpdate = onCheckUpdate,
-          onDownloadUpdate = onDownloadUpdate,
-          onInstallUpdate = onInstallUpdate,
-          onOpenUpdateReleasePage = onOpenUpdateReleasePage,
-          notificationPermissionGranted = notificationPermissionReady,
-          onEnablePush = ::enablePush,
-          onDisablePush = onDisablePush,
-          themeMode = themeMode,
-          onThemeModeChange = onThemeModeChange,
-          modifier = Modifier.weight(1f),
-        )
+        if (checkInRequired) {
+          MorningCheckInGate(
+            state = morningCheckInState,
+            appState = state,
+            onComplete = onCompleteMorningCheckIn,
+            modifier = Modifier.weight(1f),
+          )
+        } else {
+          DestinationContent(
+            state = state,
+            onToggleTracker = onToggleTracker,
+            onStartFocusClick = { showFocusSheet = true },
+            onStartLeisure = {
+              requestReminderPermissionIfNeeded()
+              onStartLeisure()
+            },
+            onPauseFocus = onPauseFocus,
+            onResumeFocus = onResumeFocus,
+            onEndFocus = onEndFocus,
+            onAddIdea = onAddIdea,
+            onEndLeisure = onEndLeisure,
+            onEndDepleted = onEndDepleted,
+            onDeleteFocusRecord = onDeleteFocusRecord,
+            onUpdateFocusRecord = onUpdateFocusRecord,
+            onDeleteLeisureRecord = onDeleteLeisureRecord,
+            onMoveIdea = onMoveIdea,
+            onUpdateIdea = onUpdateIdea,
+            onArchiveIdea = onArchiveIdea,
+            onExportJson = onExportJson,
+            onImportJson = onImportJson,
+            onClearAllData = onClearAllData,
+            onAddTag = onAddTag,
+            onArchiveTag = onArchiveTag,
+            onAddBooleanTracker = onAddBooleanTracker,
+            onAddRuleTracker = onAddRuleTracker,
+            onArchiveTracker = onArchiveTracker,
+            onUpdateTag = onUpdateTag,
+            onUpdateManualTracker = onUpdateManualTracker,
+            onUpdateRuleTracker = onUpdateRuleTracker,
+            onUpdateRules = onUpdateRules,
+            updateState = updateState,
+            pushRegistrationState = pushRegistrationState,
+            onCheckUpdate = onCheckUpdate,
+            onDownloadUpdate = onDownloadUpdate,
+            onInstallUpdate = onInstallUpdate,
+            onOpenUpdateReleasePage = onOpenUpdateReleasePage,
+            notificationPermissionGranted = notificationPermissionReady,
+            onEnablePush = ::enablePush,
+            onDisablePush = onDisablePush,
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
+            modifier = Modifier.weight(1f),
+          )
+        }
       }
     }
   }
@@ -483,7 +544,900 @@ internal fun MainScreen(
       },
     )
   }
+
 }
+
+@Composable
+private fun MorningCheckInGate(
+  state: MorningCheckInUiState,
+  appState: FocusWellUiState,
+  onComplete: (Set<String>) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var step by remember(state.dailyDate) { mutableStateOf(CheckInStep.Income) }
+  var fairUseIds by remember(state.dailyDate, state.segments) { mutableStateOf(emptySet<String>()) }
+  val incomeItems = remember(appState.dailyDate, appState.ledger, state.startedAt) { checkInIncomeItems(appState, state.startedAt ?: Instant.now()) }
+  val phoneCost = state.segments.filterNot { it.id in fairUseIds }.sumOf { it.costMinutes }
+  val available = appState.reserveMinutes + incomeItems.filter { it.label == "Wake bonus" }.sumOf { it.minutes }
+  val deducted = minOf(phoneCost, available)
+  val remaining = (available - deducted).coerceAtLeast(0.0)
+  val exceeded = phoneCost > available
+  Surface(
+    color = MaterialTheme.colorScheme.background,
+    modifier = modifier.fillMaxSize(),
+  ) {
+    Box(modifier = Modifier.fillMaxSize()) {
+      AnimatedContent(
+        targetState = step,
+        transitionSpec = {
+          fadeIn(animationSpec = tween(durationMillis = 140, delayMillis = 40)) togetherWith
+            fadeOut(animationSpec = tween(durationMillis = 90))
+        },
+        label = "morning-check-in-step",
+        modifier = Modifier.fillMaxSize(),
+      ) {
+        when (it) {
+          CheckInStep.Income ->
+            CheckInIncomeScreen(
+              incomeItems = incomeItems,
+              onContinue = { step = CheckInStep.Correction },
+            )
+
+          CheckInStep.Correction ->
+            CheckInCorrectionScreen(
+              state = state,
+              fairUseIds = fairUseIds,
+              phoneCost = phoneCost,
+              onToggleFairUse = { segmentId ->
+                fairUseIds = if (segmentId in fairUseIds) fairUseIds - segmentId else fairUseIds + segmentId
+              },
+              onContinue = { step = CheckInStep.Settlement },
+            )
+
+          CheckInStep.Settlement ->
+            CheckInSettlementScreen(
+              incomeMinutes = incomeItems.sumOf { item -> item.minutes },
+              phoneCost = phoneCost,
+              deducted = deducted,
+              remaining = remaining,
+              exceeded = exceeded,
+              fairUseCount = fairUseIds.size,
+              reviewedSegmentCount = state.segments.size,
+              onBack = { step = CheckInStep.Correction },
+              onDone = { onComplete(fairUseIds) },
+            )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun CheckInIncomeScreen(
+  incomeItems: List<CheckInIncomeItem>,
+  onContinue: () -> Unit,
+) {
+  LazyColumn(
+    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    item {
+      CheckInStepHeader(
+        title = "Income",
+        subtitle = "Completed rewards are ready.",
+      )
+    }
+    if (incomeItems.isEmpty()) {
+      item {
+        CalmPanel {
+          Text("No rewards to settle", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+          Text("Continue to phone correction.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+    } else {
+      itemsIndexed(incomeItems, key = { _, item -> "${item.label}-${item.minutes}" }) { index, item ->
+        AnimatedAccountingItem(
+          label = item.label,
+          amount = item.minutes,
+          tone = MaterialTheme.colorScheme.primary,
+          delayMillis = index * 170,
+        )
+      }
+    }
+    item {
+      Button(
+        onClick = onContinue,
+        modifier = Modifier.fillMaxWidth().height(54.dp),
+        shape = ControlEndShape,
+      ) {
+        Text("Continue")
+      }
+    }
+  }
+}
+
+@Composable
+private fun CheckInCorrectionScreen(
+  state: MorningCheckInUiState,
+  fairUseIds: Set<String>,
+  phoneCost: Double,
+  onToggleFairUse: (String) -> Unit,
+  onContinue: () -> Unit,
+) {
+  val segments = remember(state.segments) { state.segments.sortedBy { it.startedAt.localClockMinute() } }
+  var currentIndex by remember(segments) { mutableStateOf(0) }
+  var reviewHistory by remember(segments) { mutableStateOf(emptyList<Pair<String, Boolean>>()) }
+  val currentSegment = segments.getOrNull(currentIndex)
+  Column(
+    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.Top,
+    ) {
+      CheckInStepHeader(
+        title = "Correction",
+        subtitle = "Swipe right for Fair Use.",
+      )
+      if (reviewHistory.isNotEmpty()) {
+        TextButton(
+          onClick = {
+            val last = reviewHistory.last()
+            reviewHistory = reviewHistory.dropLast(1)
+            currentIndex = (currentIndex - 1).coerceAtLeast(0)
+            if (last.second && last.first in fairUseIds) {
+              onToggleFairUse(last.first)
+            }
+          },
+        ) {
+          Text("Undo")
+        }
+      }
+    }
+    if (state.loading) {
+      Box(modifier = Modifier.weight(1f)) {
+        CalmPanel {
+          Text("Reading local usage events", style = MaterialTheme.typography.titleMedium)
+          LinearProgressIndicator(modifier = Modifier.fillMaxWidth())
+        }
+      }
+    } else if (state.segments.isEmpty()) {
+      Box(modifier = Modifier.weight(1f)) {
+        CalmPanel {
+          Text("No phone blocks found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+          Text("No non-Leisure phone block reached the review threshold.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+      }
+    } else {
+      Box(
+        modifier = Modifier.fillMaxWidth().weight(1f),
+        contentAlignment = Alignment.Center,
+      ) {
+        if (currentSegment == null) {
+          CalmPanel {
+            Text("All blocks reviewed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("${fairUseIds.size} marked Fair Use", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        } else {
+          PhoneUsageSegmentCard(
+            segment = currentSegment,
+            index = currentIndex,
+            total = segments.size,
+            onCount = {
+              reviewHistory = reviewHistory + (currentSegment.id to false)
+              currentIndex += 1
+            },
+            onFairUse = {
+              if (currentSegment.id !in fairUseIds) {
+                onToggleFairUse(currentSegment.id)
+              }
+              reviewHistory = reviewHistory + (currentSegment.id to true)
+              currentIndex += 1
+            },
+          )
+        }
+      }
+    }
+    Button(
+      onClick = onContinue,
+      enabled = !state.loading && (segments.isEmpty() || currentSegment == null),
+      modifier = Modifier.fillMaxWidth().height(54.dp),
+      shape = ControlEndShape,
+    ) {
+      Text("Continue")
+    }
+  }
+}
+
+@Composable
+private fun CheckInSettlementScreen(
+  incomeMinutes: Double,
+  phoneCost: Double,
+  deducted: Double,
+  remaining: Double,
+  exceeded: Boolean,
+  fairUseCount: Int,
+  reviewedSegmentCount: Int,
+  onBack: () -> Unit,
+  onDone: () -> Unit,
+) {
+  LazyColumn(
+    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    item {
+      CheckInStepHeader(
+        title = "Settlement",
+        subtitle = "Review the final accounting.",
+      )
+    }
+    item {
+      AnimatedAccountingItem(
+        label = "Income",
+        amount = incomeMinutes,
+        tone = MaterialTheme.colorScheme.primary,
+        delayMillis = 0,
+      )
+    }
+    item {
+      AnimatedAccountingItem(
+        label = "Fair Use",
+        amount = fairUseCount.toDouble(),
+        valueText = "$fairUseCount / $reviewedSegmentCount",
+        tone = MaterialTheme.colorScheme.secondary,
+        delayMillis = 170,
+      )
+    }
+    item {
+      AnimatedAccountingItem(
+        label = "Phone correction",
+        amount = -deducted,
+        valueText = "-${deducted.roundToInt()}m",
+        tone = MaterialTheme.colorScheme.tertiary,
+        delayMillis = 340,
+      )
+    }
+    item {
+      CalmPanel {
+        Text("Formula", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        CheckInFormulaLine("Phone cost", "-${phoneCost.roundToInt()}m")
+        CheckInFormulaLine("Deducted", "-${deducted.roundToInt()}m")
+        CheckInFormulaLine("Remaining", "${remaining.roundToInt()}m")
+      }
+    }
+    if (exceeded) {
+      item { FrozenDailyGrantPanel() }
+    }
+    item {
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onBack, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Back")
+        }
+        Button(onClick = onDone, modifier = Modifier.weight(1f).height(54.dp), shape = ControlEndShape) {
+          Text("Done")
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun PhoneUsageSegmentCard(
+  segment: PhoneUsageSegment,
+  index: Int,
+  total: Int,
+  onCount: () -> Unit,
+  onFairUse: () -> Unit,
+) {
+  var offsetX by remember(segment.id) { mutableStateOf(0f) }
+  val threshold = with(LocalDensity.current) { 116.dp.toPx() }
+  val rotation = (offsetX / threshold).coerceIn(-1f, 1f) * 5f
+  val fairAlpha = (offsetX / threshold).coerceIn(0f, 1f)
+  val countAlpha = (-offsetX / threshold).coerceIn(0f, 1f)
+  val dragProgress = (abs(offsetX) / threshold).coerceIn(0f, 1f)
+  val draggedRight = offsetX > 0f
+  val cardElevation by animateDpAsState(
+    targetValue = if (dragProgress > 0.04f) 6.dp else 1.dp,
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "phone-review-card-elevation",
+  )
+  val cardColor by animateColorAsState(
+    targetValue =
+      when {
+        offsetX > 8f -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.26f + dragProgress * 0.22f)
+        offsetX < -8f -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.24f + dragProgress * 0.20f)
+        else -> MaterialTheme.colorScheme.surfaceContainerLow
+      },
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "phone-review-card-color",
+  )
+  val borderColor by animateColorAsState(
+    targetValue =
+      when {
+        offsetX > 8f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f + dragProgress * 0.34f)
+        offsetX < -8f -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.22f + dragProgress * 0.34f)
+        else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
+      },
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "phone-review-card-border",
+  )
+  val actualMinutes = segment.slices.sumOf { it.durationMillis } / 60_000.0
+  val sleepProtected = segment.costMinutes > actualMinutes + 0.01
+  Box(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 420.dp),
+    contentAlignment = Alignment.Center,
+  ) {
+    Card(
+      colors = CardDefaults.cardColors(containerColor = cardColor),
+      border = BorderStroke(1.dp, borderColor),
+      elevation = CardDefaults.cardElevation(defaultElevation = cardElevation),
+      shape = RoundedCornerShape(26.dp),
+      modifier =
+        Modifier
+          .fillMaxWidth()
+          .graphicsLayer {
+            translationX = offsetX
+            rotationZ = rotation
+          }
+          .pointerInput(segment.id) {
+            detectDragGestures(
+              onDragEnd = {
+                when {
+                  offsetX > threshold -> onFairUse()
+                  offsetX < -threshold -> onCount()
+                }
+                offsetX = 0f
+              },
+              onDragCancel = { offsetX = 0f },
+              onDrag = { change, dragAmount ->
+                change.consume()
+                offsetX += dragAmount.x
+              },
+            )
+          },
+    ) {
+      Column(
+        modifier = Modifier.fillMaxWidth().padding(horizontal = 22.dp, vertical = 20.dp),
+        verticalArrangement = Arrangement.spacedBy(18.dp),
+      ) {
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            "${index + 1} / $total",
+            style = MaterialTheme.typography.labelLarge,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+          Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            if (sleepProtected) {
+              Surface(
+                color = MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.72f),
+                contentColor = MaterialTheme.colorScheme.onErrorContainer,
+                shape = RoundedCornerShape(999.dp),
+              ) {
+                Row(
+                  modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                  horizontalArrangement = Arrangement.spacedBy(4.dp),
+                  verticalAlignment = Alignment.CenterVertically,
+                ) {
+                  Icon(Icons.Rounded.Bedtime, contentDescription = null, modifier = Modifier.size(14.dp))
+                  Text("Sleep x2", style = MaterialTheme.typography.labelSmall, fontWeight = FontWeight.SemiBold)
+                }
+              }
+            }
+            if (dragProgress > 0.04f) {
+              Surface(
+                color =
+                  if (draggedRight) MaterialTheme.colorScheme.primary.copy(alpha = 0.12f + fairAlpha * 0.18f)
+                  else MaterialTheme.colorScheme.tertiary.copy(alpha = 0.10f + countAlpha * 0.16f),
+                contentColor = if (draggedRight) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.tertiary,
+                shape = RoundedCornerShape(999.dp),
+              ) {
+                Text(
+                  if (draggedRight) "Fair Use" else "Count",
+                  style = MaterialTheme.typography.labelLarge,
+                  fontWeight = FontWeight.SemiBold,
+                  modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+              }
+            }
+          }
+        }
+        PhoneUsageTimeline(segment = segment)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.SpaceBetween,
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Text(
+            "Count",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.tertiary.copy(alpha = 0.44f + countAlpha * 0.44f),
+          )
+          Text(
+            "Fair Use",
+            style = MaterialTheme.typography.titleMedium,
+            fontWeight = FontWeight.SemiBold,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.44f + fairAlpha * 0.44f),
+          )
+        }
+      }
+    }
+  }
+}
+
+@Composable
+private fun PhoneUsageTimeline(segment: PhoneUsageSegment) {
+  val slices = segment.slices.ifEmpty {
+    segment.topApps.map { app ->
+      PhoneUsageSlice(
+        packageName = app.packageName,
+        appName = app.appName,
+        startedAt = segment.startedAt,
+        endedAt = segment.endedAt,
+        durationMillis = app.durationMillis,
+      )
+    }
+  }
+  val appGroups = remember(slices) { timelineAppGroups(slices) }
+  val visiblePackages = remember(appGroups) { appGroups.filterNot { it.isOthers }.mapTo(mutableSetOf()) { it.packageName } }
+  val packageColors = appGroups.filterNot { it.isOthers }.associate { it.packageName to appTimelineColor(it.packageName) }
+  val othersColor = MaterialTheme.colorScheme.outlineVariant
+  val visualSlices = remember(slices) { mergeNearbyTimelineSlices(slices) }
+  val startMillis = segment.startedAt.toEpochMilli()
+  val spanMillis = (segment.endedAt.toEpochMilli() - startMillis).coerceAtLeast(1L)
+  Column(
+    modifier = Modifier.fillMaxWidth(),
+    verticalArrangement = Arrangement.spacedBy(14.dp),
+  ) {
+    Row(
+      modifier = Modifier.fillMaxWidth(),
+      horizontalArrangement = Arrangement.SpaceBetween,
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        "${segment.startedAt.shortLocalTime()} -> ${segment.endedAt.shortLocalTime()}",
+        style = tabularNumbers(MaterialTheme.typography.titleLarge),
+        fontWeight = FontWeight.SemiBold,
+        color = MaterialTheme.colorScheme.onSurface,
+      )
+      Surface(
+        color = MaterialTheme.colorScheme.surfaceContainerHighest,
+        contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+        shape = RoundedCornerShape(999.dp),
+      ) {
+        Text(
+          "-${segment.costMinutes.roundToInt()}m",
+          style = tabularNumbers(MaterialTheme.typography.labelLarge),
+          fontWeight = FontWeight.SemiBold,
+          modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+        )
+      }
+    }
+    Canvas(modifier = Modifier.fillMaxWidth().height(34.dp)) {
+      val trackHeight = size.height
+      val minSliceWidth = 1.5.dp.toPx()
+      val minStripeWidth = 1.2.dp.toPx()
+      val maxStripeWidth = 4.2.dp.toPx()
+      val stripeGap = 0.8.dp.toPx()
+      visualSlices.forEach { slice ->
+        val color =
+          if (slice.packageName in visiblePackages) {
+            packageColors.getValue(slice.packageName)
+          } else {
+            othersColor
+          }
+        val leftRatio = ((slice.startedAt.toEpochMilli() - startMillis).toFloat() / spanMillis).coerceIn(0f, 1f)
+        val rightRatio = ((slice.endedAt.toEpochMilli() - startMillis).toFloat() / spanMillis).coerceIn(0f, 1f)
+        val left = leftRatio * size.width
+        val right = (rightRatio * size.width).coerceAtLeast(left + minSliceWidth).coerceAtMost(size.width)
+        var x = left
+        var stripeIndex = 0
+        while (x < right) {
+          val stripeSeed = slice.packageName.hashCode() * 31 + slice.startedAt.epochSecond.toInt() + stripeIndex * 17
+          val stripeWidth = (minStripeWidth + ((stripeSeed and Int.MAX_VALUE) % 1000) / 1000f * (maxStripeWidth - minStripeWidth)).coerceAtMost(right - x)
+          val alpha = 0.68f + ((stripeSeed ushr 8) and 0xFF) / 255f * 0.20f
+          drawRect(
+            color = color.copy(alpha = alpha),
+            topLeft = Offset(x, 0f),
+            size = Size(stripeWidth, trackHeight),
+          )
+          x += stripeWidth + stripeGap
+          stripeIndex += 1
+        }
+      }
+    }
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+      appGroups.forEach { group ->
+        val color = if (group.isOthers) MaterialTheme.colorScheme.outline else packageColors.getValue(group.packageName)
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+          verticalAlignment = Alignment.CenterVertically,
+        ) {
+          Box(
+            modifier =
+              Modifier
+                .size(10.dp)
+                .background(color = color.copy(alpha = 0.86f), shape = CircleShape)
+          )
+          Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
+            Text(
+              group.appName,
+              style = MaterialTheme.typography.bodyMedium,
+              color = MaterialTheme.colorScheme.onSurface,
+              fontWeight = FontWeight.Medium,
+              maxLines = 1,
+              overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+              "${group.slices.size} slice${if (group.slices.size == 1) "" else "s"}",
+              style = MaterialTheme.typography.labelSmall,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+          }
+          Text(
+            "${Duration.ofMillis(group.durationMillis).toMinutes().coerceAtLeast(1)}m",
+            style = tabularNumbers(MaterialTheme.typography.bodyMedium),
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
+        }
+      }
+    }
+  }
+}
+
+private fun mergeNearbyTimelineSlices(slices: List<PhoneUsageSlice>): List<PhoneUsageSlice> {
+  if (slices.isEmpty()) return emptyList()
+  val sorted = slices.sortedWith(compareBy<PhoneUsageSlice> { it.startedAt }.thenBy { it.endedAt })
+  val merged = mutableListOf<PhoneUsageSlice>()
+  var current = sorted.first()
+  sorted.drop(1).forEach { next ->
+    val gapMillis = Duration.between(current.endedAt, next.startedAt).toMillis()
+    if (current.packageName == next.packageName && gapMillis in 0..60_000) {
+      current =
+        current.copy(
+          endedAt = maxOf(current.endedAt, next.endedAt),
+          durationMillis = current.durationMillis + next.durationMillis,
+        )
+    } else {
+      merged += current
+      current = next
+    }
+  }
+  merged += current
+  return merged
+}
+
+@Composable
+private fun appTimelineColor(packageName: String): Color {
+  val darkTheme = MaterialTheme.colorScheme.surface.luminance() < 0.5f
+  val colors = remember(darkTheme) { timelinePaletteColors(darkTheme) }
+  return colors[(packageName.hashCode() and Int.MAX_VALUE) % colors.size]
+}
+
+private fun timelinePaletteColors(darkTheme: Boolean): List<Color> {
+  val tone = if (darkTheme) 76.0 else 46.0
+  val chroma = if (darkTheme) 42.0 else 48.0
+  return TimelineCategoricalBaseColors.map { baseColor ->
+    val harmonized = Blend.harmonize(baseColor, TimelineMaterialSeed)
+    val hct = Hct.fromInt(harmonized)
+    Color(Hct.from(hct.hue, chroma, tone).toInt())
+  }
+}
+
+private val TimelineMaterialSeed = 0xFF246B49.toInt()
+
+private val TimelineCategoricalBaseColors =
+  listOf(
+    0xFFE53935.toInt(),
+    0xFFD81B60.toInt(),
+    0xFF8E24AA.toInt(),
+    0xFF5E35B1.toInt(),
+    0xFF3949AB.toInt(),
+    0xFF1E88E5.toInt(),
+    0xFF00ACC1.toInt(),
+    0xFF00897B.toInt(),
+    0xFF43A047.toInt(),
+    0xFF7CB342.toInt(),
+    0xFFFDD835.toInt(),
+    0xFFFB8C00.toInt(),
+  )
+
+private fun timelineAppGroups(slices: List<PhoneUsageSlice>): List<TimelineAppGroup> {
+  val ordered = linkedMapOf<String, MutableList<PhoneUsageSlice>>()
+  slices.forEach { slice ->
+    ordered.getOrPut(slice.packageName) { mutableListOf() } += slice
+  }
+  val groups =
+    ordered.map { (packageName, groupedSlices) ->
+      TimelineAppGroup(
+        packageName = packageName,
+        appName = groupedSlices.first().appName,
+        slices = groupedSlices,
+        durationMillis = groupedSlices.sumOf { it.durationMillis },
+      )
+    }
+  val top = groups.sortedByDescending { it.durationMillis }.take(6)
+  val topPackages = top.mapTo(mutableSetOf()) { it.packageName }
+  val othersSlices = slices.filterNot { it.packageName in topPackages }
+  val others =
+    if (othersSlices.isEmpty()) {
+      emptyList()
+    } else {
+      listOf(
+        TimelineAppGroup(
+          packageName = "__others__",
+          appName = "Others",
+          slices = othersSlices,
+          durationMillis = othersSlices.sumOf { it.durationMillis },
+          isOthers = true,
+        )
+      )
+    }
+  return top + others
+}
+
+@Composable
+private fun PhoneUsageSegmentRow(
+  segment: PhoneUsageSegment,
+  fairUse: Boolean,
+  onToggle: () -> Unit,
+) {
+  Surface(
+    onClick = onToggle,
+    color = if (fairUse) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.52f) else Color.Transparent,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = RoundedCornerShape(0.dp),
+    modifier = Modifier.fillMaxWidth().heightIn(min = 64.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      AppIconStack(segment = segment, modifier = Modifier.width(82.dp))
+      Column(
+        modifier = Modifier.weight(1f),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
+      ) {
+        Text(
+          "${segment.startedAt.shortLocalTime()} -> ${segment.endedAt.shortLocalTime()}",
+          style = MaterialTheme.typography.titleMedium,
+          fontWeight = FontWeight.SemiBold,
+          maxLines = 1,
+        )
+        Surface(
+          color = MaterialTheme.colorScheme.surfaceContainerHigh,
+          contentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+          shape = RoundedCornerShape(999.dp),
+        ) {
+          Text(
+            "${segment.costMinutes.roundToInt()} min",
+            style = tabularNumbers(MaterialTheme.typography.labelSmall),
+            modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
+          )
+        }
+      }
+      Icon(
+        imageVector = if (fairUse) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+        contentDescription = null,
+        tint = if (fairUse) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.size(24.dp),
+      )
+    }
+  }
+}
+
+@Composable
+private fun CheckInStepHeader(title: String, subtitle: String) {
+  Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
+    Text(subtitle, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+  }
+}
+
+@Composable
+private fun AnimatedAccountingItem(
+  label: String,
+  amount: Double,
+  tone: Color,
+  valueText: String? = null,
+  delayMillis: Int = 0,
+) {
+  var entered by remember(label, amount, valueText) { mutableStateOf(false) }
+  var checked by remember(label, amount, valueText) { mutableStateOf(false) }
+  LaunchedEffect(label, amount, valueText, delayMillis) {
+    entered = false
+    checked = false
+    delay(260L + delayMillis)
+    entered = true
+    delay(280L)
+    checked = true
+  }
+  val entranceAlpha by animateFloatAsState(
+    targetValue = if (entered) 1f else 0f,
+    animationSpec = tween(durationMillis = 240),
+    label = "checkin-accounting-alpha",
+  )
+  val entranceOffset by animateDpAsState(
+    targetValue = if (entered) 0.dp else 18.dp,
+    animationSpec = tween(durationMillis = 260),
+    label = "checkin-accounting-offset",
+  )
+  val animatedAmount by animateFloatAsState(
+    targetValue = if (checked) amount.toFloat() else 0f,
+    animationSpec = tween(durationMillis = 680, easing = LinearEasing),
+    label = "checkin-accounting-amount",
+  )
+  val container by animateColorAsState(
+    targetValue = if (checked) tone.copy(alpha = 0.14f) else MaterialTheme.colorScheme.surfaceContainer,
+    animationSpec = focusWellFastEffectsSpec(),
+    label = "checkin-accounting-container",
+  )
+  Surface(
+    color = container,
+    contentColor = MaterialTheme.colorScheme.onSurface,
+    shape = LedgerRowShape,
+    modifier =
+      Modifier
+        .fillMaxWidth()
+        .offset(y = entranceOffset)
+        .alpha(entranceAlpha)
+        .heightIn(min = 64.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 12.dp),
+      horizontalArrangement = Arrangement.spacedBy(12.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Surface(color = tone, contentColor = MaterialTheme.colorScheme.onPrimary, shape = CircleShape, modifier = Modifier.size(32.dp)) {
+        Box(contentAlignment = Alignment.Center) {
+          AnimatedContent(
+            targetState = checked,
+            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(80)) },
+            label = "checkin-accounting-check",
+          ) { visible ->
+            if (visible) {
+              Icon(Icons.Rounded.CheckCircle, contentDescription = null, modifier = Modifier.size(19.dp))
+            } else {
+              Spacer(Modifier.size(19.dp))
+            }
+          }
+        }
+      }
+      Text(label, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+      Text(
+        valueText?.takeIf { checked } ?: signedMinutes(animatedAmount.toDouble()),
+        style = tabularNumbers(MaterialTheme.typography.titleMedium),
+        fontWeight = FontWeight.Bold,
+        color = tone,
+      )
+    }
+  }
+}
+
+@Composable
+private fun CheckInFormulaLine(label: String, value: String) {
+  Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+    Text(label, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Text(value, style = tabularNumbers(MaterialTheme.typography.bodyMedium), fontWeight = FontWeight.SemiBold)
+  }
+}
+
+@Composable
+private fun FrozenDailyGrantPanel() {
+  Surface(
+    color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.52f),
+    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    shape = RoundedCornerShape(24.dp),
+    border = BorderStroke(1.dp, MaterialTheme.colorScheme.secondary.copy(alpha = 0.22f)),
+    modifier = Modifier.fillMaxWidth(),
+  ) {
+    Row(
+      modifier = Modifier.padding(18.dp),
+      horizontalArrangement = Arrangement.spacedBy(14.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, shape = CircleShape, modifier = Modifier.size(46.dp)) {
+        Box(contentAlignment = Alignment.Center) {
+          Icon(Icons.Rounded.AcUnit, contentDescription = null, tint = MaterialTheme.colorScheme.secondary)
+        }
+      }
+      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        Text("Daily grant paused", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Unconditional grant only", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+      }
+      Text("+60 x3", style = tabularNumbers(MaterialTheme.typography.titleLarge), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)
+    }
+  }
+}
+
+@Composable
+private fun AppIconStack(segment: PhoneUsageSegment, modifier: Modifier = Modifier) {
+  Row(horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically, modifier = modifier.wrapContentWidth(Alignment.Start)) {
+    segment.topApps.take(3).forEachIndexed { index, app ->
+      val size = 28.dp
+      AppPackageIcon(
+        packageName = app.packageName,
+        appName = app.appName,
+        modifier = Modifier.size(size),
+      )
+    }
+  }
+}
+
+@Composable
+private fun AppPackageIcon(packageName: String, appName: String, modifier: Modifier = Modifier) {
+  val context = LocalContext.current
+  val bitmap = remember(packageName) {
+    runCatching { context.packageManager.getApplicationIcon(packageName).toBitmap(96, 96).asImageBitmap() }.getOrNull()
+  }
+  if (bitmap != null) {
+    Image(
+      bitmap = bitmap,
+      contentDescription = appName,
+      modifier = modifier.clip(CircleShape),
+    )
+  } else {
+    Surface(color = MaterialTheme.colorScheme.surfaceContainerHigh, contentColor = MaterialTheme.colorScheme.onSurfaceVariant, shape = CircleShape, modifier = modifier) {
+      Box(contentAlignment = Alignment.Center) {
+        Text(
+          appName.take(1).uppercase(),
+          style = MaterialTheme.typography.labelSmall,
+          fontWeight = FontWeight.SemiBold,
+        )
+      }
+    }
+  }
+}
+
+private fun checkInIncomeItems(state: FocusWellUiState, startedAt: Instant): List<CheckInIncomeItem> {
+  val dailyDate = state.dailyDate
+  val items = mutableListOf<CheckInIncomeItem>()
+  state.ledger.firstOrNull { it.id == "daily-grant-$dailyDate" && it.deltaMinutes > 0.0 }?.let {
+    items += CheckInIncomeItem("Daily grant", it.deltaMinutes)
+  }
+  val today = runCatching { LocalDate.parse(dailyDate) }.getOrNull()
+  val previousDate = today?.minusDays(1)?.toString()
+  state.ledger
+    .filter { it.title == "Daily tracker" && it.deltaMinutes > 0.0 && (previousDate == null || it.id.startsWith("tracker-reward-$previousDate-")) }
+    .sortedBy { it.note ?: it.id }
+    .forEach { items += CheckInIncomeItem(it.note ?: "Daily tracker", it.deltaMinutes) }
+  if (isWakeBonusEligible(state, startedAt)) {
+    items += CheckInIncomeItem("Wake bonus", 30.0)
+  }
+  return items
+}
+
+private fun isWakeBonusEligible(state: FocusWellUiState, startedAt: Instant): Boolean {
+  val target = wakeTargetTimeForUi(state) ?: return false
+  val local = startedAt.atZone(ZoneId.systemDefault()).toLocalTime()
+  val delta = Duration.between(target, local).toMinutes()
+  return delta in -30..30
+}
+
+private fun wakeTargetTimeForUi(state: FocusWellUiState): LocalTime? {
+  val wake = state.trackers.firstOrNull { it.id == "wake" && it.archivedAt == null } ?: return null
+  wake.wakeTime?.let { runCatching { LocalTime.parse(it) }.getOrNull()?.let { parsed -> return parsed } }
+  val hour = Regex("""Wake\s+by\s+(\d{1,2})""", RegexOption.IGNORE_CASE).find(wake.label)?.groupValues?.getOrNull(1)?.toIntOrNull()
+  return LocalTime.of((hour ?: 9).coerceIn(0, 23), 0)
+}
+
+private fun Instant.localClockMinute(): Int {
+  val local = atZone(ZoneId.systemDefault()).toLocalTime()
+  return local.hour * 60 + local.minute
+}
+
+private val CheckInTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
+
+private fun Instant.shortLocalTime(): String =
+  atZone(ZoneId.systemDefault()).format(CheckInTimeFormatter)
 
 @Composable
 private fun DestinationContent(
@@ -947,6 +1901,7 @@ internal fun MainScreenPreview() {
       state = FocusWellUiState(),
       updateState = AppUpdateUiState(),
       pushRegistrationState = PushRegistrationUiState(status = PushRegistrationStatus(deviceId = "preview", hasFcmToken = false)),
+      morningCheckInState = MorningCheckInUiState(),
       onDestination = {},
       onToggleTracker = {},
       onStartFocus = { _, _, _ -> },
@@ -982,6 +1937,7 @@ internal fun MainScreenPreview() {
       onOpenUpdateReleasePage = {},
       onRefreshPushRegistration = {},
       onDisablePush = {},
+      onCompleteMorningCheckIn = {},
       notificationPermissionGranted = false,
       onEnablePush = {},
       themeMode = ThemeMode.System,

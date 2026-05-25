@@ -12,6 +12,8 @@ internal data class AppStateEntity(
   val sleepProtectionStartHour: Int = 1,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
+  val lastCheckInDailyDate: String? = null,
+  val dailyGrantPausedUntilDate: String? = null,
   val activeKind: String,
   val activeStartedAt: String? = null,
   val activeFocusTask: String? = null,

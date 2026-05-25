@@ -205,6 +205,50 @@ class FocusWellRepository internal constructor(
     mutate { state -> state.copy(rules = rules.normalized()) }
   }
 
+  fun completeMorningCheckIn(
+    checkInStartedAt: Instant,
+    phoneCostMinutes: Double,
+    reviewedSegmentCount: Int,
+  ) {
+    mutate { state ->
+      val today = TimeAccounting.dailyDate(checkInStartedAt, rules = state.rules)
+      val todayText = today.toString()
+      if (state.lastCheckInDailyDate == todayText) return@mutate state
+
+      val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
+      val entries = mutableListOf<LedgerEntry>()
+      val wakeBonus = wakeBonusEntry(state, today, checkInStartedAt, existingIds)
+      if (wakeBonus != null) entries += wakeBonus
+
+      val available = (state.ledger.sumOf { it.deltaMinutes } + entries.sumOf { it.deltaMinutes }).coerceAtLeast(0.0)
+      val safePhoneCost = phoneCostMinutes.coerceAtLeast(0.0)
+      val deducted = minOf(safePhoneCost, available)
+      val exceeded = safePhoneCost > available
+      if (safePhoneCost > 0.0 || reviewedSegmentCount > 0) {
+        entries +=
+          LedgerEntry(
+            id = "phone-checkin-$todayText-${checkInStartedAt.toEpochMilli()}",
+            title = if (exceeded) "Phone usage cleared reserve" else "Phone usage",
+            deltaMinutes = -deducted,
+            createdAt = checkInStartedAt,
+            note =
+              if (exceeded) {
+                "Detected ${safePhoneCost.roundMinutes()}; cleared ${deducted.roundMinutes()}; daily grant paused for 3 days."
+              } else {
+                "Detected ${safePhoneCost.roundMinutes()} after Fair Use across $reviewedSegmentCount segment${if (reviewedSegmentCount == 1) "" else "s"}."
+              },
+          )
+      }
+
+      state.copy(
+        lastCheckInDailyDate = todayText,
+        dailyGrantPausedUntilDate =
+          if (exceeded) today.plusDays(3).toString() else state.dailyGrantPausedUntilDate,
+        ledger = entries.asReversed() + state.ledger,
+      )
+    }
+  }
+
   fun startFocus(task: String, type: SessionType, tagId: String?): ActiveMode.Focus? {
     val trimmed = task.trim().ifBlank { "Focus session" }
     val now = now()
@@ -549,14 +593,23 @@ class FocusWellRepository internal constructor(
       val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
       val grants =
         generateSequence(grantStart) { date -> date.plusDays(1).takeIf { !it.isAfter(today) } }
-          .filter { date -> dailyGrantId(date) !in existingIds }
+          .filter { date -> dailyGrantId(date) !in existingIds && pausedDailyGrantId(date) !in existingIds }
           .map { date ->
-            LedgerEntry(
-              id = dailyGrantId(date),
-              title = "Daily grant",
-              deltaMinutes = state.rules.safeDailyGrantMinutes,
-              createdAt = dailyGrantInstant(date, state.rules),
-            )
+            if (isDailyGrantPaused(state, date)) {
+              LedgerEntry(
+                id = pausedDailyGrantId(date),
+                title = "Daily grant paused",
+                deltaMinutes = 0.0,
+                createdAt = dailyGrantInstant(date, state.rules),
+              )
+            } else {
+              LedgerEntry(
+                id = dailyGrantId(date),
+                title = "Daily grant",
+                deltaMinutes = state.rules.safeDailyGrantMinutes,
+                createdAt = dailyGrantInstant(date, state.rules),
+              )
+            }
           }
           .toList()
       if (grants.isEmpty()) return@mutate state
@@ -639,14 +692,53 @@ class FocusWellRepository internal constructor(
       leisureRecords = emptyList(),
       ideas = emptyList(),
       ledger = emptyList(),
+      lastCheckInDailyDate = null,
+      dailyGrantPausedUntilDate = null,
     )
 
   private fun dailyGrantId(date: LocalDate): String = "daily-grant-$date"
+
+  private fun pausedDailyGrantId(date: LocalDate): String = "daily-grant-paused-$date"
 
   private fun trackerRewardId(date: LocalDate, trackerId: String): String = "tracker-reward-$date-$trackerId"
 
   private fun dailyGrantInstant(date: LocalDate, rules: FocusWellRules = FocusWellRules()): Instant =
     date.atTime(rules.normalized().dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+
+  private fun isDailyGrantPaused(state: FocusWellUiState, date: LocalDate): Boolean {
+    val pausedUntil = state.dailyGrantPausedUntilDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
+    return !date.isAfter(pausedUntil)
+  }
+
+  private fun wakeBonusEntry(
+    state: FocusWellUiState,
+    today: LocalDate,
+    checkInStartedAt: Instant,
+    existingIds: Set<String>,
+  ): LedgerEntry? {
+    val id = "wake-bonus-$today"
+    if (id in existingIds) return null
+    val target = wakeTargetTime(state) ?: return null
+    val localTime = checkInStartedAt.atZone(TimeAccounting.focusWellZone).toLocalTime()
+    val deltaMinutes = Duration.between(target, localTime).toMinutes()
+    if (deltaMinutes < -30 || deltaMinutes > 30) return null
+    return LedgerEntry(
+      id = id,
+      title = "Wake bonus",
+      deltaMinutes = 30.0,
+      createdAt = checkInStartedAt,
+      note = "Checked in near ${target.toString().take(5)}",
+    )
+  }
+
+  private fun wakeTargetTime(state: FocusWellUiState): LocalTime? {
+    val wakeTracker = state.trackers.firstOrNull { it.id == "wake" && it.archivedAt == null } ?: return null
+    wakeTracker.wakeTime?.let { stored ->
+      runCatching { LocalTime.parse(stored) }.getOrNull()?.let { return it }
+    }
+    val hour = Regex("""Wake\s+by\s+(\d{1,2})""", RegexOption.IGNORE_CASE).find(wakeTracker.label)?.groupValues?.getOrNull(1)?.toIntOrNull()
+    return LocalTime.of((hour ?: 9).coerceIn(0, 23), 0)
+  }
 
   private fun stateToJson(state: FocusWellUiState): JSONObject =
     JSONObject()
@@ -660,6 +752,8 @@ class FocusWellRepository internal constructor(
       .put("leisureRecords", JSONArray(state.leisureRecords.map(::leisureRecordToJson)))
       .put("ideas", JSONArray(state.ideas.map(::ideaToJson)))
       .put("ledger", JSONArray(state.ledger.map(::ledgerToJson)))
+      .put("lastCheckInDailyDate", state.lastCheckInDailyDate)
+      .put("dailyGrantPausedUntilDate", state.dailyGrantPausedUntilDate)
 
   private fun jsonToState(json: JSONObject): FocusWellUiState =
     FocusWellUiState(
@@ -676,6 +770,8 @@ class FocusWellRepository internal constructor(
       leisureRecords = json.optJSONArray("leisureRecords")?.mapObjects(::jsonToLeisureRecord).orEmpty(),
       ideas = json.optJSONArray("ideas")?.mapObjects(::jsonToIdea).orEmpty(),
       ledger = json.optJSONArray("ledger")?.mapObjects(::jsonToLedger).orEmpty(),
+      lastCheckInDailyDate = json.optStringOrNull("lastCheckInDailyDate"),
+      dailyGrantPausedUntilDate = json.optStringOrNull("dailyGrantPausedUntilDate"),
     ).withComputedTrackers().withLedgerBackedReserve()
 
   private fun rulesToJson(rules: FocusWellRules): JSONObject {

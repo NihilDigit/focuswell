@@ -45,6 +45,8 @@ internal class RoomFocusWellStore(
         leisureRecords = dao.leisureRecords().map { it.toDomain() },
         ideas = dao.ideas().map { it.toDomain() },
         ledger = dao.ledger().map { it.toDomain() },
+        lastCheckInDailyDate = appState.lastCheckInDailyDate,
+        dailyGrantPausedUntilDate = appState.dailyGrantPausedUntilDate,
       ).withLedgerBackedReserve()
     }
 
@@ -198,6 +200,8 @@ private fun FocusWellUiState.baseAppStateEntity(
     sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour,
     sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
     longSessionRemindersEnabled = normalizedRules.longSessionRemindersEnabled,
+    lastCheckInDailyDate = lastCheckInDailyDate,
+    dailyGrantPausedUntilDate = dailyGrantPausedUntilDate,
     activeKind = activeKind,
     activeStartedAt = activeStartedAt,
     activeFocusTask = activeFocusTask,

@@ -13,13 +13,16 @@ import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
+import dev.nihildigit.focuswell.domain.PhoneUsageSegment
 import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.reminders.PushRegistrationStatus
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.updates.GitHubReleaseClient
 import dev.nihildigit.focuswell.updates.selectUpdateAsset
+import dev.nihildigit.focuswell.usage.phoneUsageSegments
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
@@ -28,10 +31,19 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import java.time.Instant
+import java.time.LocalDate
 
 data class PushRegistrationUiState(
   val status: PushRegistrationStatus,
   val refreshing: Boolean = false,
+)
+
+data class MorningCheckInUiState(
+  val dailyDate: String? = null,
+  val startedAt: Instant? = null,
+  val loading: Boolean = false,
+  val segments: List<PhoneUsageSegment> = emptyList(),
 )
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
@@ -43,6 +55,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val importError = MutableStateFlow<String?>(null)
   private val _updateState = MutableStateFlow(AppUpdateUiState())
   val updateState: StateFlow<AppUpdateUiState> = _updateState
+  private val _morningCheckInState = MutableStateFlow(MorningCheckInUiState())
+  val morningCheckInState: StateFlow<MorningCheckInUiState> = _morningCheckInState
   private val _pushRegistrationState =
     MutableStateFlow(PushRegistrationUiState(status = reminders.cachedRegistrationStatus()))
   val pushRegistrationState: StateFlow<PushRegistrationUiState> = _pushRegistrationState
@@ -308,4 +322,51 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     repository.updateRuleTracker(id, label, tagName, targetMinutes, rewardMinutes)
 
   fun updateRules(rules: FocusWellRules) = repository.updateRules(rules)
+
+  fun loadMorningCheckInIfNeeded() {
+    val state = repository.state.value
+    val today = state.dailyDate
+    if (today.isBlank() || state.lastCheckInDailyDate == today) return
+    val current = _morningCheckInState.value
+    if (current.dailyDate == today && (current.loading || current.startedAt != null)) return
+    val startedAt = Instant.now()
+    _morningCheckInState.value = MorningCheckInUiState(dailyDate = today, startedAt = startedAt, loading = true)
+    viewModelScope.launch {
+      val segments =
+        withContext(Dispatchers.Default) {
+          val rules = state.rules.normalized()
+          val date = LocalDate.parse(today)
+          val previousDate = date.minusDays(1)
+          val start = previousDate.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          val end = date.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          phoneUsageSegments(
+            context = getApplication(),
+            startedAt = start,
+            endedAt = end,
+            leisureRecords = state.leisureRecords,
+            rules = rules,
+            zone = TimeAccounting.focusWellZone,
+          )
+        }
+      _morningCheckInState.value =
+        MorningCheckInUiState(
+          dailyDate = today,
+          startedAt = startedAt,
+          loading = false,
+          segments = segments,
+        )
+    }
+  }
+
+  fun completeMorningCheckIn(fairUseSegmentIds: Set<String>) {
+    val checkIn = _morningCheckInState.value
+    val startedAt = checkIn.startedAt ?: Instant.now()
+    val phoneCost = checkIn.segments.filterNot { it.id in fairUseSegmentIds }.sumOf { it.costMinutes }
+    repository.completeMorningCheckIn(
+      checkInStartedAt = startedAt,
+      phoneCostMinutes = phoneCost,
+      reviewedSegmentCount = checkIn.segments.size,
+    )
+    _morningCheckInState.value = MorningCheckInUiState()
+  }
 }
