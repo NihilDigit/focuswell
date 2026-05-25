@@ -167,7 +167,7 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
   val headline =
     when {
       reserveMinutes < 30 -> "Low reserve"
-      reserveMinutes < 60 -> "${reserveMinutes.roundToInt()} min left"
+      reserveMinutes < 60 -> "${compactMinutes(reserveMinutes)} left"
       reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h banked"
       else -> "Enough for tonight"
     }

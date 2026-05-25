@@ -177,7 +177,6 @@ import kotlinx.coroutines.delay
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 import kotlin.math.PI
@@ -617,41 +616,49 @@ private fun CheckInIncomeScreen(
   incomeItems: List<CheckInIncomeItem>,
   onContinue: () -> Unit,
 ) {
-  LazyColumn(
-    contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
+  Column(
+    modifier = Modifier.fillMaxSize().padding(horizontal = 20.dp, vertical = 18.dp),
     verticalArrangement = Arrangement.spacedBy(14.dp),
   ) {
-    item {
-      CheckInStepHeader(
-        title = "Income",
-        subtitle = "Completed rewards are ready.",
-      )
-    }
-    if (incomeItems.isEmpty()) {
-      item {
-        CalmPanel {
-          Text("No rewards to settle", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-          Text("Continue to phone correction.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    CheckInStepHeader(
+      title = "Income",
+      subtitle = "Completed rewards are ready.",
+    )
+    Box(
+      modifier = Modifier.fillMaxWidth().weight(1f),
+      contentAlignment = Alignment.Center,
+    ) {
+      val displayCount = incomeItems.size.coerceAtLeast(1)
+      val itemSpacing = 14.dp
+      val estimatedItemHeight = 74.dp
+      val contentHeight = estimatedItemHeight * displayCount + itemSpacing * (displayCount - 1)
+      Column(
+        modifier = Modifier.fillMaxWidth().heightIn(max = contentHeight),
+        verticalArrangement = Arrangement.spacedBy(itemSpacing, Alignment.CenterVertically),
+      ) {
+        if (incomeItems.isEmpty()) {
+          CalmPanel {
+            Text("No rewards to settle", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+            Text("Continue to phone correction.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          }
+        } else {
+          incomeItems.forEachIndexed { index, item ->
+            AnimatedAccountingItem(
+              label = item.label,
+              amount = item.minutes,
+              tone = MaterialTheme.colorScheme.primary,
+              delayMillis = index * 170,
+            )
+          }
         }
       }
-    } else {
-      itemsIndexed(incomeItems, key = { _, item -> "${item.label}-${item.minutes}" }) { index, item ->
-        AnimatedAccountingItem(
-          label = item.label,
-          amount = item.minutes,
-          tone = MaterialTheme.colorScheme.primary,
-          delayMillis = index * 170,
-        )
-      }
     }
-    item {
-      Button(
-        onClick = onContinue,
-        modifier = Modifier.fillMaxWidth().height(54.dp),
-        shape = ControlEndShape,
-      ) {
-        Text("Continue")
-      }
+    Button(
+      onClick = onContinue,
+      modifier = Modifier.fillMaxWidth().height(54.dp),
+      shape = ControlEndShape,
+    ) {
+      Text("Continue")
     }
   }
 }
@@ -794,7 +801,7 @@ private fun CheckInSettlementScreen(
       AnimatedAccountingItem(
         label = "Phone correction",
         amount = -deducted,
-        valueText = "-${deducted.roundToInt()}m",
+        valueText = signedCompactMinutes(-deducted),
         tone = MaterialTheme.colorScheme.tertiary,
         delayMillis = 340,
       )
@@ -802,9 +809,9 @@ private fun CheckInSettlementScreen(
     item {
       CalmPanel {
         Text("Formula", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-        CheckInFormulaLine("Phone cost", "-${phoneCost.roundToInt()}m")
-        CheckInFormulaLine("Deducted", "-${deducted.roundToInt()}m")
-        CheckInFormulaLine("Remaining", "${remaining.roundToInt()}m")
+        CheckInFormulaLine("Phone cost", signedCompactMinutes(-phoneCost))
+        CheckInFormulaLine("Deducted", signedCompactMinutes(-deducted))
+        CheckInFormulaLine("Remaining", compactMinutes(remaining))
       }
     }
     if (exceeded) {
@@ -1012,7 +1019,7 @@ private fun PhoneUsageTimeline(segment: PhoneUsageSegment) {
         shape = RoundedCornerShape(999.dp),
       ) {
         Text(
-          "-${segment.costMinutes.roundToInt()}m",
+          signedCompactMinutes(-segment.costMinutes),
           style = tabularNumbers(MaterialTheme.typography.labelLarge),
           fontWeight = FontWeight.SemiBold,
           modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
@@ -1082,7 +1089,7 @@ private fun PhoneUsageTimeline(segment: PhoneUsageSegment) {
             )
           }
           Text(
-            "${Duration.ofMillis(group.durationMillis).toMinutes().coerceAtLeast(1)}m",
+            compactDurationMinutes(Duration.ofMillis(group.durationMillis)),
             style = tabularNumbers(MaterialTheme.typography.bodyMedium),
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
@@ -1218,7 +1225,7 @@ private fun PhoneUsageSegmentRow(
           shape = RoundedCornerShape(999.dp),
         ) {
           Text(
-            "${segment.costMinutes.roundToInt()} min",
+            compactMinutes(segment.costMinutes),
             style = tabularNumbers(MaterialTheme.typography.labelSmall),
             modifier = Modifier.padding(horizontal = 8.dp, vertical = 3.dp),
           )
@@ -1416,17 +1423,10 @@ private fun checkInIncomeItems(state: FocusWellUiState, startedAt: Instant): Lis
 }
 
 private fun isWakeBonusEligible(state: FocusWellUiState, startedAt: Instant): Boolean {
-  val target = wakeTargetTimeForUi(state) ?: return false
+  val target = state.rules.normalized().wakeTargetTime
   val local = startedAt.atZone(ZoneId.systemDefault()).toLocalTime()
   val delta = Duration.between(target, local).toMinutes()
-  return delta in -30..30
-}
-
-private fun wakeTargetTimeForUi(state: FocusWellUiState): LocalTime? {
-  val wake = state.trackers.firstOrNull { it.id == "wake" && it.archivedAt == null } ?: return null
-  wake.wakeTime?.let { runCatching { LocalTime.parse(it) }.getOrNull()?.let { parsed -> return parsed } }
-  val hour = Regex("""Wake\s+by\s+(\d{1,2})""", RegexOption.IGNORE_CASE).find(wake.label)?.groupValues?.getOrNull(1)?.toIntOrNull()
-  return LocalTime.of((hour ?: 9).coerceIn(0, 23), 0)
+  return delta in -60..30
 }
 
 private fun Instant.localClockMinute(): Int {
@@ -1803,9 +1803,9 @@ internal fun rememberNow(paused: Boolean = false): Instant {
 
 internal fun formatDuration(duration: Duration): String {
   val totalSeconds = duration.seconds.coerceAtLeast(0)
-  if (totalSeconds < 60) return "<1 min"
+  if (totalSeconds < 60) return "<1m"
   val totalMinutes = (totalSeconds / 60).coerceAtLeast(0)
-  return "$totalMinutes min"
+  return "${totalMinutes}m"
 }
 
 internal fun formatPreciseDuration(duration: Duration): String {
@@ -1825,13 +1825,32 @@ internal fun effectiveRate(type: SessionType, tagMultiplier: Double): String {
 }
 
 internal fun signedMinutes(minutes: Double): String {
+  if (minutes > 0.0 && minutes < 1.0) return "+<1m"
+  if (minutes < 0.0 && minutes > -1.0) return "-<1m"
   val rounded = minutes.roundToInt()
   return when {
-    rounded > 0 -> "+$rounded min"
-    rounded < 0 -> "$rounded min"
-    else -> "0 min"
+    rounded > 0 -> "+${rounded}m"
+    rounded < 0 -> "${rounded}m"
+    else -> "0"
   }
 }
+
+internal fun compactMinutes(minutes: Double): String {
+  if (minutes == 0.0) return "0"
+  if (minutes > 0.0 && minutes < 1.0) return "<1m"
+  if (minutes < 0.0 && minutes > -1.0) return "-<1m"
+  return "${minutes.roundToInt()}m"
+}
+
+internal fun signedCompactMinutes(minutes: Double): String =
+  when {
+    minutes > 0.0 && minutes < 1.0 -> "+<1m"
+    minutes < 0.0 && minutes > -1.0 -> "-<1m"
+    else -> signedMinutes(minutes)
+  }
+
+internal fun compactDurationMinutes(duration: Duration): String =
+  compactMinutes(duration.toMillis().coerceAtLeast(0L) / 60_000.0)
 
 internal fun trackerProgress(tracker: DailyTracker): Float {
   if (tracker.completed) return 1f

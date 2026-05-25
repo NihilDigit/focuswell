@@ -454,7 +454,7 @@ internal fun BalanceFocusRecordRow(
         Text(record.task, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
       Text(
-        "${record.type.label} · ${record.tagName ?: "Untagged"} · ${record.activeDurationMinutes.roundToInt()} min",
+        "${record.type.label} · ${record.tagName ?: "Untagged"} · ${compactMinutes(record.activeDurationMinutes)}",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
         maxLines = 1,
@@ -520,7 +520,7 @@ internal fun BalanceLeisureRecordRow(record: LeisureRecord, onClick: () -> Unit)
         Text("Leisure", style = MaterialTheme.typography.titleMedium)
       }
       Text(
-        "${record.elapsedMinutes.roundToInt()} real min · ${record.costMinutes.roundToInt()} charged",
+        "${compactMinutes(record.elapsedMinutes)} real · ${compactMinutes(record.costMinutes)} charged",
         style = MaterialTheme.typography.bodyMedium,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )

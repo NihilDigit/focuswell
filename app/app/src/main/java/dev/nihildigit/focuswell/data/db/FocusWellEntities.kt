@@ -9,6 +9,7 @@ internal data class AppStateEntity(
   val dailyDate: String,
   val dailyGrantMinutes: Double = 60.0,
   val dayBoundaryHour: Int = 4,
+  val wakeTargetHour: Int = 9,
   val sleepProtectionStartHour: Int = 1,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,

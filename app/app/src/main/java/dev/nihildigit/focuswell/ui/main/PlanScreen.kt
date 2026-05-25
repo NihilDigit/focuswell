@@ -104,7 +104,7 @@ internal fun PlanScreen(
     item {
       PlanSectionHeader(
         title = "Daily trackers",
-        subtitle = "${trackers.size} active · ${trackers.sumOf { it.rewardMinutes }.roundToInt()}m possible",
+        subtitle = "${trackers.size} active · ${compactMinutes(trackers.sumOf { it.rewardMinutes })} possible",
         actionLabel = "Add tracker",
         onAdd = { addingManualTracker = true },
         secondaryActionLabel = "Add rule",
@@ -242,9 +242,9 @@ internal fun PlanTrackerRow(tracker: DailyTracker, onClick: () -> Unit) {
   val isRule = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
   val supporting =
     if (isRule) {
-      "Rule · +${tracker.rewardMinutes.roundToInt()}m"
+      "Rule · ${signedCompactMinutes(tracker.rewardMinutes)}"
     } else {
-      "Manual · +${tracker.rewardMinutes.roundToInt()}m"
+      "Manual · ${signedCompactMinutes(tracker.rewardMinutes)}"
     }
   PlanRow(
     icon = if (isRule) Icons.Rounded.Timer else Icons.Rounded.RadioButtonUnchecked,

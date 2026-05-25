@@ -256,7 +256,7 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
             overflow = TextOverflow.Ellipsis,
           )
           Text(
-            if (tracker.completed) "+${tracker.rewardMinutes.roundToInt()}m" else "${tracker.rewardMinutes.roundToInt()}m",
+            if (tracker.completed) signedCompactMinutes(tracker.rewardMinutes) else compactMinutes(tracker.rewardMinutes),
             style = MaterialTheme.typography.labelMedium,
             color =
               if (tracker.completed) MaterialTheme.colorScheme.primary
@@ -378,7 +378,7 @@ internal fun TrackerPill(tracker: DailyTracker, onClick: () -> Unit, modifier: M
       Column(verticalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium)
         Text(
-          "${trackerStatusText(tracker)} · +${tracker.rewardMinutes.roundToInt()}m",
+          "${trackerStatusText(tracker)} · ${signedCompactMinutes(tracker.rewardMinutes)}",
           style = MaterialTheme.typography.labelMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

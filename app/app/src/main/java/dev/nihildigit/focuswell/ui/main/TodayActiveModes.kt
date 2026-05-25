@@ -396,7 +396,7 @@ internal fun FocusTimerSurface(
           Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text("If ended now", style = MaterialTheme.typography.labelLarge, color = content)
             Text(
-              "+${earnedNow.roundToInt()}m",
+              signedCompactMinutes(earnedNow),
               style = tabularNumbers(MaterialTheme.typography.headlineMedium),
               fontWeight = FontWeight.ExtraBold,
               color = tone,
@@ -553,9 +553,9 @@ internal fun SettlementFormula(
 ) {
   Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
     Text("Settlement", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-    FormulaLine("Raw focus", "${rawMinutes.roundToInt()}m")
-    FormulaLine("Deducted app time", "-${correctionMinutes.roundToInt()}m")
-    FormulaLine("Counted focus", "${adjustedMinutes.roundToInt()}m")
+    FormulaLine("Raw focus", compactMinutes(rawMinutes))
+    FormulaLine("Deducted app time", signedCompactMinutes(-correctionMinutes))
+    FormulaLine("Counted focus", compactMinutes(adjustedMinutes))
     FormulaLine("Type rate", "${typeRate.formatThree()}x")
     FormulaLine("Tag multiplier", "${tagMultiplier.formatThree()}x")
     FormulaLine("Outcome multiplier", "${outcomeMultiplier.formatOne()}x")
@@ -563,7 +563,7 @@ internal fun SettlementFormula(
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
       Text("Formula", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
       Text(
-        "${adjustedMinutes.roundToInt()}m × ${typeRate.formatThree()} × ${tagMultiplier.formatThree()} × ${outcomeMultiplier.formatOne()}",
+        "${compactMinutes(adjustedMinutes)} × ${typeRate.formatThree()} × ${tagMultiplier.formatThree()} × ${outcomeMultiplier.formatOne()}",
         style = tabularNumbers(MaterialTheme.typography.labelLarge),
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )
@@ -571,7 +571,7 @@ internal fun SettlementFormula(
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
       Text("Earned reserve", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
       Text(
-        "+${projectedEarned.roundToInt()}m",
+        signedCompactMinutes(projectedEarned),
         style = tabularNumbers(MaterialTheme.typography.titleMedium),
         fontWeight = FontWeight.Bold,
         color = MaterialTheme.colorScheme.primary,
@@ -682,7 +682,7 @@ internal fun FocusUsageCorrection(
         } ?: Icon(Icons.Rounded.RadioButtonUnchecked, contentDescription = null, modifier = Modifier.size(32.dp))
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
           Text(usage.appName, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
-          Text("${(usage.durationMillis / 60_000.0).roundToInt()}m", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text(compactMinutes(usage.durationMillis / 60_000.0), style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Row(verticalAlignment = Alignment.CenterVertically) {
           Checkbox(
@@ -1071,7 +1071,7 @@ internal fun DepletedSurface(
           verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
           StatusBadge("Reserve depleted", tone)
-          StatusBadge("${normalizedRules.dailyGrantMinutes.roundToInt()}m at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}", tone)
+          StatusBadge("${compactMinutes(normalizedRules.dailyGrantMinutes)} at ${normalizedRules.safeDayBoundaryHour.activeHourLabel()}", tone)
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text("Leisure is out", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
@@ -1097,7 +1097,7 @@ internal fun DepletedSurface(
               Text("Next grant", style = MaterialTheme.typography.labelLarge)
             }
             Text(
-              "${normalizedRules.safeDayBoundaryHour.activeHourLabel()} · ${normalizedRules.dailyGrantMinutes.roundToInt()}m",
+              "${normalizedRules.safeDayBoundaryHour.activeHourLabel()} · ${compactMinutes(normalizedRules.dailyGrantMinutes)}",
               style = tabularNumbers(MaterialTheme.typography.titleMedium),
             )
           }

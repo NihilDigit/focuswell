@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     IdeaEntity::class,
     LedgerEntryEntity::class,
   ],
-  version = 8,
+  version = 9,
   exportSchema = true,
 )
 internal abstract class FocusWellDatabase : RoomDatabase() {
@@ -36,7 +36,7 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
           )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-            .addMigrations(MIGRATION_7_8)
+            .addMigrations(MIGRATION_7_8, MIGRATION_8_9)
             .build()
             .also { instance = it }
       }
@@ -105,6 +105,13 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
         override fun migrate(db: SupportSQLiteDatabase) {
           db.execSQL("ALTER TABLE app_state ADD COLUMN lastCheckInDailyDate TEXT")
           db.execSQL("ALTER TABLE app_state ADD COLUMN dailyGrantPausedUntilDate TEXT")
+        }
+      }
+
+    private val MIGRATION_8_9 =
+      object : Migration(8, 9) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL("ALTER TABLE app_state ADD COLUMN wakeTargetHour INTEGER NOT NULL DEFAULT 9")
         }
       }
   }

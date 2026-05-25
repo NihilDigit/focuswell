@@ -326,7 +326,7 @@ internal fun FocusRecordRow(
         )
         Text(record.task, style = MaterialTheme.typography.bodyLarge, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Text(
-          "${record.activeDurationMinutes.roundToInt()} min · ${record.result}",
+          "${compactMinutes(record.activeDurationMinutes)} · ${record.result}",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
           maxLines = 1,
@@ -531,7 +531,7 @@ internal fun LeisureRecordRow(record: LeisureRecord, onDelete: () -> Unit, modif
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
         Text("Leisure", style = MaterialTheme.typography.titleMedium)
         Text(
-          "${record.elapsedMinutes.roundToInt()} min elapsed",
+          "${compactMinutes(record.elapsedMinutes)} elapsed",
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onSurfaceVariant,
         )

@@ -53,6 +53,7 @@ data class DailyTracker(
 data class FocusWellRules(
   val dailyGrantMinutes: Double = 60.0,
   val dayBoundaryHour: Int = 4,
+  val wakeTargetHour: Int = 9,
   val sleepProtectionStartHour: Int = 1,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
@@ -63,6 +64,9 @@ data class FocusWellRules(
   val safeDayBoundaryHour: Int
     get() = dayBoundaryHour.coerceIn(1, 12)
 
+  val safeWakeTargetHour: Int
+    get() = wakeTargetHour.coerceIn(0, 23)
+
   val safeSleepProtectionStartHour: Int
     get() = sleepProtectionStartHour.coerceIn(0, safeDayBoundaryHour - 1)
 
@@ -71,6 +75,9 @@ data class FocusWellRules(
 
   val dayBoundaryTime: LocalTime
     get() = LocalTime.of(safeDayBoundaryHour, 0)
+
+  val wakeTargetTime: LocalTime
+    get() = LocalTime.of(safeWakeTargetHour, 0)
 
   val sleepProtectionStartTime: LocalTime
     get() = LocalTime.of(safeSleepProtectionStartHour, 0)
@@ -82,6 +89,7 @@ data class FocusWellRules(
     copy(
       dailyGrantMinutes = safeDailyGrantMinutes,
       dayBoundaryHour = safeDayBoundaryHour,
+      wakeTargetHour = safeWakeTargetHour,
       sleepProtectionStartHour = safeSleepProtectionStartHour,
       sleepProtectionMultiplier = safeSleepProtectionMultiplier,
       longSessionRemindersEnabled = longSessionRemindersEnabled,
@@ -220,7 +228,6 @@ val defaultTags =
 val defaultTrackers =
   listOf(
     DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 15.0),
-    DailyTracker(id = "wake", label = "Wake by 9", completed = false, rewardMinutes = 15.0),
     DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false, rewardMinutes = 15.0),
     DailyTracker(id = "codewars", label = "CodeWars", completed = false, rewardMinutes = 15.0),
     DailyTracker(

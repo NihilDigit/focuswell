@@ -10,6 +10,7 @@ FocusWell uses configurable accounting rules with these defaults:
 
 - Each day starts at 04:00 in the device's current system time zone.
 - A new FocusWell day grants 60 minutes of leisure reserve.
+- The morning check-in wake target defaults to 09:00 and is configurable in Rules.
 - Focus earns reserve by elapsed active time, session type, and tag multiplier.
 - Leisure spends reserve by elapsed time.
 - Leisure between 01:00 and 04:00 spends at 2x speed.
@@ -30,6 +31,7 @@ The app is written in Kotlin and Jetpack Compose. It includes:
 - Room-backed local persistence for timers, records, trackers, tags, and ledger entries.
 - Editable focus and leisure records in Balance.
 - Focus settlement with local app-usage correction when Android usage access is granted.
+- Blocking morning check-in with reward income, wake bonus, phone-use correction, Fair Use review, and Daily Grant pause handling.
 - Ideas inbox and sorting surface for thoughts captured during focus.
 - Daily trackers and rule-based tracker progress.
 - Adjustable accounting rules and configurable tracker rewards.
@@ -71,7 +73,7 @@ Build a signed release with the same release key used by CI:
 ```powershell
 Copy-Item app\release-signing.properties.example app\release-signing.properties
 # Fill app\release-signing.properties with the same keystore and passwords stored in GitHub Secrets.
-.\scripts\build-local-release.ps1 -VersionName 26.5.5
+.\scripts\build-local-release.ps1 -VersionName 26.5.11
 ```
 
 Release APKs are split by ABI: `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
@@ -90,6 +92,6 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 ## Release
 
-Releases are manual-tag driven. Use a time-based tag such as `26.5.5`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
+Releases are manual-tag driven. Use a time-based tag such as `26.5.11`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
 
-The current public release is [26.5.10](https://github.com/NihilDigit/focuswell/releases/tag/26.5.10). It refines Ideas row actions and drag retagging, and redesigns Daily tracker progress with compact list rows, circular completion controls, and rule-tracker progress rings.
+The current public release is [26.5.11](https://github.com/NihilDigit/focuswell/releases/tag/26.5.11). It adds Morning Check-In phone-use correction, improves sub-minute accounting labels, and tightens Ideas row layout and filter transitions.

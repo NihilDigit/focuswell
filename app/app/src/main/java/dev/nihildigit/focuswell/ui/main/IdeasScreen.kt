@@ -169,6 +169,7 @@ internal fun IdeasScreen(
             idea = idea,
             dragging = draggingIdeaId == idea.id,
             dragEnabled = selectedQuadrants.isEmpty(),
+            modifier = Modifier.animateItem(),
             onClick = { editingIdeaId = idea.id },
             onArchive = { onArchiveIdea(idea.id) },
             onPositioned = { bounds -> rowBounds[idea.id] = bounds },
@@ -256,13 +257,13 @@ private fun IdeasHeader(
   onSelectedChange: (IdeaQuadrant) -> Unit,
   onChipPositioned: (IdeaQuadrant, Rect) -> Unit,
 ) {
-  Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+  Column(verticalArrangement = Arrangement.spacedBy(14.dp)) {
     Row(
       modifier = Modifier.fillMaxWidth(),
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.Bottom,
     ) {
-      SectionHeader(title = "Ideas", subtitle = "Capture loose thoughts, then tag what deserves attention.")
+      SectionHeader(title = "Ideas", subtitle = "Capture loose thoughts, then place what deserves attention.")
     }
     Row(
       horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -422,13 +423,15 @@ private fun IdeaRow(
   onDragStart: (Offset) -> Unit,
   onDrag: (Offset) -> Unit,
   onDragEnd: () -> Unit,
+  modifier: Modifier = Modifier,
 ) {
+  val hasChecklist = idea.checklist.isNotEmpty()
   Surface(
     shape = LedgerRowShape,
     color = MaterialTheme.colorScheme.surfaceContainer,
     shadowElevation = 0.dp,
     modifier =
-      Modifier
+      modifier
         .fillMaxWidth()
         .onGloballyPositioned { onPositioned(it.boundsInRoot()) }
         .graphicsLayer {
@@ -455,19 +458,25 @@ private fun IdeaRow(
         ),
   ) {
     Row(
-      modifier = Modifier.padding(14.dp).fillMaxWidth(),
+      modifier =
+        Modifier
+          .padding(horizontal = 14.dp, vertical = if (hasChecklist) 12.dp else 10.dp)
+          .fillMaxWidth(),
       horizontalArrangement = Arrangement.spacedBy(10.dp),
-      verticalAlignment = Alignment.Top,
+      verticalAlignment = Alignment.CenterVertically,
     ) {
       IdeaQuadrantLabel(quadrant = idea.quadrant)
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+      Column(
+        modifier = Modifier.weight(1f),
+        verticalArrangement = if (hasChecklist) Arrangement.spacedBy(5.dp) else Arrangement.Center,
+      ) {
         Text(
           idea.text,
           style = MaterialTheme.typography.bodyLarge,
-          maxLines = 4,
+          maxLines = if (hasChecklist) 4 else 2,
           overflow = TextOverflow.Ellipsis,
         )
-        if (idea.checklist.isNotEmpty()) {
+        if (hasChecklist) {
           val done = idea.checklist.count { it.checked }
           val preview = idea.checklist.take(2).joinToString(" · ") { it.text }
           Text(
@@ -479,7 +488,7 @@ private fun IdeaRow(
           )
         }
       }
-      IconButton(onClick = onArchive, modifier = Modifier.size(36.dp)) {
+      IconButton(onClick = onArchive, modifier = Modifier.size(if (hasChecklist) 36.dp else 32.dp)) {
         Icon(Icons.Rounded.Archive, contentDescription = "Archive idea", tint = MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(20.dp))
       }
     }
@@ -547,7 +556,7 @@ private fun IdeaQuadrantLabel(quadrant: IdeaQuadrant) {
       IdeaQuadrant.Explore -> colors.primary
     }
   Row(
-    modifier = Modifier.width(68.dp).padding(top = 1.dp),
+    modifier = Modifier.width(68.dp),
     horizontalArrangement = Arrangement.spacedBy(3.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {

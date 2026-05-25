@@ -26,7 +26,6 @@ import org.json.JSONObject
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
-import java.time.LocalTime
 
 class FocusWellRepository internal constructor(
   private val store: FocusWellStore,
@@ -49,25 +48,6 @@ class FocusWellRepository internal constructor(
         trackers =
           state.trackers.map {
             if (it.id == id && it.ruleTagName == null) it.copy(completed = !it.completed) else it
-          }
-      )
-    }
-  }
-
-  fun setWakeTime(value: String) {
-    val parsed = runCatching { LocalTime.parse(value.trim()) }.getOrNull() ?: return
-    mutate { state ->
-      state.copy(
-        trackers =
-          state.trackers.map {
-            if (it.id == "wake") {
-              it.copy(
-                wakeTime = parsed.toString(),
-                completed = !parsed.isAfter(LocalTime.of(9, 0)),
-              )
-            } else {
-              it
-            }
           }
       )
     }
@@ -658,7 +638,7 @@ class FocusWellRepository internal constructor(
         trackers =
           state.trackers.map {
             if (it.ruleTagName == null) {
-              it.copy(completed = false, wakeTime = null)
+              it.copy(completed = false)
             } else {
               it.copy(completed = false, progressLabel = "0m / ${it.ruleTargetMinutes?.roundTarget() ?: ""}")
             }
@@ -718,10 +698,10 @@ class FocusWellRepository internal constructor(
   ): LedgerEntry? {
     val id = "wake-bonus-$today"
     if (id in existingIds) return null
-    val target = wakeTargetTime(state) ?: return null
+    val target = state.rules.normalized().wakeTargetTime
     val localTime = checkInStartedAt.atZone(TimeAccounting.focusWellZone).toLocalTime()
     val deltaMinutes = Duration.between(target, localTime).toMinutes()
-    if (deltaMinutes < -30 || deltaMinutes > 30) return null
+    if (deltaMinutes < -60 || deltaMinutes > 30) return null
     return LedgerEntry(
       id = id,
       title = "Wake bonus",
@@ -729,15 +709,6 @@ class FocusWellRepository internal constructor(
       createdAt = checkInStartedAt,
       note = "Checked in near ${target.toString().take(5)}",
     )
-  }
-
-  private fun wakeTargetTime(state: FocusWellUiState): LocalTime? {
-    val wakeTracker = state.trackers.firstOrNull { it.id == "wake" && it.archivedAt == null } ?: return null
-    wakeTracker.wakeTime?.let { stored ->
-      runCatching { LocalTime.parse(stored) }.getOrNull()?.let { return it }
-    }
-    val hour = Regex("""Wake\s+by\s+(\d{1,2})""", RegexOption.IGNORE_CASE).find(wakeTracker.label)?.groupValues?.getOrNull(1)?.toIntOrNull()
-    return LocalTime.of((hour ?: 9).coerceIn(0, 23), 0)
   }
 
   private fun stateToJson(state: FocusWellUiState): JSONObject =
@@ -779,6 +750,7 @@ class FocusWellRepository internal constructor(
     return JSONObject()
       .put("dailyGrantMinutes", normalizedRules.dailyGrantMinutes)
       .put("dayBoundaryHour", normalizedRules.dayBoundaryHour)
+      .put("wakeTargetHour", normalizedRules.wakeTargetHour)
       .put("sleepProtectionStartHour", normalizedRules.sleepProtectionStartHour)
       .put("sleepProtectionMultiplier", normalizedRules.sleepProtectionMultiplier)
       .put("longSessionRemindersEnabled", normalizedRules.longSessionRemindersEnabled)
@@ -788,6 +760,7 @@ class FocusWellRepository internal constructor(
     FocusWellRules(
       dailyGrantMinutes = json.optDouble("dailyGrantMinutes", 60.0),
       dayBoundaryHour = json.optInt("dayBoundaryHour", 4),
+      wakeTargetHour = json.optInt("wakeTargetHour", 9),
       sleepProtectionStartHour = json.optInt("sleepProtectionStartHour", 1),
       sleepProtectionMultiplier = json.optDouble("sleepProtectionMultiplier", 2.0),
       longSessionRemindersEnabled = json.optBoolean("longSessionRemindersEnabled", true),

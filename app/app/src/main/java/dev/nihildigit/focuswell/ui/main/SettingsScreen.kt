@@ -273,7 +273,7 @@ internal fun RewardStepper(
         Icon(Icons.Rounded.Remove, contentDescription = "Decrease reward", modifier = Modifier.size(18.dp))
       }
       Text(
-        "${rewardMinutes.roundToInt()}m",
+        compactMinutes(rewardMinutes),
         style = tabularNumbers(MaterialTheme.typography.labelLarge),
         fontWeight = FontWeight.SemiBold,
         modifier = Modifier.width(38.dp),
@@ -970,7 +970,7 @@ internal fun SettingsScreen(
         Text("Rules", style = MaterialTheme.typography.titleLarge)
         SettingsRuleControlRow(
           title = "Daily grant",
-          value = "${rules.dailyGrantMinutes.roundToInt()}m",
+          value = compactMinutes(rules.dailyGrantMinutes),
           supporting = "Added at boundary.",
           icon = Icons.Rounded.AccountBalanceWallet,
           onDecrease = { onUpdateRules(rules.copy(dailyGrantMinutes = rules.dailyGrantMinutes - 5.0)) },
@@ -983,6 +983,14 @@ internal fun SettingsScreen(
           icon = Icons.Rounded.Today,
           onDecrease = { onUpdateRules(rules.copy(dayBoundaryHour = rules.dayBoundaryHour - 1)) },
           onIncrease = { onUpdateRules(rules.copy(dayBoundaryHour = rules.dayBoundaryHour + 1)) },
+        )
+        SettingsRuleControlRow(
+          title = "Wake time",
+          value = rules.wakeTargetHour.hourLabel(),
+          supporting = "Check-in bonus from 1h before to 30m after.",
+          icon = Icons.Rounded.LightMode,
+          onDecrease = { onUpdateRules(rules.copy(wakeTargetHour = rules.wakeTargetHour - 1)) },
+          onIncrease = { onUpdateRules(rules.copy(wakeTargetHour = rules.wakeTargetHour + 1)) },
         )
         SettingsRuleControlRow(
           title = "Sleep start",

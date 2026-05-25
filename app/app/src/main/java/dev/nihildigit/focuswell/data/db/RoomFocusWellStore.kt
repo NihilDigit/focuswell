@@ -34,6 +34,7 @@ internal class RoomFocusWellStore(
           FocusWellRules(
             dailyGrantMinutes = appState.dailyGrantMinutes,
             dayBoundaryHour = appState.dayBoundaryHour,
+            wakeTargetHour = appState.wakeTargetHour,
             sleepProtectionStartHour = appState.sleepProtectionStartHour,
             sleepProtectionMultiplier = appState.sleepProtectionMultiplier,
             longSessionRemindersEnabled = appState.longSessionRemindersEnabled,
@@ -197,6 +198,7 @@ private fun FocusWellUiState.baseAppStateEntity(
     dailyDate = dailyDate,
     dailyGrantMinutes = normalizedRules.dailyGrantMinutes,
     dayBoundaryHour = normalizedRules.dayBoundaryHour,
+    wakeTargetHour = normalizedRules.wakeTargetHour,
     sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour,
     sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
     longSessionRemindersEnabled = normalizedRules.longSessionRemindersEnabled,

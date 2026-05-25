@@ -21,7 +21,7 @@ screen behavior.
 - Records are editable, but balance changes remain auditable.
 - Plan defines configurable earning inputs: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Rules define configurable accounting boundaries: daily grant, daily boundary,
-  sleep-protection start, and sleep-protection cost multiplier.
+  wake target, sleep-protection start, and sleep-protection cost multiplier.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -42,6 +42,7 @@ Default rules:
 ```text
 Daily window: 04:00 -> next day 03:59
 Daily grant: +60 minutes
+Wake target: 09:00
 Late-night leisure cost: 01:00-04:00 costs 2x
 ```
 
@@ -156,7 +157,6 @@ reserve adjustments, then the daily tracker state resets for the new day.
 Current tracker kinds:
 
 - Boolean tracker
-- Wake-time tracker
 - Rule tracker based on focus minutes for a tag
 
 Rule trackers use same-day non-deleted focus records. Current default rule
@@ -165,7 +165,7 @@ trackers target 180 minutes for `math` and `408`.
 Default tracker rewards:
 
 - `math` and `408` rule trackers: 60 minutes each.
-- `Aerobic`, `Vocabulary`, `CodeWars`, and `Wake by 9`: 15 minutes each.
+- `Aerobic`, `Vocabulary`, and `CodeWars`: 15 minutes each.
 
 ## Morning Check-In
 
@@ -173,6 +173,11 @@ The first app open of a new FocusWell day requires a morning check-in. The
 check-in reviews local Android usage events from the previous business day and
 clusters non-Leisure foreground phone use while the screen is interactive into
 review segments.
+
+The Income step also settles the wake bonus as an automatic completed item. The
+default target is 09:00 and is configured from Settings Rules. A check-in from
+one hour before the target through thirty minutes after the target earns 30
+minutes. This replaces the previous `Wake by X` daily tracker pattern.
 
 MVP clustering rules:
 
@@ -182,6 +187,8 @@ MVP clustering rules:
 - Existing Leisure records are excluded from phone-use review.
 - Cost is the actual foreground duration inside occupied minutes, not the
   rounded count of occupied minutes.
+- Non-zero costs or earnings below one minute should be displayed as `<1m` or
+  `-<1m`, not rounded down to `0m`.
 
 The user marks necessary segments as Fair Use. Unmarked segments are settled as
 a negative ledger entry, capped at the current reserve so overdraft is still not
@@ -195,8 +202,9 @@ The check-in UI is a three-step flow:
 1. Income: animate completed earning items into checked rows with `+Xm`
    amounts. This screen is reward-only and does not show phone correction.
 2. Correction: show compact phone-use segments in local clock order. The user
-   selects Fair Use; app names stay hidden and Top 3 apps are represented by
-   icons only.
+   reviews one segment at a time, swiping right for Fair Use and left to count
+   it. App names may appear as recall metadata, but the main timeline should
+   stay visual and compact.
 3. Settlement: animate correction and final accounting as checked rows and
    transparent numbers. Do not show the reserve well here. If the Daily Grant is
    paused, show an ice/freeze treatment on a `+60 x3` grant component.
@@ -218,6 +226,10 @@ Ideas can be sorted into:
 An idea may contain a small local checklist. These items stay inside the idea
 for later consideration and do not become daily trackers, focus settlement
 notes, or ledger entries.
+
+Idea filtering is an organizing action, not a mode switch. Filter changes should
+animate list movement. Rows without checklist items should stay compact instead
+of reserving checklist space.
 
 ## Records And Ledger
 

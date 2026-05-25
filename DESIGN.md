@@ -197,7 +197,7 @@ Today:
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
-- Morning check-in is a blocking accounting gate, not a dismissible modal. Use a full-screen three-step flow: reward-only Income, phone-use Correction, then Settlement. Income and normal Settlement use animated checklist rows and `+Xm`/`-Xm` amounts rather than the reserve well. Correction reviews one phone-use segment per card; swiping right marks Fair Use and swiping left counts the segment.
+- Morning check-in is a blocking accounting gate, not a dismissible modal. Use a full-screen three-step flow: reward-only Income, phone-use Correction, then Settlement. Income includes automatic reward items such as Daily Grant, settled trackers, and wake bonus. Income and normal Settlement use animated checklist rows and `+Xm`/`-Xm` amounts rather than the reserve well. Correction reviews one phone-use segment per card; swiping right marks Fair Use and swiping left counts the segment.
 - Correction cards use a low-emphasis filled-card container. The main recall aid is a pure vertical-bar timeline plus a compact app list. Do not show app icons in this surface; map packages by hash to a categorical base palette, harmonize those colors toward the FocusWell seed, then normalize HCT tone/chroma for the current theme. Slice marks are hard-edged variable-width vertical bars with no capsule track; empty space represents time without counted screen use. Visually merge nearby slices from the same package to reduce noise. Use a small color dot for the app list and group non-top packages into Others.
 - Morning check-in segment order follows local clock recall, not the internal business-day traversal: late night `00:00-04:00` first, then morning, afternoon, and evening.
 - Frozen Daily Grant should be calm and literal: an iced or snowflake treatment on a `+60 x3` grant component. It freezes future unconditional grants only; do not use error color or failure language.
@@ -213,6 +213,7 @@ Balance:
 - Record rows are amount-first and compact. Focus earning uses primary, leisure spending uses tertiary, and each record type gets a quiet inline type icon. Destructive actions use error only inside details/edit surfaces.
 - Focus outcome states use the same icon and color mapping everywhere they appear.
 - Focus and leisure CRUD lives in Balance. Delete actions should not be permanently visible in the list; show them in an edit/details sheet.
+- Non-zero minute amounts below one minute display as `<1m`, `+<1m`, or `-<1m`; avoid rounding live accounting UI down to `0m`.
 - Use lists or filled surfaces, not decorative cards, when rows are repeated.
 
 Plan:
@@ -226,7 +227,8 @@ Plan:
 Ideas:
 
 - Ideas uses grouped list sections for Inbox, Do now, Schedule, Contain, and Explore.
-- Idea rows are quiet filled surfaces with compact colored quadrant labels on the left. Tapping the row edits the idea; the trailing archive icon is the explicit removal action.
+- Idea rows are quiet filled surfaces with compact colored quadrant labels on the left. The label is vertically centered against the row content. Rows without checklist items do not reserve checklist space. Tapping the row edits the idea; the trailing archive icon is the explicit removal action.
+- Idea filter chips are standalone controls without an enclosing background container. Filter changes should animate item placement rather than hard-cutting the list.
 - Retagging stays drag-to-chip from the list surface. The bottom drag guidance and the final drop action must read from the same resolved target.
 - Idea edit sheets own the idea text and small checklist items. Quadrant changes stay on the organizing surface, not inside the edit sheet.
 - Explore means low-pressure curiosity, not deletion. Archive is the explicit removal action.
@@ -240,7 +242,7 @@ Settings:
 - Groups are plain filled surfaces.
 - Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
 - Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
-- Rules are compact stepper rows, not long forms. Daily grant, day boundary, sleep-protection start, and sleep rate are adjustable from Settings.
+- Rules are compact stepper rows, not long forms. Daily grant, day boundary, wake time, sleep-protection start, and sleep rate are adjustable from Settings.
 - Reminder preferences live with rules as compact switch rows. The Push row sits beside Long reminders; off may mean the user disabled remote reminder delivery, FCM registration is missing, or notification permission is missing. Turning it on should request permission and refresh registration. Long reminders should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.

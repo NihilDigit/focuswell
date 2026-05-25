@@ -160,6 +160,52 @@ class FocusWellRepositoryTest {
   }
 
   @Test
+  fun completeMorningCheckIn_awardsWakeBonusFromRulesWindow() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          baseState(
+            rules = FocusWellRules(wakeTargetHour = 9),
+            ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
+          )
+        ),
+        clock::now,
+      )
+
+    repo.completeMorningCheckIn(
+      checkInStartedAt = Instant.parse("2026-05-20T08:00:00Z"),
+      phoneCostMinutes = 0.0,
+      reviewedSegmentCount = 0,
+    )
+
+    val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-20" }
+    assertEquals("Wake bonus", wakeBonus.title)
+    assertEquals(30.0, wakeBonus.deltaMinutes, 0.0001)
+  }
+
+  @Test
+  fun completeMorningCheckIn_skipsWakeBonusOutsideRulesWindow() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          baseState(
+            rules = FocusWellRules(wakeTargetHour = 9),
+            ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
+          )
+        ),
+        clock::now,
+      )
+
+    repo.completeMorningCheckIn(
+      checkInStartedAt = Instant.parse("2026-05-20T07:59:00Z"),
+      phoneCostMinutes = 0.0,
+      reviewedSegmentCount = 0,
+    )
+
+    assertTrue(repo.state.value.ledger.none { it.id == "wake-bonus-2026-05-20" })
+  }
+
+  @Test
   fun deleteLeisureRecord_restoresReserveWithLedgerAdjustment() {
     val leisure =
       LeisureRecord(
