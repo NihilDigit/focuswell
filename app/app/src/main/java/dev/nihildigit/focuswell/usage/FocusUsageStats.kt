@@ -8,6 +8,7 @@ import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.drawable.Drawable
 import android.os.Process
+import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.PhoneUsageApp
 import dev.nihildigit.focuswell.domain.PhoneUsageSegment
@@ -48,6 +49,7 @@ fun phoneUsageSegments(
   context: Context,
   startedAt: Instant,
   endedAt: Instant,
+  focusRecords: List<FocusRecord>,
   leisureRecords: List<LeisureRecord>,
   rules: FocusWellRules = FocusWellRules(),
   zone: ZoneId = TimeAccounting.focusWellZone,
@@ -64,14 +66,28 @@ fun phoneUsageSegments(
       ),
     startedAtMillis = startedAt.toEpochMilli(),
     endedAtMillis = endedAt.toEpochMilli(),
-    excludedIntervals =
-      leisureRecords
-        .filter { it.deletedAt == null && it.endedAt.isAfter(startedAt) && it.startedAt.isBefore(endedAt) }
-        .map { it.startedAt.toEpochMilli() to it.endedAt.toEpochMilli() },
+    excludedIntervals = excludedSessionIntervals(startedAt, endedAt, focusRecords, leisureRecords),
     appName = { packageName -> packageManager.appLabel(packageName) ?: packageName.fallbackAppName() },
     rules = rules,
     zone = zone,
   )
+}
+
+internal fun excludedSessionIntervals(
+  startedAt: Instant,
+  endedAt: Instant,
+  focusRecords: List<FocusRecord>,
+  leisureRecords: List<LeisureRecord>,
+): List<Pair<Long, Long>> {
+  val focusIntervals =
+    focusRecords
+      .filter { it.deletedAt == null && it.endedAt.isAfter(startedAt) && it.startedAt.isBefore(endedAt) }
+      .map { it.startedAt.toEpochMilli() to it.endedAt.toEpochMilli() }
+  val leisureIntervals =
+    leisureRecords
+      .filter { it.deletedAt == null && it.endedAt.isAfter(startedAt) && it.startedAt.isBefore(endedAt) }
+      .map { it.startedAt.toEpochMilli() to it.endedAt.toEpochMilli() }
+  return focusIntervals + leisureIntervals
 }
 
 fun focusAppUsage(

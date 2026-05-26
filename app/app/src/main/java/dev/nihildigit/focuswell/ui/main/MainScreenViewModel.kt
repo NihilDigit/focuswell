@@ -341,6 +341,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
             context = getApplication(),
             startedAt = start,
             endedAt = end,
+            focusRecords = state.focusRecords,
             leisureRecords = state.leisureRecords,
             rules = rules,
             zone = TimeAccounting.focusWellZone,

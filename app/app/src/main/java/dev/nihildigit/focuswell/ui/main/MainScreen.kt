@@ -671,7 +671,7 @@ private fun CheckInCorrectionScreen(
   onToggleFairUse: (String) -> Unit,
   onContinue: () -> Unit,
 ) {
-  val segments = remember(state.segments) { state.segments.sortedBy { it.startedAt.localClockMinute() } }
+  val segments = remember(state.segments) { state.segments.sortedBy { it.startedAt } }
   var currentIndex by remember(segments) { mutableStateOf(0) }
   var reviewHistory by remember(segments) { mutableStateOf(emptyList<Pair<String, Boolean>>()) }
   val currentSegment = segments.getOrNull(currentIndex)
@@ -714,7 +714,7 @@ private fun CheckInCorrectionScreen(
       Box(modifier = Modifier.weight(1f)) {
         CalmPanel {
           Text("No phone blocks found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-          Text("No non-Leisure phone block reached the review threshold.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text("No non-Focus/Leisure phone block reached the review threshold.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
       }
     } else {
@@ -1427,11 +1427,6 @@ private fun isWakeBonusEligible(state: FocusWellUiState, startedAt: Instant): Bo
   val local = startedAt.atZone(ZoneId.systemDefault()).toLocalTime()
   val delta = Duration.between(target, local).toMinutes()
   return delta in -60..30
-}
-
-private fun Instant.localClockMinute(): Int {
-  val local = atZone(ZoneId.systemDefault()).toLocalTime()
-  return local.hour * 60 + local.minute
 }
 
 private val CheckInTimeFormatter: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")

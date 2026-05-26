@@ -1,5 +1,8 @@
 package dev.nihildigit.focuswell.usage
 
+import dev.nihildigit.focuswell.domain.FocusRecord
+import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.SessionType
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
@@ -122,4 +125,68 @@ class FocusUsageStatsTest {
 
     assertEquals(emptyList<Any>(), segments)
   }
+
+  @Test
+  fun clusterPhoneUsageIntervals_excludesFocusOverlap() {
+    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+
+    val segments =
+      clusterPhoneUsageIntervals(
+        intervals = listOf(UsageInterval("app.video", start, start + 10 * 60_000L)),
+        startedAtMillis = start,
+        endedAtMillis = start + 20 * 60_000L,
+        excludedIntervals = listOf(start + 3 * 60_000L to start + 8 * 60_000L),
+      )
+
+    assertEquals(emptyList<Any>(), segments)
+  }
+
+  @Test
+  fun excludedSessionIntervals_includesFocusAndLeisureRecords() {
+    val start = Instant.parse("2026-05-20T04:00:00Z")
+    val focus = focusRecord(start.plusSeconds(60), start.plusSeconds(120))
+    val leisure = leisureRecord(start.plusSeconds(180), start.plusSeconds(240))
+
+    val intervals =
+      excludedSessionIntervals(
+        startedAt = start,
+        endedAt = start.plusSeconds(600),
+        focusRecords = listOf(focus),
+        leisureRecords = listOf(leisure),
+      )
+
+    assertEquals(
+      listOf(
+        start.plusSeconds(60).toEpochMilli() to start.plusSeconds(120).toEpochMilli(),
+        start.plusSeconds(180).toEpochMilli() to start.plusSeconds(240).toEpochMilli(),
+      ),
+      intervals,
+    )
+  }
+
+  private fun focusRecord(startedAt: Instant, endedAt: Instant): FocusRecord =
+    FocusRecord(
+      id = "focus",
+      task = "Task",
+      result = "As planned",
+      type = SessionType.Input,
+      tagName = null,
+      tagMultiplier = 1.0,
+      typeRate = SessionType.Input.rate,
+      startedAt = startedAt,
+      endedAt = endedAt,
+      activeDurationMinutes = 1.0,
+      earnedMinutes = 0.5,
+      dailyDate = "2026-05-20",
+    )
+
+  private fun leisureRecord(startedAt: Instant, endedAt: Instant): LeisureRecord =
+    LeisureRecord(
+      id = "leisure",
+      startedAt = startedAt,
+      endedAt = endedAt,
+      elapsedMinutes = 1.0,
+      costMinutes = 1.0,
+      dailyDate = "2026-05-20",
+    )
 }

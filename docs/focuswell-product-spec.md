@@ -171,7 +171,8 @@ Default tracker rewards:
 
 The first app open of a new FocusWell day requires a morning check-in. The
 check-in reviews local Android usage events from the previous business day and
-clusters non-Leisure foreground phone use while the screen is interactive into
+clusters foreground phone use outside Focus/Leisure records while the screen is
+interactive into
 review segments.
 
 The Income step also settles the wake bonus as an automatic completed item. The
@@ -184,7 +185,7 @@ MVP clustering rules:
 - A minute is occupied when foreground app usage reaches at least 50 seconds.
 - Five or more occupied minutes create a review segment.
 - Occupied runs separated by one minute or less are merged.
-- Existing Leisure records are excluded from phone-use review.
+- Existing Focus and Leisure records are excluded from phone-use review.
 - Cost is the actual foreground duration inside occupied minutes, not the
   rounded count of occupied minutes.
 - Non-zero costs or earnings below one minute should be displayed as `<1m` or
