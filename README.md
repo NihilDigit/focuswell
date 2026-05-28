@@ -73,7 +73,7 @@ Build a signed release with the same release key used by CI:
 ```powershell
 Copy-Item app\release-signing.properties.example app\release-signing.properties
 # Fill app\release-signing.properties with the same keystore and passwords stored in GitHub Secrets.
-.\scripts\build-local-release.ps1 -VersionName 26.5.15
+.\scripts\build-local-release.ps1 -VersionName 26.5.16
 ```
 
 Release APKs are split by ABI: `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
@@ -92,6 +92,6 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 ## Release
 
-Releases are manual-tag driven. Use a time-based tag such as `26.5.15`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
+Releases are manual-tag driven. Use a time-based tag such as `26.5.16`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
 
-The current public release is [26.5.15](https://github.com/NihilDigit/focuswell/releases/tag/26.5.15). It defaults to a noon day boundary, 05:00 wake target, and 21:00-05:00 sleep protection for the early-morning focus rhythm.
+The current public release is [26.5.16](https://github.com/NihilDigit/focuswell/releases/tag/26.5.16). It defaults to a midnight day boundary, 05:00 wake target, and 21:00-05:00 sleep protection for the early-morning focus rhythm.
