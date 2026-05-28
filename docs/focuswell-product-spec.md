@@ -42,7 +42,7 @@ device's current system time zone with the configured daily boundary.
 Default rules:
 
 ```text
-Daily window: 12:00 -> next day 11:59
+Daily window: 00:00 -> 23:59
 Daily grant: +60 minutes
 Wake target: 05:00
 Sleep-protection leisure cost: 21:00-05:00 costs 2x

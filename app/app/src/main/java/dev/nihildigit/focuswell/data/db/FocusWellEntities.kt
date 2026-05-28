@@ -8,7 +8,7 @@ internal data class AppStateEntity(
   @PrimaryKey val id: Int = 0,
   val dailyDate: String,
   val dailyGrantMinutes: Double = 60.0,
-  val dayBoundaryHour: Int = 12,
+  val dayBoundaryHour: Int = 0,
   val wakeTargetHour: Int = 5,
   val sleepProtectionStartHour: Int = 21,
   val sleepProtectionEndHour: Int = 5,

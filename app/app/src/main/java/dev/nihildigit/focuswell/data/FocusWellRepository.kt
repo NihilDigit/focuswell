@@ -760,7 +760,7 @@ class FocusWellRepository internal constructor(
   private fun jsonToRules(json: JSONObject): FocusWellRules =
     FocusWellRules(
       dailyGrantMinutes = json.optDouble("dailyGrantMinutes", 60.0),
-      dayBoundaryHour = json.optInt("dayBoundaryHour", 12),
+      dayBoundaryHour = json.optInt("dayBoundaryHour", 0),
       wakeTargetHour = json.optInt("wakeTargetHour", 5),
       sleepProtectionStartHour = json.optInt("sleepProtectionStartHour", 21),
       sleepProtectionEndHour = json.optInt("sleepProtectionEndHour", 5),

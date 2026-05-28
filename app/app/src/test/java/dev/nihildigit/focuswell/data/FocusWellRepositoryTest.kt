@@ -50,7 +50,7 @@ class FocusWellRepositoryTest {
                 id = "daily-grant-2026-05-20",
                 title = "Daily grant",
                 deltaMinutes = 60.0,
-                createdAt = Instant.parse("2026-05-20T12:00:00Z"),
+                createdAt = Instant.parse("2026-05-20T00:00:00Z"),
               )
             ),
         )
@@ -102,7 +102,7 @@ class FocusWellRepositoryTest {
 
   @Test
   fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() {
-    clock.instant = Instant.parse("2026-05-21T12:00:00Z")
+    clock.instant = Instant.parse("2026-05-21T00:00:00Z")
     val tracker =
       DailyTracker(
         id = "vocabulary",
@@ -178,7 +178,7 @@ class FocusWellRepositoryTest {
       reviewedSegmentCount = 0,
     )
 
-    val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-19" }
+    val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-20" }
     assertEquals("Wake bonus", wakeBonus.title)
     assertEquals(30.0, wakeBonus.deltaMinutes, 0.0001)
   }

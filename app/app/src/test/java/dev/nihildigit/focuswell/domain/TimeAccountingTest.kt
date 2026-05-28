@@ -12,15 +12,22 @@ class TimeAccountingTest {
   private val shanghai: ZoneId = ZoneId.of("Asia/Shanghai")
 
   @Test
-  fun dailyDate_beforeNoon_usesPreviousBusinessDate() {
-    val instant = Instant.parse("2026-05-22T03:30:00Z") // 11:30, 2026-05-22 Shanghai
+  fun dailyDate_afterMidnight_usesCurrentBusinessDate() {
+    val instant = Instant.parse("2026-05-21T16:30:00Z") // 00:30, 2026-05-22 Shanghai
 
-    assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant, shanghai))
+    assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
   }
 
   @Test
-  fun dailyDate_afterNoon_usesCurrentBusinessDate() {
-    val instant = Instant.parse("2026-05-22T04:30:00Z") // 12:30, 2026-05-22 Shanghai
+  fun dailyDate_beforeMidnight_usesCurrentBusinessDate() {
+    val instant = Instant.parse("2026-05-22T15:30:00Z") // 23:30, 2026-05-22 Shanghai
+
+    assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
+  }
+
+  @Test
+  fun dailyDate_exactMidnight_usesNewBusinessDate() {
+    val instant = Instant.parse("2026-05-21T16:00:00Z") // 00:00, 2026-05-22 Shanghai
 
     assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
   }
@@ -36,13 +43,13 @@ class TimeAccountingTest {
   @Test
   fun dailyDate_defaultZoneUsesSystemTimeZone() {
     val previous = TimeZone.getDefault()
-    val instant = Instant.parse("2026-05-22T15:30:00Z")
+    val instant = Instant.parse("2026-05-22T03:30:00Z")
 
     try {
-      TimeZone.setDefault(TimeZone.getTimeZone("America/New_York")) // 11:30, 2026-05-22 New York
+      TimeZone.setDefault(TimeZone.getTimeZone("America/New_York")) // 23:30, 2026-05-21 New York
       assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant))
 
-      TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo")) // 00:30, 2026-05-23 Tokyo
+      TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo")) // 12:30, 2026-05-22 Tokyo
       assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant))
     } finally {
       TimeZone.setDefault(previous)
