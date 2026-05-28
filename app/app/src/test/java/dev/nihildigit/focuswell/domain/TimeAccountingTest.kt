@@ -12,15 +12,15 @@ class TimeAccountingTest {
   private val shanghai: ZoneId = ZoneId.of("Asia/Shanghai")
 
   @Test
-  fun dailyDate_beforeFourAm_usesPreviousBusinessDate() {
-    val instant = Instant.parse("2026-05-21T19:30:00Z") // 03:30, 2026-05-22 Shanghai
+  fun dailyDate_beforeNoon_usesPreviousBusinessDate() {
+    val instant = Instant.parse("2026-05-22T03:30:00Z") // 11:30, 2026-05-22 Shanghai
 
     assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant, shanghai))
   }
 
   @Test
-  fun dailyDate_afterFourAm_usesCurrentBusinessDate() {
-    val instant = Instant.parse("2026-05-21T20:30:00Z") // 04:30, 2026-05-22 Shanghai
+  fun dailyDate_afterNoon_usesCurrentBusinessDate() {
+    val instant = Instant.parse("2026-05-22T04:30:00Z") // 12:30, 2026-05-22 Shanghai
 
     assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
   }
@@ -36,13 +36,13 @@ class TimeAccountingTest {
   @Test
   fun dailyDate_defaultZoneUsesSystemTimeZone() {
     val previous = TimeZone.getDefault()
-    val instant = Instant.parse("2026-05-22T07:30:00Z")
+    val instant = Instant.parse("2026-05-22T15:30:00Z")
 
     try {
-      TimeZone.setDefault(TimeZone.getTimeZone("America/New_York")) // 03:30, 2026-05-22 New York
+      TimeZone.setDefault(TimeZone.getTimeZone("America/New_York")) // 11:30, 2026-05-22 New York
       assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant))
 
-      TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo")) // 16:30, 2026-05-22 Tokyo
+      TimeZone.setDefault(TimeZone.getTimeZone("Asia/Tokyo")) // 00:30, 2026-05-23 Tokyo
       assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant))
     } finally {
       TimeZone.setDefault(previous)
@@ -83,9 +83,9 @@ class TimeAccountingTest {
   }
 
   @Test
-  fun leisureCostMinutes_returnsToNormalAfterFourAm() {
-    val startedAt = Instant.parse("2026-05-21T19:40:00Z") // 03:40 Shanghai
-    val endedAt = Instant.parse("2026-05-21T20:20:00Z") // 04:20 Shanghai
+  fun leisureCostMinutes_returnsToNormalAfterFiveAm() {
+    val startedAt = Instant.parse("2026-05-21T20:40:00Z") // 04:40 Shanghai
+    val endedAt = Instant.parse("2026-05-21T21:20:00Z") // 05:20 Shanghai
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
   }
@@ -94,9 +94,17 @@ class TimeAccountingTest {
   fun leisureCostMinutes_usesConfiguredSleepWindowAndMultiplier() {
     val startedAt = Instant.parse("2026-05-21T18:10:00Z") // 02:10 Shanghai
     val endedAt = Instant.parse("2026-05-21T18:30:00Z") // 02:30 Shanghai
-    val rules = FocusWellRules(dayBoundaryHour = 6, sleepProtectionStartHour = 2, sleepProtectionMultiplier = 3.0)
+    val rules = FocusWellRules(dayBoundaryHour = 6, sleepProtectionStartHour = 2, sleepProtectionEndHour = 3, sleepProtectionMultiplier = 3.0)
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai, rules), 0.0001)
+  }
+
+  @Test
+  fun leisureCostMinutes_defaultSleepWindowIsIndependentOfDayBoundary() {
+    val startedAt = Instant.parse("2026-05-21T19:40:00Z") // 03:40 Shanghai
+    val endedAt = Instant.parse("2026-05-21T20:20:00Z") // 04:20 Shanghai
+
+    assertEquals(80.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
   }
 
   @Test

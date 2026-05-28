@@ -1,0 +1,506 @@
+{
+  "formatVersion": 1,
+  "database": {
+    "version": 11,
+    "identityHash": "e94cbbc2efb36e6d0243a76f110eac31",
+    "entities": [
+      {
+        "tableName": "app_state",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` INTEGER NOT NULL, `dailyDate` TEXT NOT NULL, `dailyGrantMinutes` REAL NOT NULL, `dayBoundaryHour` INTEGER NOT NULL, `wakeTargetHour` INTEGER NOT NULL, `sleepProtectionStartHour` INTEGER NOT NULL, `sleepProtectionEndHour` INTEGER NOT NULL, `sleepProtectionMultiplier` REAL NOT NULL, `longSessionRemindersEnabled` INTEGER NOT NULL, `lastCheckInDailyDate` TEXT, `dailyGrantPausedUntilDate` TEXT, `activeKind` TEXT NOT NULL, `activeStartedAt` TEXT, `activeFocusTask` TEXT, `activeFocusType` TEXT, `activeTagId` TEXT, `activeTagName` TEXT, `activeTagMultiplier` REAL, `activeTagArchivedAt` TEXT, `activeReminderSessionId` TEXT, `activeRevision` INTEGER NOT NULL, `activePaused` INTEGER NOT NULL, `activePausedAt` TEXT, `activePausedDurationMillis` INTEGER NOT NULL, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyDate",
+            "columnName": "dailyDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyGrantMinutes",
+            "columnName": "dailyGrantMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dayBoundaryHour",
+            "columnName": "dayBoundaryHour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "wakeTargetHour",
+            "columnName": "wakeTargetHour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepProtectionStartHour",
+            "columnName": "sleepProtectionStartHour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepProtectionEndHour",
+            "columnName": "sleepProtectionEndHour",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sleepProtectionMultiplier",
+            "columnName": "sleepProtectionMultiplier",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "longSessionRemindersEnabled",
+            "columnName": "longSessionRemindersEnabled",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "lastCheckInDailyDate",
+            "columnName": "lastCheckInDailyDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "dailyGrantPausedUntilDate",
+            "columnName": "dailyGrantPausedUntilDate",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeKind",
+            "columnName": "activeKind",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeStartedAt",
+            "columnName": "activeStartedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeFocusTask",
+            "columnName": "activeFocusTask",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeFocusType",
+            "columnName": "activeFocusType",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeTagId",
+            "columnName": "activeTagId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeTagName",
+            "columnName": "activeTagName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeTagMultiplier",
+            "columnName": "activeTagMultiplier",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "activeTagArchivedAt",
+            "columnName": "activeTagArchivedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeReminderSessionId",
+            "columnName": "activeReminderSessionId",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activeRevision",
+            "columnName": "activeRevision",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activePaused",
+            "columnName": "activePaused",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activePausedAt",
+            "columnName": "activePausedAt",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "activePausedDurationMillis",
+            "columnName": "activePausedDurationMillis",
+            "affinity": "INTEGER",
+            "notNull": true
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "tag_configs",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `name` TEXT NOT NULL, `multiplier` REAL NOT NULL, `archivedAt` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "name",
+            "columnName": "name",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "multiplier",
+            "columnName": "multiplier",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archivedAt",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "daily_trackers",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `sortOrder` INTEGER NOT NULL, `label` TEXT NOT NULL, `completed` INTEGER NOT NULL, `rewardMinutes` REAL NOT NULL, `progressLabel` TEXT, `ruleTagName` TEXT, `ruleTargetMinutes` REAL, `wakeTime` TEXT, `archivedAt` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "sortOrder",
+            "columnName": "sortOrder",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "label",
+            "columnName": "label",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "completed",
+            "columnName": "completed",
+            "affinity": "INTEGER",
+            "notNull": true
+          },
+          {
+            "fieldPath": "rewardMinutes",
+            "columnName": "rewardMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "progressLabel",
+            "columnName": "progressLabel",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ruleTagName",
+            "columnName": "ruleTagName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "ruleTargetMinutes",
+            "columnName": "ruleTargetMinutes",
+            "affinity": "REAL"
+          },
+          {
+            "fieldPath": "wakeTime",
+            "columnName": "wakeTime",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archivedAt",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "focus_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `task` TEXT NOT NULL, `result` TEXT NOT NULL, `type` TEXT NOT NULL, `tagName` TEXT, `tagMultiplier` REAL NOT NULL, `typeRate` REAL NOT NULL, `startedAt` TEXT NOT NULL, `endedAt` TEXT NOT NULL, `activeDurationMinutes` REAL NOT NULL, `earnedMinutes` REAL NOT NULL, `dailyDate` TEXT NOT NULL, `deletedAt` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "task",
+            "columnName": "task",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "result",
+            "columnName": "result",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "type",
+            "columnName": "type",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "tagName",
+            "columnName": "tagName",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "tagMultiplier",
+            "columnName": "tagMultiplier",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "typeRate",
+            "columnName": "typeRate",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "activeDurationMinutes",
+            "columnName": "activeDurationMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "earnedMinutes",
+            "columnName": "earnedMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyDate",
+            "columnName": "dailyDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "leisure_records",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `startedAt` TEXT NOT NULL, `endedAt` TEXT NOT NULL, `elapsedMinutes` REAL NOT NULL, `costMinutes` REAL NOT NULL, `dailyDate` TEXT NOT NULL, `deletedAt` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "startedAt",
+            "columnName": "startedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "endedAt",
+            "columnName": "endedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "elapsedMinutes",
+            "columnName": "elapsedMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "costMinutes",
+            "columnName": "costMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "dailyDate",
+            "columnName": "dailyDate",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deletedAt",
+            "columnName": "deletedAt",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ideas",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `text` TEXT NOT NULL, `quadrant` TEXT NOT NULL, `checklistJson` TEXT NOT NULL, `createdAt` TEXT NOT NULL, `updatedAt` TEXT NOT NULL, `archivedAt` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "text",
+            "columnName": "text",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "quadrant",
+            "columnName": "quadrant",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "checklistJson",
+            "columnName": "checklistJson",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "updatedAt",
+            "columnName": "updatedAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "archivedAt",
+            "columnName": "archivedAt",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      },
+      {
+        "tableName": "ledger_entries",
+        "createSql": "CREATE TABLE IF NOT EXISTS `${TABLE_NAME}` (`id` TEXT NOT NULL, `title` TEXT NOT NULL, `deltaMinutes` REAL NOT NULL, `createdAt` TEXT NOT NULL, `note` TEXT, `sourceId` TEXT, PRIMARY KEY(`id`))",
+        "fields": [
+          {
+            "fieldPath": "id",
+            "columnName": "id",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "title",
+            "columnName": "title",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "deltaMinutes",
+            "columnName": "deltaMinutes",
+            "affinity": "REAL",
+            "notNull": true
+          },
+          {
+            "fieldPath": "createdAt",
+            "columnName": "createdAt",
+            "affinity": "TEXT",
+            "notNull": true
+          },
+          {
+            "fieldPath": "note",
+            "columnName": "note",
+            "affinity": "TEXT"
+          },
+          {
+            "fieldPath": "sourceId",
+            "columnName": "sourceId",
+            "affinity": "TEXT"
+          }
+        ],
+        "primaryKey": {
+          "autoGenerate": false,
+          "columnNames": [
+            "id"
+          ]
+        }
+      }
+    ],
+    "setupQueries": [
+      "CREATE TABLE IF NOT EXISTS room_master_table (id INTEGER PRIMARY KEY,identity_hash TEXT)",
+      "INSERT OR REPLACE INTO room_master_table (id,identity_hash) VALUES(42, 'e94cbbc2efb36e6d0243a76f110eac31')"
+    ]
+  }
+}

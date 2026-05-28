@@ -995,10 +995,18 @@ internal fun SettingsScreen(
         SettingsRuleControlRow(
           title = "Sleep start",
           value = rules.sleepProtectionStartHour.hourLabel(),
-          supporting = "Late leisure begins.",
+          supporting = "Ideal sleep window begins.",
           icon = Icons.Rounded.Bedtime,
           onDecrease = { onUpdateRules(rules.copy(sleepProtectionStartHour = rules.sleepProtectionStartHour - 1)) },
           onIncrease = { onUpdateRules(rules.copy(sleepProtectionStartHour = rules.sleepProtectionStartHour + 1)) },
+        )
+        SettingsRuleControlRow(
+          title = "Sleep end",
+          value = rules.sleepProtectionEndHour.hourLabel(),
+          supporting = "Ideal sleep window ends.",
+          icon = Icons.Rounded.LightMode,
+          onDecrease = { onUpdateRules(rules.copy(sleepProtectionEndHour = rules.sleepProtectionEndHour - 1)) },
+          onIncrease = { onUpdateRules(rules.copy(sleepProtectionEndHour = rules.sleepProtectionEndHour + 1)) },
         )
         SettingsRuleControlRow(
           title = "Sleep rate",

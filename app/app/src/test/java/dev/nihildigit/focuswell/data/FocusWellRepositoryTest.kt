@@ -37,7 +37,7 @@ class FocusWellRepositoryTest {
 
   @Test
   fun init_backfillsMissingDailyGrantsAcrossBusinessDays() {
-    clock.instant = Instant.parse("2026-05-23T05:00:00Z")
+    clock.instant = Instant.parse("2026-05-23T13:00:00Z")
     val store =
       InMemoryFocusWellStore(
         FocusWellUiState(
@@ -50,7 +50,7 @@ class FocusWellRepositoryTest {
                 id = "daily-grant-2026-05-20",
                 title = "Daily grant",
                 deltaMinutes = 60.0,
-                createdAt = Instant.parse("2026-05-20T04:00:00Z"),
+                createdAt = Instant.parse("2026-05-20T12:00:00Z"),
               )
             ),
         )
@@ -102,7 +102,7 @@ class FocusWellRepositoryTest {
 
   @Test
   fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() {
-    clock.instant = Instant.parse("2026-05-21T04:00:00Z")
+    clock.instant = Instant.parse("2026-05-21T12:00:00Z")
     val tracker =
       DailyTracker(
         id = "vocabulary",
@@ -178,7 +178,7 @@ class FocusWellRepositoryTest {
       reviewedSegmentCount = 0,
     )
 
-    val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-20" }
+    val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-19" }
     assertEquals("Wake bonus", wakeBonus.title)
     assertEquals(30.0, wakeBonus.deltaMinutes, 0.0001)
   }
@@ -202,7 +202,7 @@ class FocusWellRepositoryTest {
       reviewedSegmentCount = 0,
     )
 
-    assertTrue(repo.state.value.ledger.none { it.id == "wake-bonus-2026-05-20" })
+    assertTrue(repo.state.value.ledger.none { it.id.startsWith("wake-bonus-") })
   }
 
   @Test
@@ -365,7 +365,7 @@ class FocusWellRepositoryTest {
 
   private fun baseState(
     activeMode: ActiveMode = ActiveMode.None,
-    rules: FocusWellRules = FocusWellRules(),
+    rules: FocusWellRules = FocusWellRules(dayBoundaryHour = 4),
     focusRecords: List<FocusRecord> = emptyList(),
     leisureRecords: List<LeisureRecord> = emptyList(),
     ledger: List<LedgerEntry> = emptyList(),

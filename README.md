@@ -8,12 +8,12 @@ It is built for people who need structure without streak pressure. A focus sessi
 
 FocusWell uses configurable accounting rules with these defaults:
 
-- Each day starts at 04:00 in the device's current system time zone.
+- Each day starts at 12:00 in the device's current system time zone.
 - A new FocusWell day grants 60 minutes of leisure reserve.
 - The morning check-in wake target defaults to 05:00 and is configurable in Rules.
 - Focus earns reserve by elapsed active time, session type, and tag multiplier.
 - Leisure spends reserve by elapsed time.
-- Leisure between 21:00 and 04:00 spends at 2x speed.
+- Leisure during the ideal sleep window, 21:00-05:00 by default, spends at 2x speed.
 - Edits and deletes create ledger adjustments instead of hiding history.
 - Reminders use `sessionId + revision` so stale callbacks do not notify old sessions.
 
