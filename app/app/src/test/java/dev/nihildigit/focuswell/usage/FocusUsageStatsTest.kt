@@ -22,7 +22,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_requiresFiveOccupiedMinutes() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -36,7 +36,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_mergesOneMinuteGap() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -56,7 +56,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_keepsChronologicalSlices() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -75,7 +75,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_chargesActualScreenOnTimeWithinOccupiedMinutes() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -113,7 +113,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_excludesLeisureOverlap() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -128,7 +128,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun clusterPhoneUsageIntervals_excludesFocusOverlap() {
-    val start = Instant.parse("2026-05-20T04:00:00Z").toEpochMilli()
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
 
     val segments =
       clusterPhoneUsageIntervals(
@@ -143,7 +143,7 @@ class FocusUsageStatsTest {
 
   @Test
   fun excludedSessionIntervals_includesFocusAndLeisureRecords() {
-    val start = Instant.parse("2026-05-20T04:00:00Z")
+    val start = Instant.parse("2026-05-20T12:00:00Z")
     val focus = focusRecord(start.plusSeconds(60), start.plusSeconds(120))
     val leisure = leisureRecord(start.plusSeconds(180), start.plusSeconds(240))
 
