@@ -91,8 +91,15 @@ object TimeAccounting {
   ): Boolean {
     val normalizedRules = rules.normalized()
     val localTime = instant.atZone(zone).toLocalTime()
-    return !localTime.isBefore(normalizedRules.sleepProtectionStartTime) &&
-      localTime.isBefore(normalizedRules.sleepProtectionEndTime)
+    val sleepProtectionStart = normalizedRules.sleepProtectionStartTime
+    val sleepProtectionEnd = normalizedRules.sleepProtectionEndTime
+    return when {
+      sleepProtectionStart == sleepProtectionEnd -> false
+      sleepProtectionStart.isBefore(sleepProtectionEnd) ->
+        !localTime.isBefore(sleepProtectionStart) && localTime.isBefore(sleepProtectionEnd)
+      else ->
+        !localTime.isBefore(sleepProtectionStart) || localTime.isBefore(sleepProtectionEnd)
+    }
   }
 
   private fun nextSleepProtectionBoundary(
@@ -106,10 +113,18 @@ object TimeAccounting {
     val sleepProtectionStart = rules.sleepProtectionStartTime
     val sleepProtectionEnd = rules.sleepProtectionEndTime
     val boundaryLocal =
-      when {
-        time.isBefore(sleepProtectionStart) -> date.atTime(sleepProtectionStart)
-        time.isBefore(sleepProtectionEnd) -> date.atTime(sleepProtectionEnd)
-        else -> date.plusDays(1).atTime(sleepProtectionStart)
+      if (sleepProtectionStart.isBefore(sleepProtectionEnd)) {
+        when {
+          time.isBefore(sleepProtectionStart) -> date.atTime(sleepProtectionStart)
+          time.isBefore(sleepProtectionEnd) -> date.atTime(sleepProtectionEnd)
+          else -> date.plusDays(1).atTime(sleepProtectionStart)
+        }
+      } else {
+        when {
+          time.isBefore(sleepProtectionEnd) -> date.atTime(sleepProtectionEnd)
+          time.isBefore(sleepProtectionStart) -> date.atTime(sleepProtectionStart)
+          else -> date.plusDays(1).atTime(sleepProtectionEnd)
+        }
       }
     return boundaryLocal.atZone(zone).toInstant()
   }

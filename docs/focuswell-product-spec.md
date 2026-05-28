@@ -22,6 +22,8 @@ screen behavior.
 - Plan defines configurable earning inputs: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Rules define configurable accounting boundaries: daily grant, daily boundary,
   wake target, sleep-protection start, and sleep-protection cost multiplier.
+  The default rhythm protects a 21:00-05:00 sleep plan and treats the quiet
+  early morning as the main deep-work window.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -42,8 +44,8 @@ Default rules:
 ```text
 Daily window: 04:00 -> next day 03:59
 Daily grant: +60 minutes
-Wake target: 09:00
-Late-night leisure cost: 01:00-04:00 costs 2x
+Wake target: 05:00
+Sleep-protection leisure cost: 21:00-04:00 costs 2x
 ```
 
 The app stores canonical local state in Room. JSON export/import remains the
@@ -176,7 +178,7 @@ interactive into
 review segments.
 
 The Income step also settles the wake bonus as an automatic completed item. The
-default target is 09:00 and is configured from Settings Rules. A check-in from
+default target is 05:00 and is configured from Settings Rules. A check-in from
 one hour before the target through thirty minutes after the target earns 30
 minutes. This replaces the previous `Wake by X` daily tracker pattern.
 
