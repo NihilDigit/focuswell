@@ -22,8 +22,8 @@ screen behavior.
 - Plan defines configurable earning inputs: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Rules define configurable accounting boundaries: daily grant, daily boundary,
   wake target, sleep-protection start, and sleep-protection cost multiplier.
-  The default rhythm protects a 21:00-05:00 sleep plan and treats the quiet
-  early morning as the main deep-work window.
+  The default rhythm keeps the FocusWell day boundary at midnight and protects
+  a 23:00-07:00 sleep window.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -45,7 +45,7 @@ Default rules:
 Daily window: 00:00 -> 23:59
 Daily grant: +60 minutes
 Wake target: 05:00
-Sleep-protection leisure cost: 21:00-05:00 costs 2x
+Sleep-protection leisure cost: 23:00-07:00 costs 2x
 ```
 
 The app stores canonical local state in Room. JSON export/import remains the

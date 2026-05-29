@@ -319,7 +319,7 @@ class FocusWellRepositoryTest {
     assertEquals(0.0, repo.state.value.reserveMinutes, 0.0001)
     assertTrue(repo.state.value.activeMode is ActiveMode.Depleted)
     assertEquals(10.0, repo.state.value.leisureRecords.first().costMinutes, 0.0001)
-    assertEquals(Instant.parse("2026-05-20T05:10:00Z"), repo.state.value.leisureRecords.first().endedAt)
+    assertEquals(Instant.parse("2026-05-20T05:05:00Z"), repo.state.value.leisureRecords.first().endedAt)
 
     repo.endDepleted()
 

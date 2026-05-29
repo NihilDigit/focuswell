@@ -774,8 +774,8 @@ class FocusWellRepository internal constructor(
       dailyGrantMinutes = json.optDouble("dailyGrantMinutes", 60.0),
       dayBoundaryHour = json.optInt("dayBoundaryHour", 0),
       wakeTargetHour = json.optInt("wakeTargetHour", 5),
-      sleepProtectionStartHour = json.optInt("sleepProtectionStartHour", 21),
-      sleepProtectionEndHour = json.optInt("sleepProtectionEndHour", 5),
+      sleepProtectionStartHour = json.optInt("sleepProtectionStartHour", 23),
+      sleepProtectionEndHour = json.optInt("sleepProtectionEndHour", 7),
       sleepProtectionMultiplier = json.optDouble("sleepProtectionMultiplier", 2.0),
       longSessionRemindersEnabled = json.optBoolean("longSessionRemindersEnabled", true),
     )

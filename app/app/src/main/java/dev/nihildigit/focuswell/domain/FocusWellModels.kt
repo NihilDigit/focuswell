@@ -54,8 +54,8 @@ data class FocusWellRules(
   val dailyGrantMinutes: Double = 60.0,
   val dayBoundaryHour: Int = 0,
   val wakeTargetHour: Int = 5,
-  val sleepProtectionStartHour: Int = 21,
-  val sleepProtectionEndHour: Int = 5,
+  val sleepProtectionStartHour: Int = 23,
+  val sleepProtectionEndHour: Int = 7,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
 ) {

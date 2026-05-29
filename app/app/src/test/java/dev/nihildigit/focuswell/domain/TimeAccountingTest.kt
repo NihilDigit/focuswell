@@ -83,16 +83,16 @@ class TimeAccountingTest {
 
   @Test
   fun leisureCostMinutes_splitsAtSleepProtectionStart() {
-    val startedAt = Instant.parse("2026-05-21T12:40:00Z") // 20:40 Shanghai
-    val endedAt = Instant.parse("2026-05-21T13:20:00Z") // 21:20 Shanghai
+    val startedAt = Instant.parse("2026-05-21T14:40:00Z") // 22:40 Shanghai
+    val endedAt = Instant.parse("2026-05-21T15:20:00Z") // 23:20 Shanghai
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
   }
 
   @Test
-  fun leisureCostMinutes_returnsToNormalAfterFiveAm() {
-    val startedAt = Instant.parse("2026-05-21T20:40:00Z") // 04:40 Shanghai
-    val endedAt = Instant.parse("2026-05-21T21:20:00Z") // 05:20 Shanghai
+  fun leisureCostMinutes_returnsToNormalAfterSevenAm() {
+    val startedAt = Instant.parse("2026-05-21T22:40:00Z") // 06:40 Shanghai
+    val endedAt = Instant.parse("2026-05-21T23:20:00Z") // 07:20 Shanghai
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
   }
@@ -117,8 +117,8 @@ class TimeAccountingTest {
   @Test
   fun leisureCostMinutes_defaultZoneUsesSystemSleepWindow() {
     val previous = TimeZone.getDefault()
-    val startedAt = Instant.parse("2026-05-22T00:40:00Z") // 20:40 New York
-    val endedAt = Instant.parse("2026-05-22T01:20:00Z") // 21:20 New York
+    val startedAt = Instant.parse("2026-05-22T02:40:00Z") // 22:40 New York
+    val endedAt = Instant.parse("2026-05-22T03:20:00Z") // 23:20 New York
 
     try {
       TimeZone.setDefault(TimeZone.getTimeZone("America/New_York"))
@@ -131,20 +131,20 @@ class TimeAccountingTest {
 
   @Test
   fun instantWhenLeisureCostReaches_splitsAcrossSleepProtectionStart() {
-    val startedAt = Instant.parse("2026-05-21T12:40:00Z") // 20:40 Shanghai
+    val startedAt = Instant.parse("2026-05-21T14:40:00Z") // 22:40 Shanghai
 
     assertEquals(
-      Instant.parse("2026-05-21T13:20:00Z"), // 21:20 Shanghai
+      Instant.parse("2026-05-21T15:20:00Z"), // 23:20 Shanghai
       TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes = 60.0, zone = shanghai),
     )
   }
 
   @Test
   fun instantWhenLeisureCostReaches_usesDoubleRateDuringSleepProtection() {
-    val startedAt = Instant.parse("2026-05-21T13:10:00Z") // 21:10 Shanghai
+    val startedAt = Instant.parse("2026-05-21T15:10:00Z") // 23:10 Shanghai
 
     assertEquals(
-      Instant.parse("2026-05-21T13:40:00Z"), // 21:40 Shanghai
+      Instant.parse("2026-05-21T15:40:00Z"), // 23:40 Shanghai
       TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes = 60.0, zone = shanghai),
     )
   }

@@ -13,7 +13,7 @@ FocusWell uses configurable accounting rules with these defaults:
 - The morning check-in wake target defaults to 05:00 and is configurable in Rules.
 - Focus earns reserve by elapsed active time, session type, and tag multiplier.
 - Leisure spends reserve by elapsed time.
-- Leisure during the ideal sleep window, 21:00-05:00 by default, spends at 2x speed.
+- Leisure during the ideal sleep window, 23:00-07:00 by default, spends at 2x speed.
 - Edits and deletes create ledger adjustments instead of hiding history.
 - Reminders use `sessionId + revision` so stale callbacks do not notify old sessions.
 
