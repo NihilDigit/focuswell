@@ -23,6 +23,10 @@ Rules are user-adjustable after install. Tags and trackers are part of the user'
 
 The product concept and accounting boundaries live in [docs/focuswell-product-spec.md](docs/focuswell-product-spec.md). Exact behavior should be checked against the current code and tests. UI rules live in [DESIGN.md](DESIGN.md).
 
+## License
+
+FocusWell is licensed under the Mozilla Public License 2.0. See [LICENSE](LICENSE).
+
 ## Android App
 
 The app is written in Kotlin and Jetpack Compose. It includes:
