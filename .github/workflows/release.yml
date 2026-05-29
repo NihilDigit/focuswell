@@ -3,7 +3,7 @@ name: Release
 on:
   push:
     tags:
-      - "26.5.*"
+      - "*.*.*"
 
 permissions:
   contents: write
@@ -14,6 +14,21 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Validate release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          tag="$GITHUB_REF_NAME"
+          current_prefix="$(TZ=Asia/Shanghai date '+%y.%-m.')"
+          if [[ ! "$tag" =~ ^[0-9]{2}\.[0-9]{1,2}\.[0-9]+$ ]]; then
+            echo "Release tags must use YY.M.patch, got '$tag'." >&2
+            exit 1
+          fi
+          if [[ "$tag" != "$current_prefix"* ]]; then
+            echo "Release tag '$tag' does not match current UTC+8 month prefix '$current_prefix'." >&2
+            exit 1
+          fi
+
       - name: Configure Git defaults
         run: git config --global init.defaultBranch main
 

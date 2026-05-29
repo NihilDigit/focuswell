@@ -92,6 +92,6 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 ## Release
 
-Releases are manual-tag driven. Use a time-based tag such as `26.5.16`, wait for CI to create the GitHub Release and attach APKs, then edit the Release title and notes by hand.
+Releases are manual-tag driven. Use a `YY.M.patch` tag based on the current UTC+8 date, such as `26.5.18`. Release CI accepts three-part numeric tags and verifies that the first two parts match the current UTC+8 year and month. After CI creates the GitHub Release and attaches APKs, edit the Release title and notes by hand.
 
-The current public release is [26.5.16](https://github.com/NihilDigit/focuswell/releases/tag/26.5.16). It defaults to a midnight day boundary, 05:00 wake target, and 21:00-05:00 sleep protection for the early-morning focus rhythm.
+The current public release is [26.5.18](https://github.com/NihilDigit/focuswell/releases/tag/26.5.18).
