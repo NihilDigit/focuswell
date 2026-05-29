@@ -46,6 +46,8 @@ export type ReminderMessage = {
 
 export type ReminderDeliveryTelemetry = {
   reminderId: string;
+  sessionId: string;
+  revision: number;
   kind: ReminderKind;
   dueAtUtc: string;
   firedAtUtc: string;

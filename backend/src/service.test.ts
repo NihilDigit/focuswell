@@ -108,6 +108,48 @@ test("older revision callback is skipped after rescheduling same session", async
   expect(fcm.sent).toEqual([]);
 });
 
+test("scheduling a new session cancels stale pending reminders for the same device", async () => {
+  const store = new MemoryReminderStore();
+  const qstash = new FakeQStashClient();
+  const fcm = new FakeFcmClient();
+  const service = new ReminderService(store, qstash, fcm);
+
+  await service.registerDevice({
+    deviceId: "device-1",
+    installSecretHash: await sha256Hex("secret-1"),
+    fcmToken: "token-1",
+    nowUtc: new Date().toISOString(),
+  });
+  const leisurePlans = await service.schedulePlan({
+    deviceId: "device-1",
+    installSecret: "secret-1",
+    sessionId: "leisure-1",
+    revision: 1,
+    reminders: [{ kind: "leisure_5m_left", dueAtUtc: new Date(Date.now() + 60_000).toISOString() }],
+  });
+  const leisurePlan = leisurePlans[0];
+  if (!leisurePlan) throw new Error("expected scheduled plan");
+
+  await service.schedulePlan({
+    deviceId: "device-1",
+    installSecret: "secret-1",
+    sessionId: "focus-1",
+    revision: 1,
+    reminders: [{ kind: "focus_duration_1h", dueAtUtc: new Date(Date.now() + 120_000).toISOString() }],
+  });
+  const result = await service.fire({
+    deviceId: "device-1",
+    sessionId: "leisure-1",
+    revision: 1,
+    reminderId: leisurePlan.reminderId,
+  });
+
+  expect(qstash.cancelled).toContain(`qstash-${leisurePlan.reminderId}`);
+  expect(result).toBe("skipped");
+  expect(fcm.sent).toEqual([]);
+  expect((await store.getReminder(leisurePlan.reminderId))?.status).toBe("cancelled");
+});
+
 test("pending callback sends the matching reminder message and marks plan fired", async () => {
   const store = new MemoryReminderStore();
   const qstash = new FakeQStashClient();
@@ -148,6 +190,8 @@ test("pending callback sends the matching reminder message and marks plan fired"
       },
       telemetry: {
         reminderId: plan.reminderId,
+        sessionId: "session-1",
+        revision: 1,
         kind: "leisure_1m_left",
         dueAtUtc: plan.dueAtUtc,
         firedAtUtc: expect.any(String),

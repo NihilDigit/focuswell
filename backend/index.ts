@@ -1,12 +1,16 @@
 import {
   parseCancelSession,
+  parseCloudSnapshot,
+  parseOAuthExchange,
   parseRegisterDevice,
   parseReminderPayload,
   parseSchedulePlan,
 } from "./src/http";
 import { createReminderService } from "./src/runtime";
+import { createSyncService, metadata } from "./src/sync-service";
 
 const service = createReminderService();
+const syncService = createSyncService();
 
 export default async function handler(request: {
   method?: string;
@@ -45,6 +49,39 @@ export default async function handler(request: {
       requirePost(request);
       await service.cancelSession(parseCancelSession(await readJson(request)));
       send(response, 200, { ok: true });
+      return;
+    }
+
+    if (path === "/sync/oauth/config") {
+      if (!syncService) throw new Error("sync-not-configured");
+      send(response, 200, { ok: true, ...syncService.config() });
+      return;
+    }
+
+    if (path === "/sync/oauth/exchange") {
+      if (!syncService) throw new Error("sync-not-configured");
+      requirePost(request);
+      const result = await syncService.exchangeCode(parseOAuthExchange(await readJson(request)).code);
+      send(response, 200, { ok: true, ...result });
+      return;
+    }
+
+    if (path === "/sync/snapshot" && request.method === "GET") {
+      if (!syncService) throw new Error("sync-not-configured");
+      const result = await syncService.getSnapshot(bearerToken(request));
+      send(response, 200, {
+        ok: true,
+        user: result.user,
+        snapshot: result.snapshot ? { metadata: metadata(result.snapshot), payload: result.snapshot.payload } : null,
+      });
+      return;
+    }
+
+    if (path === "/sync/snapshot") {
+      if (!syncService) throw new Error("sync-not-configured");
+      requirePost(request);
+      const result = await syncService.putSnapshot(bearerToken(request), parseCloudSnapshot(await readJson(request)));
+      send(response, 200, { ok: true, user: result.user, metadata: metadata(result.snapshot) });
       return;
     }
 
@@ -121,6 +158,13 @@ function header(request: { headers?: Record<string, string | string[] | undefine
   const value = request.headers?.[name] ?? request.headers?.[name.toLowerCase()];
   if (Array.isArray(value)) return value[0] ?? null;
   return value ?? null;
+}
+
+function bearerToken(request: { headers?: Record<string, string | string[] | undefined> }): string {
+  const authorization = header(request, "authorization");
+  const prefix = "Bearer ";
+  if (!authorization?.startsWith(prefix)) throw new Error("unauthorized");
+  return authorization.slice(prefix.length).trim();
 }
 
 function absoluteUrl(request: { url?: string; headers?: Record<string, string | string[] | undefined> }): string {

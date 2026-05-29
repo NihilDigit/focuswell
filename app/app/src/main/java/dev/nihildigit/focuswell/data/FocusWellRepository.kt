@@ -400,7 +400,7 @@ class FocusWellRepository internal constructor(
 
   fun clearAllData() {
     store.clear()
-    val seeded = seedState()
+    val seeded = seedState().copy(stateUpdatedAt = now())
     store.persistChange(previous = null, next = seeded)
     _state.value = seeded
     ensureDailyGrants()
@@ -475,9 +475,12 @@ class FocusWellRepository internal constructor(
 
   fun exportJson(): String = stateToJson(_state.value).toString(2)
 
-  fun importJson(raw: String): Boolean {
+  fun importJson(raw: String, touchUpdatedAt: Boolean = true): Boolean {
     val imported = runCatching { jsonToState(JSONObject(raw)) }.getOrNull() ?: return false
-    val normalized = imported.withLedgerBackedReserve()
+    val normalized =
+      imported
+        .let { if (touchUpdatedAt) it.copy(stateUpdatedAt = now()) else it }
+        .withLedgerBackedReserve()
     store.clear()
     store.persistChange(previous = null, next = normalized)
     _state.value = normalized
@@ -649,10 +652,16 @@ class FocusWellRepository internal constructor(
 
   private fun mutate(transform: (FocusWellUiState) -> FocusWellUiState) {
     _state.update { current ->
-      transform(current)
-        .withComputedTrackers()
-        .withLedgerBackedReserve()
-        .also { store.persistChange(previous = current, next = it) }
+      val transformed = transform(current)
+      if (transformed == current) {
+        current
+      } else {
+        transformed
+          .copy(stateUpdatedAt = now())
+          .withComputedTrackers()
+          .withLedgerBackedReserve()
+          .also { store.persistChange(previous = current, next = it) }
+      }
     }
   }
 
@@ -666,6 +675,7 @@ class FocusWellRepository internal constructor(
     FocusWellUiState(
       reserveMinutes = 0.0,
       dailyDate = TimeAccounting.dailyDate(now()).toString(),
+      stateUpdatedAt = now(),
       tags = defaultTags,
       trackers = defaultTrackers,
       focusRecords = emptyList(),
@@ -713,6 +723,7 @@ class FocusWellRepository internal constructor(
 
   private fun stateToJson(state: FocusWellUiState): JSONObject =
     JSONObject()
+      .put("stateUpdatedAtUtc", state.stateUpdatedAt.toString())
       .put("reserveMinutes", state.reserveMinutes)
       .put("dailyDate", state.dailyDate)
       .put("rules", rulesToJson(state.rules))
@@ -730,6 +741,7 @@ class FocusWellRepository internal constructor(
     FocusWellUiState(
       reserveMinutes = json.optDouble("reserveMinutes", 0.0),
       dailyDate = json.optString("dailyDate", TimeAccounting.dailyDate(now()).toString()),
+      stateUpdatedAt = json.optNullableInstant("stateUpdatedAtUtc") ?: now(),
       rules = json.optJSONObject("rules")?.let(::jsonToRules)?.normalized() ?: FocusWellRules(),
       activeMode = jsonToActiveMode(json.optJSONObject("activeMode")),
       tags = json.optJSONArray("tags")?.mapObjects(::jsonToTag).orEmpty().ifEmpty { defaultTags },

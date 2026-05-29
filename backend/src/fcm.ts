@@ -72,6 +72,8 @@ export function fcmRequestBody(token: string, message: ReminderMessage, telemetr
         title: message.title,
         body: message.body,
         reminderId: telemetry.reminderId,
+        sessionId: telemetry.sessionId,
+        revision: String(telemetry.revision),
         kind: telemetry.kind,
         dueAtUtc: telemetry.dueAtUtc,
         firedAtUtc: telemetry.firedAtUtc,

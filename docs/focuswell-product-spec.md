@@ -268,6 +268,16 @@ The current Room cutover is intentionally destructive with respect to old
 SharedPreferences state. There was no meaningful production user data to
 migrate. JSON import/export is still supported for explicit backup transport.
 
+Settings also offers manual cloud sync for the same JSON backup payload.
+GitHub OAuth identifies the user, and the backend stores one plain JSON
+snapshot per GitHub account. Sync compares the local ledger update timestamp
+with the cloud snapshot timestamp and asks the user before uploading local data
+or restoring the cloud copy.
+
+Cloud sync is explicit backup transport, not collaborative storage. FocusWell
+does not automatically merge divergent ledgers or continuously sync in the
+background.
+
 ## Reminders
 
 FocusWell uses the backend only for reminder delivery, not as the source of
@@ -284,6 +294,11 @@ App = timestamp-based settlement and UI
 Reminder callbacks use `sessionId + revision` to avoid notifying stale sessions.
 FCM payloads are data-only high-priority Android messages; the Android app
 renders local notifications.
+
+When a device schedules a new remote session, the backend cancels remaining
+pending reminders for older sessions on that device. If a stale FCM still
+arrives, the Android app compares it with the local active session, drops it,
+and asks the backend to cancel that remote session.
 
 Focus and leisure sessions may also schedule persistent check-ins at 1 hour, 3
 hours, and 5 hours. These reminders are enabled by default and can be disabled
@@ -326,8 +341,8 @@ identity so old callbacks become stale.
 
 These are not part of the current implementation:
 
-- account sync
 - cross-device ledger merging
+- automatic background account sync
 - automatic Android app blocking
 - syncing browser extension state into the Android ledger
 - interval-level pause audit

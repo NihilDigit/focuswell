@@ -2,6 +2,7 @@ package dev.nihildigit.focuswell.ui.main
 
 import android.Manifest
 import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.provider.Settings
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -280,19 +281,29 @@ internal fun tabularNumbers(style: TextStyle): TextStyle = style.copy(fontFeatur
 fun MainScreen(
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
+  syncRedirectUri: Uri? = null,
+  onSyncRedirectConsumed: () -> Unit = {},
   modifier: Modifier = Modifier,
   viewModel: MainScreenViewModel = viewModel(),
 ) {
   val state by viewModel.uiState.collectAsStateWithLifecycle()
   val updateState by viewModel.updateState.collectAsStateWithLifecycle()
+  val cloudSyncState by viewModel.cloudSyncState.collectAsStateWithLifecycle()
   val pushRegistrationState by viewModel.pushRegistrationState.collectAsStateWithLifecycle()
   val morningCheckInState by viewModel.morningCheckInState.collectAsStateWithLifecycle()
   LaunchedEffect(state.dailyDate, state.lastCheckInDailyDate) {
     viewModel.loadMorningCheckInIfNeeded()
   }
+  LaunchedEffect(syncRedirectUri) {
+    syncRedirectUri?.let {
+      viewModel.handleCloudSyncRedirect(it)
+      onSyncRedirectConsumed()
+    }
+  }
   MainScreen(
     state = state,
     updateState = updateState,
+    cloudSyncState = cloudSyncState,
     pushRegistrationState = pushRegistrationState,
     morningCheckInState = morningCheckInState,
     onDestination = viewModel::selectDestination,
@@ -308,6 +319,12 @@ fun MainScreen(
     onExportJson = viewModel::exportJson,
     onImportJson = viewModel::importJson,
     onDismissImportError = viewModel::dismissImportError,
+    onStartCloudSync = viewModel::startCloudSync,
+    onCloudSyncUpload = viewModel::chooseCloudSyncUpload,
+    onCloudSyncRestore = viewModel::chooseCloudSyncRestore,
+    onDismissCloudSyncDecision = viewModel::dismissCloudSyncDecision,
+    onDismissCloudSyncMessage = viewModel::dismissCloudSyncMessage,
+    onSignOutCloudSync = viewModel::signOutCloudSync,
     onClearAllData = viewModel::clearAllData,
     onDeleteFocusRecord = viewModel::deleteFocusRecord,
     onUpdateFocusRecord = viewModel::updateFocusRecord,
@@ -342,6 +359,7 @@ fun MainScreen(
 internal fun MainScreen(
   state: FocusWellUiState,
   updateState: AppUpdateUiState,
+  cloudSyncState: CloudSyncUiState,
   pushRegistrationState: PushRegistrationUiState,
   morningCheckInState: MorningCheckInUiState,
   onDestination: (Destination) -> Unit,
@@ -357,6 +375,12 @@ internal fun MainScreen(
   onExportJson: () -> String,
   onImportJson: (String) -> Unit,
   onDismissImportError: () -> Unit,
+  onStartCloudSync: () -> Unit,
+  onCloudSyncUpload: () -> Unit,
+  onCloudSyncRestore: () -> Unit,
+  onDismissCloudSyncDecision: () -> Unit,
+  onDismissCloudSyncMessage: () -> Unit,
+  onSignOutCloudSync: () -> Unit,
   onClearAllData: () -> Unit,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
@@ -468,6 +492,13 @@ internal fun MainScreen(
             onArchiveIdea = onArchiveIdea,
             onExportJson = onExportJson,
             onImportJson = onImportJson,
+            cloudSyncState = cloudSyncState,
+            onStartCloudSync = onStartCloudSync,
+            onCloudSyncUpload = onCloudSyncUpload,
+            onCloudSyncRestore = onCloudSyncRestore,
+            onDismissCloudSyncDecision = onDismissCloudSyncDecision,
+            onDismissCloudSyncMessage = onDismissCloudSyncMessage,
+            onSignOutCloudSync = onSignOutCloudSync,
             onClearAllData = onClearAllData,
             onAddTag = onAddTag,
             onArchiveTag = onArchiveTag,
@@ -1438,6 +1469,7 @@ private fun Instant.shortLocalTime(): String =
 private fun DestinationContent(
   state: FocusWellUiState,
   updateState: AppUpdateUiState,
+  cloudSyncState: CloudSyncUiState,
   pushRegistrationState: PushRegistrationUiState,
   onToggleTracker: (String) -> Unit,
   onStartFocusClick: () -> Unit,
@@ -1456,6 +1488,12 @@ private fun DestinationContent(
   onArchiveIdea: (String) -> Unit,
   onExportJson: () -> String,
   onImportJson: (String) -> Unit,
+  onStartCloudSync: () -> Unit,
+  onCloudSyncUpload: () -> Unit,
+  onCloudSyncRestore: () -> Unit,
+  onDismissCloudSyncDecision: () -> Unit,
+  onDismissCloudSyncMessage: () -> Unit,
+  onSignOutCloudSync: () -> Unit,
   onClearAllData: () -> Unit,
   onAddTag: (String, Double) -> Unit,
   onArchiveTag: (String) -> Unit,
@@ -1533,7 +1571,14 @@ private fun DestinationContent(
           onClearAllData = onClearAllData,
           onUpdateRules = onUpdateRules,
           updateState = updateState,
+          cloudSyncState = cloudSyncState,
           pushRegistrationState = pushRegistrationState,
+          onStartCloudSync = onStartCloudSync,
+          onCloudSyncUpload = onCloudSyncUpload,
+          onCloudSyncRestore = onCloudSyncRestore,
+          onDismissCloudSyncDecision = onDismissCloudSyncDecision,
+          onDismissCloudSyncMessage = onDismissCloudSyncMessage,
+          onSignOutCloudSync = onSignOutCloudSync,
           onCheckUpdate = onCheckUpdate,
           onDownloadUpdate = onDownloadUpdate,
           onInstallUpdate = onInstallUpdate,
@@ -1914,6 +1959,7 @@ internal fun MainScreenPreview() {
     MainScreen(
       state = FocusWellUiState(),
       updateState = AppUpdateUiState(),
+      cloudSyncState = CloudSyncUiState(),
       pushRegistrationState = PushRegistrationUiState(status = PushRegistrationStatus(deviceId = "preview", hasFcmToken = false)),
       morningCheckInState = MorningCheckInUiState(),
       onDestination = {},
@@ -1929,6 +1975,12 @@ internal fun MainScreenPreview() {
       onExportJson = { "" },
       onImportJson = {},
       onDismissImportError = {},
+      onStartCloudSync = {},
+      onCloudSyncUpload = {},
+      onCloudSyncRestore = {},
+      onDismissCloudSyncDecision = {},
+      onDismissCloudSyncMessage = {},
+      onSignOutCloudSync = {},
       onClearAllData = {},
       onDeleteFocusRecord = {},
       onUpdateFocusRecord = { _, _, _ -> },

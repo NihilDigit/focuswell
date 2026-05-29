@@ -38,13 +38,7 @@ export class ReminderService {
     reminders: Array<{ kind: ReminderKind; dueAtUtc: string }>;
   }): Promise<ReminderPlan[]> {
     const device = await this.authorize(args.deviceId, args.installSecret);
-    const oldPlans = await this.store.listPendingForSession(args.deviceId, args.sessionId);
-    await Promise.all(
-      oldPlans.map(async (plan) => {
-        if (plan.qstashMessageId) await this.qstash.cancel(plan.qstashMessageId);
-        await this.store.updateReminder({ ...plan, status: "cancelled" });
-      }),
-    );
+    await this.cancelPlans(await this.store.listPendingForDevice(args.deviceId), "schedule_replace");
 
     const plans: ReminderPlan[] = [];
     for (const reminder of args.reminders) {
@@ -78,13 +72,7 @@ export class ReminderService {
     sessionId: string;
   }): Promise<void> {
     await this.authorize(args.deviceId, args.installSecret);
-    const plans = await this.store.listPendingForSession(args.deviceId, args.sessionId);
-    await Promise.all(
-      plans.map(async (plan) => {
-        if (plan.qstashMessageId) await this.qstash.cancel(plan.qstashMessageId);
-        await this.store.updateReminder({ ...plan, status: "cancelled" });
-      }),
-    );
+    await this.cancelPlans(await this.store.listPendingForSession(args.deviceId, args.sessionId), "session_cancel");
   }
 
   async fire(payload: ReminderPayload): Promise<"sent" | "skipped" | "expired" | "disabled"> {
@@ -117,6 +105,8 @@ export class ReminderService {
     const firedAtUtc = new Date().toISOString();
     const result = await this.fcm.send(device.fcmToken, messageFor(plan.kind), {
       reminderId: plan.reminderId,
+      sessionId: plan.sessionId,
+      revision: plan.revision,
       kind: plan.kind,
       dueAtUtc: plan.dueAtUtc,
       firedAtUtc,
@@ -147,5 +137,23 @@ export class ReminderService {
       throw new Error("unauthorized");
     }
     return device;
+  }
+
+  private async cancelPlans(plans: ReminderPlan[], reason: "schedule_replace" | "session_cancel"): Promise<void> {
+    await Promise.all(
+      plans.map(async (plan) => {
+        if (plan.qstashMessageId) await this.qstash.cancel(plan.qstashMessageId);
+        await this.store.updateReminder({ ...plan, status: "cancelled" });
+        console.log(
+          "reminder_cancel",
+          JSON.stringify({
+            reminderId: plan.reminderId,
+            sessionId: plan.sessionId,
+            kind: plan.kind,
+            reason,
+          }),
+        );
+      }),
+    );
   }
 }

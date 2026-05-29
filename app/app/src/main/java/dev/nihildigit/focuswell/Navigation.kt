@@ -1,5 +1,6 @@
 package dev.nihildigit.focuswell
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
@@ -11,6 +12,8 @@ import dev.nihildigit.focuswell.ui.main.MainScreen
 fun MainNavigation(
   themeMode: ThemeMode,
   onThemeModeChange: (ThemeMode) -> Unit,
+  syncRedirectUri: Uri? = null,
+  onSyncRedirectConsumed: () -> Unit = {},
 ) {
   val backStack = rememberNavBackStack(Main)
 
@@ -20,7 +23,12 @@ fun MainNavigation(
     entryProvider =
       entryProvider {
         entry<Main> {
-          MainScreen(themeMode = themeMode, onThemeModeChange = onThemeModeChange)
+          MainScreen(
+            themeMode = themeMode,
+            onThemeModeChange = onThemeModeChange,
+            syncRedirectUri = syncRedirectUri,
+            onSyncRedirectConsumed = onSyncRedirectConsumed,
+          )
         }
       },
   )

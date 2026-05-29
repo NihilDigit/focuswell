@@ -6,6 +6,7 @@ export interface ReminderStore {
   putReminder(plan: ReminderPlan): Promise<void>;
   getReminder(reminderId: string): Promise<ReminderPlan | null>;
   listPendingForSession(deviceId: string, sessionId: string): Promise<ReminderPlan[]>;
+  listPendingForDevice(deviceId: string): Promise<ReminderPlan[]>;
   updateReminder(plan: ReminderPlan): Promise<void>;
 }
 
@@ -35,6 +36,12 @@ export class MemoryReminderStore implements ReminderStore {
         plan.deviceId === deviceId &&
         plan.sessionId === sessionId &&
         plan.status === "pending",
+    );
+  }
+
+  async listPendingForDevice(deviceId: string): Promise<ReminderPlan[]> {
+    return Array.from(this.reminders.values()).filter(
+      (plan) => plan.deviceId === deviceId && plan.status === "pending",
     );
   }
 

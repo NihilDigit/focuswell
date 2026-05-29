@@ -211,6 +211,7 @@ data class FocusWellUiState(
   val destination: Destination = Destination.Today,
   val reserveMinutes: Double = 0.0,
   val dailyDate: String = "",
+  val stateUpdatedAt: Instant = Instant.EPOCH,
   val rules: FocusWellRules = FocusWellRules(),
   val activeMode: ActiveMode = ActiveMode.None,
   val tags: List<TagConfig> = defaultTags,

@@ -1,5 +1,7 @@
 package dev.nihildigit.focuswell
 
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -19,8 +21,11 @@ import dev.nihildigit.focuswell.theme.loadThemeMode
 import dev.nihildigit.focuswell.theme.saveThemeMode
 
 class MainActivity : ComponentActivity() {
+  private var syncRedirectUri by mutableStateOf<Uri?>(null)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
+    syncRedirectUri = intent?.data
     ensureNotificationChannel(this)
 
     enableEdgeToEdge()
@@ -35,9 +40,17 @@ class MainActivity : ComponentActivity() {
               themeMode = mode
               saveThemeMode(this@MainActivity, mode)
             },
+            syncRedirectUri = syncRedirectUri,
+            onSyncRedirectConsumed = { syncRedirectUri = null },
           )
         }
       }
     }
+  }
+
+  override fun onNewIntent(intent: Intent) {
+    super.onNewIntent(intent)
+    setIntent(intent)
+    syncRedirectUri = intent.data
   }
 }

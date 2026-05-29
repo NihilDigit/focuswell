@@ -84,6 +84,7 @@ import androidx.compose.material.icons.rounded.Archive
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.BrightnessAuto
 import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.DarkMode
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
@@ -890,7 +891,14 @@ internal fun SettingsScreen(
   onClearAllData: () -> Unit,
   onUpdateRules: (FocusWellRules) -> Unit,
   updateState: AppUpdateUiState,
+  cloudSyncState: CloudSyncUiState,
   pushRegistrationState: PushRegistrationUiState,
+  onStartCloudSync: () -> Unit,
+  onCloudSyncUpload: () -> Unit,
+  onCloudSyncRestore: () -> Unit,
+  onDismissCloudSyncDecision: () -> Unit,
+  onDismissCloudSyncMessage: () -> Unit,
+  onSignOutCloudSync: () -> Unit,
   onCheckUpdate: () -> Unit,
   onDownloadUpdate: () -> Unit,
   onInstallUpdate: () -> Unit,
@@ -1041,6 +1049,23 @@ internal fun SettingsScreen(
       CalmPanel {
         Text("Data", style = MaterialTheme.typography.titleLarge)
         SettingsDataActionRow(
+          title = "Sync with Cloud",
+          supporting =
+            when {
+              cloudSyncState.syncing -> "Checking GitHub cloud backup."
+              cloudSyncState.userLogin != null -> "Signed in as ${cloudSyncState.userLogin}."
+              else -> "Use GitHub to store one cloud JSON backup."
+            },
+          icon = Icons.Rounded.CloudUpload,
+          actionLabel = if (cloudSyncState.syncing) "Syncing" else "Sync",
+          onClick = onStartCloudSync,
+        )
+        if (cloudSyncState.userLogin != null) {
+          TextButton(onClick = onSignOutCloudSync, enabled = !cloudSyncState.syncing) {
+            Text("Sign out of cloud sync")
+          }
+        }
+        SettingsDataActionRow(
           title = "Export",
           supporting = "Save a complete JSON backup.",
           icon = Icons.Rounded.Download,
@@ -1127,6 +1152,61 @@ internal fun SettingsScreen(
     )
   }
 
+  cloudSyncState.pendingDecision?.let { decision ->
+    AlertDialog(
+      onDismissRequest = onDismissCloudSyncDecision,
+      title = {
+        Text(
+          when (decision.kind) {
+            CloudSyncDecisionKind.Upload -> "Upload local backup?"
+            CloudSyncDecisionKind.Restore -> "Restore cloud backup?"
+            CloudSyncDecisionKind.Choose -> "Choose sync direction"
+          }
+        )
+      },
+      text = {
+        Text(
+          "Local updated: ${decision.localUpdatedAt}\nCloud updated: ${decision.cloudMetadata.updatedAtUtc}\nCloud app: ${decision.cloudMetadata.appVersion}"
+        )
+      },
+      confirmButton = {
+        TextButton(
+          onClick =
+            when (decision.kind) {
+              CloudSyncDecisionKind.Upload -> onCloudSyncUpload
+              CloudSyncDecisionKind.Restore -> onCloudSyncRestore
+              CloudSyncDecisionKind.Choose -> onCloudSyncUpload
+            },
+        ) {
+          Text(
+            when (decision.kind) {
+              CloudSyncDecisionKind.Upload -> "Upload"
+              CloudSyncDecisionKind.Restore -> "Restore"
+              CloudSyncDecisionKind.Choose -> "Upload local"
+            }
+          )
+        }
+      },
+      dismissButton = {
+        Row {
+          if (decision.kind == CloudSyncDecisionKind.Choose) {
+            TextButton(onClick = onCloudSyncRestore) { Text("Restore cloud") }
+          }
+          TextButton(onClick = onDismissCloudSyncDecision) { Text("Cancel") }
+        }
+      },
+    )
+  }
+
+  if (cloudSyncState.message != null || cloudSyncState.error != null) {
+    AlertDialog(
+      onDismissRequest = onDismissCloudSyncMessage,
+      title = { Text(if (cloudSyncState.error == null) "Cloud sync" else "Cloud sync failed") },
+      text = { Text(cloudSyncState.error ?: cloudSyncState.message.orEmpty()) },
+      confirmButton = { TextButton(onClick = onDismissCloudSyncMessage) { Text("Done") } },
+    )
+  }
+
 }
 
 @Composable
@@ -1189,4 +1269,5 @@ internal fun ClearAllDataScreen(
       }
     }
   }
+
 }

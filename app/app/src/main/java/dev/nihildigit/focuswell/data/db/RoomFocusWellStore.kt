@@ -30,6 +30,7 @@ internal class RoomFocusWellStore(
       val appState = dao.appState() ?: return@runBlocking null
       FocusWellUiState(
         dailyDate = appState.dailyDate,
+        stateUpdatedAt = Instant.parse(appState.stateUpdatedAt),
         rules =
           FocusWellRules(
             dailyGrantMinutes = appState.dailyGrantMinutes,
@@ -197,6 +198,7 @@ private fun FocusWellUiState.baseAppStateEntity(
   val normalizedRules = rules.normalized()
   return AppStateEntity(
     dailyDate = dailyDate,
+    stateUpdatedAt = stateUpdatedAt.toString(),
     dailyGrantMinutes = normalizedRules.dailyGrantMinutes,
     dayBoundaryHour = normalizedRules.dayBoundaryHour,
     wakeTargetHour = normalizedRules.wakeTargetHour,

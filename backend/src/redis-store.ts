@@ -30,6 +30,31 @@ export class RedisReminderStore implements ReminderStore {
     return plans.filter((plan): plan is ReminderPlan => plan !== null && plan.status === "pending");
   }
 
+  async listPendingForDevice(deviceId: string): Promise<ReminderPlan[]> {
+    let cursor = "0";
+    const sessionKeys: string[] = [];
+    do {
+      const result = await this.command<[string, string[]]>([
+        "SCAN",
+        cursor,
+        "MATCH",
+        `${sessionKeyPrefix(deviceId)}*`,
+        "COUNT",
+        100,
+      ]);
+      cursor = result[0];
+      sessionKeys.push(...result[1]);
+    } while (cursor !== "0");
+
+    const reminderIds = new Set<string>();
+    for (const key of sessionKeys) {
+      const ids = await this.command<string[]>(["SMEMBERS", key]);
+      ids.forEach((id) => reminderIds.add(id));
+    }
+    const plans = await Promise.all(Array.from(reminderIds).map((id) => this.getReminder(id)));
+    return plans.filter((plan): plan is ReminderPlan => plan !== null && plan.deviceId === deviceId && plan.status === "pending");
+  }
+
   async updateReminder(plan: ReminderPlan): Promise<void> {
     await this.command(["SET", reminderKey(plan.reminderId), JSON.stringify(plan)]);
   }
@@ -67,4 +92,8 @@ function reminderKey(reminderId: string): string {
 
 function sessionKey(deviceId: string, sessionId: string): string {
   return `focuswell:session:${deviceId}:${sessionId}`;
+}
+
+function sessionKeyPrefix(deviceId: string): string {
+  return `focuswell:session:${deviceId}:`;
 }

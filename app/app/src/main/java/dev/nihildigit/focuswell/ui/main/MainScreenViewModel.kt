@@ -1,6 +1,8 @@
 package dev.nihildigit.focuswell.ui.main
 
 import android.app.Application
+import android.content.Intent
+import android.net.Uri
 import android.os.Build
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
@@ -18,6 +20,10 @@ import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.reminders.PushRegistrationStatus
 import dev.nihildigit.focuswell.reminders.ReminderClient
+import dev.nihildigit.focuswell.sync.CloudSnapshot
+import dev.nihildigit.focuswell.sync.CloudSnapshotMetadata
+import dev.nihildigit.focuswell.sync.CloudSyncClient
+import dev.nihildigit.focuswell.sync.CloudSyncSession
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.updates.GitHubReleaseClient
@@ -33,6 +39,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
+import org.json.JSONObject
 
 data class PushRegistrationUiState(
   val status: PushRegistrationStatus,
@@ -46,15 +53,40 @@ data class MorningCheckInUiState(
   val segments: List<PhoneUsageSegment> = emptyList(),
 )
 
+enum class CloudSyncDecisionKind {
+  Upload,
+  Restore,
+  Choose,
+}
+
+data class CloudSyncDecision(
+  val kind: CloudSyncDecisionKind,
+  val localUpdatedAt: Instant,
+  val cloudMetadata: CloudSnapshotMetadata,
+  val cloudPayload: String?,
+)
+
+data class CloudSyncUiState(
+  val userLogin: String? = null,
+  val syncing: Boolean = false,
+  val message: String? = null,
+  val error: String? = null,
+  val pendingDecision: CloudSyncDecision? = null,
+)
+
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
   private val reminders = ReminderClient(application)
+  private val cloudSync = CloudSyncClient(application)
   private val updateClient = GitHubReleaseClient()
   private val updateInstaller = AppUpdateInstaller(application, updateClient)
   private val destination = MutableStateFlow(Destination.Today)
   private val importError = MutableStateFlow<String?>(null)
   private val _updateState = MutableStateFlow(AppUpdateUiState())
   val updateState: StateFlow<AppUpdateUiState> = _updateState
+  private val _cloudSyncState =
+    MutableStateFlow(CloudSyncUiState(userLogin = cloudSync.cachedSession()?.user?.login))
+  val cloudSyncState: StateFlow<CloudSyncUiState> = _cloudSyncState
   private val _morningCheckInState = MutableStateFlow(MorningCheckInUiState())
   val morningCheckInState: StateFlow<MorningCheckInUiState> = _morningCheckInState
   private val _pushRegistrationState =
@@ -143,6 +175,82 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
       }
   }
 
+  fun startCloudSync() {
+    if (_cloudSyncState.value.syncing) return
+    val session = cloudSync.cachedSession()
+    if (session == null) {
+      runCatching {
+        getApplication<Application>().startActivity(
+          Intent(Intent.ACTION_VIEW, cloudSync.authUri())
+            .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+        )
+        _cloudSyncState.value = _cloudSyncState.value.copy(message = "Finish GitHub sign in in the browser.", error = null)
+      }.onFailure { error ->
+        _cloudSyncState.value = _cloudSyncState.value.copy(error = error.message ?: "Could not open GitHub sign in.")
+      }
+      return
+    }
+    checkCloudSnapshot(session)
+  }
+
+  fun handleCloudSyncRedirect(uri: Uri) {
+    if (uri.scheme != "focuswell" || uri.host != "sync" || uri.path != "/oauth") return
+    val error = uri.getQueryParameter("error")
+    if (error != null) {
+      _cloudSyncState.value = _cloudSyncState.value.copy(error = "GitHub sign in failed: $error")
+      return
+    }
+    val code = uri.getQueryParameter("code") ?: return
+    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, message = "Finishing GitHub sign in.", error = null)
+    viewModelScope.launch {
+      runCatching { cloudSync.exchangeCode(code) }
+        .onSuccess { session ->
+          _cloudSyncState.value = CloudSyncUiState(userLogin = session.user.login, syncing = false, message = "Signed in as ${session.user.login}.")
+          checkCloudSnapshot(session)
+        }
+        .onFailure { error ->
+          _cloudSyncState.value =
+            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "GitHub sign in failed.")
+        }
+    }
+  }
+
+  fun chooseCloudSyncUpload() {
+    val session = cloudSync.cachedSession() ?: return
+    uploadLocalSnapshot(session)
+  }
+
+  fun chooseCloudSyncRestore() {
+    val payload = _cloudSyncState.value.pendingDecision?.cloudPayload ?: return
+    if (repository.importJson(payload, touchUpdatedAt = false)) {
+      _cloudSyncState.value =
+        _cloudSyncState.value.copy(
+          pendingDecision = null,
+          message = "Restored cloud backup to this device.",
+          error = null,
+        )
+    } else {
+      _cloudSyncState.value =
+        _cloudSyncState.value.copy(
+          pendingDecision = null,
+          error = "Cloud backup could not be restored.",
+        )
+    }
+  }
+
+  fun dismissCloudSyncDecision() {
+    _cloudSyncState.value = _cloudSyncState.value.copy(pendingDecision = null)
+  }
+
+  fun dismissCloudSyncMessage() {
+    _cloudSyncState.value = _cloudSyncState.value.copy(message = null, error = null)
+  }
+
+  fun signOutCloudSync() {
+    cloudSync.signOut()
+    _cloudSyncState.value = CloudSyncUiState(message = "Signed out of cloud sync.")
+  }
+
   fun dismissImportError() {
     importError.value = null
   }
@@ -151,6 +259,81 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     repository.clearAllData()
     reminders.rotateIdentity()
     _pushRegistrationState.value = PushRegistrationUiState(status = reminders.cachedRegistrationStatus())
+  }
+
+  private fun checkCloudSnapshot(session: CloudSyncSession) {
+    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, error = null, pendingDecision = null)
+    viewModelScope.launch {
+      runCatching { cloudSync.getSnapshot(session) }
+        .onSuccess { snapshot ->
+          _cloudSyncState.value = _cloudSyncState.value.copy(syncing = false, userLogin = session.user.login)
+          if (snapshot == null) {
+            uploadLocalSnapshot(session)
+          } else {
+            decideCloudSync(snapshot)
+          }
+        }
+        .onFailure { error ->
+          _cloudSyncState.value =
+            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "Cloud sync failed.")
+        }
+    }
+  }
+
+  private fun decideCloudSync(snapshot: CloudSnapshot) {
+    val localUpdatedAt = repository.state.value.stateUpdatedAt
+    val cloudUpdatedAt = snapshot.metadata.updatedAtUtc
+    _cloudSyncState.value =
+      when {
+        localUpdatedAt.isAfter(cloudUpdatedAt) ->
+          _cloudSyncState.value.copy(
+            pendingDecision =
+              CloudSyncDecision(
+                kind = CloudSyncDecisionKind.Upload,
+                localUpdatedAt = localUpdatedAt,
+                cloudMetadata = snapshot.metadata,
+                cloudPayload = null,
+              ),
+            message = null,
+            error = null,
+          )
+        cloudUpdatedAt.isAfter(localUpdatedAt) ->
+          _cloudSyncState.value.copy(
+            pendingDecision =
+              CloudSyncDecision(
+                kind = CloudSyncDecisionKind.Restore,
+                localUpdatedAt = localUpdatedAt,
+                cloudMetadata = snapshot.metadata,
+                cloudPayload = snapshot.payload.toString(),
+              ),
+            message = null,
+            error = null,
+          )
+        else ->
+          _cloudSyncState.value.copy(message = "Local and cloud backups are already in sync.", error = null)
+      }
+  }
+
+  private fun uploadLocalSnapshot(session: CloudSyncSession) {
+    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, pendingDecision = null, error = null)
+    val localState = repository.state.value
+    val payload = JSONObject(repository.exportJson())
+    viewModelScope.launch {
+      runCatching { cloudSync.putSnapshot(session = session, updatedAtUtc = localState.stateUpdatedAt, payload = payload) }
+        .onSuccess {
+          _cloudSyncState.value =
+            _cloudSyncState.value.copy(
+              syncing = false,
+              userLogin = session.user.login,
+              message = "Uploaded local backup to cloud.",
+              error = null,
+            )
+        }
+        .onFailure { error ->
+          _cloudSyncState.value =
+            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "Cloud upload failed.")
+        }
+    }
   }
 
   fun refreshPushRegistration(forceTokenRefresh: Boolean = true) {

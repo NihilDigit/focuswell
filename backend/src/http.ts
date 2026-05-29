@@ -86,6 +86,28 @@ export function parseReminderPayload(value: unknown): ReminderPayload {
   };
 }
 
+export function parseOAuthExchange(value: unknown): { code: string } {
+  const body = asRecord(value);
+  return { code: stringField(body, "code") };
+}
+
+export function parseCloudSnapshot(value: unknown): {
+  updatedAtUtc: string;
+  appVersion: string;
+  payload: unknown;
+} {
+  const body = asRecord(value);
+  const payload = body["payload"];
+  if (payload === undefined || payload === null || typeof payload !== "object" || Array.isArray(payload)) {
+    throw new Error("invalid-payload");
+  }
+  return {
+    updatedAtUtc: stringField(body, "updatedAtUtc"),
+    appVersion: stringField(body, "appVersion"),
+    payload,
+  };
+}
+
 export async function handleError(response: VercelResponse, error: unknown): Promise<void> {
   const message = error instanceof Error ? error.message : "unknown";
   const status = message === "unauthorized" ? 401 : message === "device-not-found" ? 404 : 400;

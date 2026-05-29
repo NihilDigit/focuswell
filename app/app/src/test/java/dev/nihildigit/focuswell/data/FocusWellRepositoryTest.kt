@@ -363,6 +363,33 @@ class FocusWellRepositoryTest {
     assertEquals(false, imported.importJson(invalid))
   }
 
+  @Test
+  fun importJson_canPreserveCloudUpdateTimestamp() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          baseState(
+            ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0))
+          )
+        ),
+        clock::now,
+      )
+    val cloudUpdatedAt = "2026-05-18T01:02:03Z"
+    val exported =
+      JSONObject(repo.exportJson())
+        .put("stateUpdatedAtUtc", cloudUpdatedAt)
+        .toString()
+
+    clock.instant = Instant.parse("2026-05-20T08:00:00Z")
+    val manualImport = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    assertTrue(manualImport.importJson(exported))
+    assertEquals(clock.instant, manualImport.state.value.stateUpdatedAt)
+
+    val cloudRestore = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    assertTrue(cloudRestore.importJson(exported, touchUpdatedAt = false))
+    assertEquals(Instant.parse(cloudUpdatedAt), cloudRestore.state.value.stateUpdatedAt)
+  }
+
   private fun baseState(
     activeMode: ActiveMode = ActiveMode.None,
     rules: FocusWellRules = FocusWellRules(dayBoundaryHour = 4),
