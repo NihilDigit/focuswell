@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     IdeaEntity::class,
     LedgerEntryEntity::class,
   ],
-  version = 13,
+  version = 14,
   exportSchema = true,
 )
 internal abstract class FocusWellDatabase : RoomDatabase() {
@@ -36,7 +36,7 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
           )
             .addMigrations(MIGRATION_1_2, MIGRATION_2_3, MIGRATION_3_4)
             .addMigrations(MIGRATION_4_5, MIGRATION_5_6, MIGRATION_6_7)
-            .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13)
+            .addMigrations(MIGRATION_7_8, MIGRATION_8_9, MIGRATION_9_10, MIGRATION_10_11, MIGRATION_11_12, MIGRATION_12_13, MIGRATION_13_14)
             .build()
             .also { instance = it }
       }
@@ -142,6 +142,29 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
       object : Migration(12, 13) {
         override fun migrate(db: SupportSQLiteDatabase) {
           db.execSQL("ALTER TABLE app_state ADD COLUMN stateUpdatedAt TEXT NOT NULL DEFAULT '1970-01-01T00:00:00Z'")
+        }
+      }
+
+    private val MIGRATION_13_14 =
+      object : Migration(13, 14) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL(
+            """
+            UPDATE app_state
+            SET stateUpdatedAt = (
+              SELECT MAX(value)
+              FROM (
+                SELECT activeStartedAt AS value FROM app_state WHERE activeStartedAt IS NOT NULL
+                UNION ALL SELECT MAX(createdAt) FROM ledger_entries
+                UNION ALL SELECT MAX(endedAt) FROM focus_records
+                UNION ALL SELECT MAX(endedAt) FROM leisure_records
+                UNION ALL SELECT MAX(updatedAt) FROM ideas
+                UNION ALL SELECT '1970-01-01T00:00:00Z'
+              )
+            )
+            WHERE stateUpdatedAt = '1970-01-01T00:00:00Z'
+            """.trimIndent()
+          )
         }
       }
   }
