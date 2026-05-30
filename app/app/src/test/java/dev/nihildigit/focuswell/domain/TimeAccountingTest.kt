@@ -2,11 +2,11 @@ package dev.nihildigit.focuswell.domain
 
 import org.junit.Assert.assertEquals
 import org.junit.Test
-import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
 import java.util.TimeZone
+import kotlin.time.Duration.Companion.minutes
 
 class TimeAccountingTest {
   private val shanghai: ZoneId = ZoneId.of("Asia/Shanghai")
@@ -60,7 +60,7 @@ class TimeAccountingTest {
   fun focusEarnedMinutes_appliesTypeRateAndTagMultiplier() {
     val earned =
       TimeAccounting.focusEarnedMinutes(
-        activeDuration = Duration.ofMinutes(120),
+        activeDuration = 120.minutes,
         type = SessionType.Input,
         tagMultiplier = 2.0,
       )
@@ -79,6 +79,20 @@ class TimeAccountingTest {
       )
 
     assertEquals(9.0, earned, 0.0001)
+  }
+
+  @Test
+  fun businessDayBoundaryInstant_usesConfiguredBoundaryInRequestedZone() {
+    val rules = FocusWellRules(dayBoundaryHour = 7)
+
+    assertEquals(
+      Instant.parse("2026-05-21T23:00:00Z"),
+      TimeAccounting.businessDayBoundaryInstant("2026-05-22", zone = shanghai, rules = rules),
+    )
+    assertEquals(
+      Instant.parse("2026-05-20T23:00:00Z"),
+      TimeAccounting.businessDayBoundaryInstant("2026-05-22", dayOffset = -1, zone = shanghai, rules = rules),
+    )
   }
 
   @Test

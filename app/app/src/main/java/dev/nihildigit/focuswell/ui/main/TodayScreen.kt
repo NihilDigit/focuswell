@@ -137,7 +137,6 @@ import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
 import kotlinx.coroutines.delay
-import java.time.Duration
 import java.time.Instant
 import kotlin.math.PI
 import kotlin.math.roundToInt

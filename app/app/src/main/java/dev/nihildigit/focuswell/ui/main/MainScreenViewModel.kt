@@ -3,88 +3,44 @@ package dev.nihildigit.focuswell.ui.main
 import android.app.Application
 import android.content.Intent
 import android.net.Uri
-import android.os.Build
 import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
-import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.data.FocusWellRepository
-import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.Destination
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
-import dev.nihildigit.focuswell.domain.PhoneUsageSegment
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TimeAccounting
-import dev.nihildigit.focuswell.reminders.PushRegistrationStatus
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import dev.nihildigit.focuswell.sync.CloudSnapshot
-import dev.nihildigit.focuswell.sync.CloudSnapshotMetadata
 import dev.nihildigit.focuswell.sync.CloudSyncClient
 import dev.nihildigit.focuswell.sync.CloudSyncSession
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.updates.GitHubReleaseClient
-import dev.nihildigit.focuswell.updates.selectUpdateAsset
 import dev.nihildigit.focuswell.usage.phoneUsageSegments
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.stateIn
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.Instant
-import java.time.LocalDate
-import org.json.JSONObject
-
-data class PushRegistrationUiState(
-  val status: PushRegistrationStatus,
-  val refreshing: Boolean = false,
-)
-
-data class MorningCheckInUiState(
-  val dailyDate: String? = null,
-  val startedAt: Instant? = null,
-  val settledUntil: Instant? = null,
-  val loading: Boolean = false,
-  val segments: List<PhoneUsageSegment> = emptyList(),
-)
-
-enum class CloudSyncDecisionKind {
-  Upload,
-  Restore,
-  Choose,
-}
-
-data class CloudSyncDecision(
-  val kind: CloudSyncDecisionKind,
-  val localUpdatedAt: Instant,
-  val cloudMetadata: CloudSnapshotMetadata,
-  val cloudPayload: String?,
-)
-
-data class CloudSyncUiState(
-  val userLogin: String? = null,
-  val syncing: Boolean = false,
-  val message: String? = null,
-  val error: String? = null,
-  val pendingDecision: CloudSyncDecision? = null,
-)
 
 class MainScreenViewModel(application: Application) : AndroidViewModel(application) {
   private val repository = FocusWellRepository(application)
   private val reminders = ReminderClient(application)
   private val cloudSync = CloudSyncClient(application)
   private val updateClient = GitHubReleaseClient()
-  private val updateInstaller = AppUpdateInstaller(application, updateClient)
+  private val updateCoordinator = AppUpdateCoordinator(updateClient, AppUpdateInstaller(application, updateClient))
   private val destination = MutableStateFlow(Destination.Today)
   private val importError = MutableStateFlow<String?>(null)
-  private val _updateState = MutableStateFlow(AppUpdateUiState())
-  val updateState: StateFlow<AppUpdateUiState> = _updateState
+  val updateState: StateFlow<AppUpdateUiState> = updateCoordinator.state
   private val _cloudSyncState =
     MutableStateFlow(CloudSyncUiState(userLogin = cloudSync.cachedSession()?.user?.login))
   val cloudSyncState: StateFlow<CloudSyncUiState> = _cloudSyncState
@@ -95,6 +51,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   private val _pushRegistrationState =
     MutableStateFlow(PushRegistrationUiState(status = reminders.cachedRegistrationStatus()))
   val pushRegistrationState: StateFlow<PushRegistrationUiState> = _pushRegistrationState
+  private val initialization = viewModelScope.launch { repository.initialize() }
 
   init {
     refreshPushRegistration(forceTokenRefresh = false)
@@ -116,24 +73,30 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     this.destination.value = destination
   }
 
-  fun toggleTracker(id: String) = repository.toggleTracker(id)
+  fun toggleTracker(id: String) {
+    viewModelScope.launch { repository.toggleTracker(id) }
+  }
 
   fun startFocus(task: String, type: SessionType, tagId: String?) {
-    val rules = uiState.value.rules
-    val focus = repository.startFocus(task, type, tagId) ?: return
     viewModelScope.launch {
+      val rules = uiState.value.rules
+      val focus = repository.startFocus(task, type, tagId) ?: return@launch
       runCatching { reminders.scheduleFocusReminders(focus.reminderSessionId, revision = focus.revision, rules = rules) }
         .onFailure { Log.e("FocusWellPush", "Failed to schedule focus reminder", it) }
     }
   }
 
-  fun pauseFocus() = repository.pauseFocus()
+  fun pauseFocus() {
+    viewModelScope.launch { repository.pauseFocus() }
+  }
 
-  fun resumeFocus() = repository.resumeFocus()
+  fun resumeFocus() {
+    viewModelScope.launch { repository.resumeFocus() }
+  }
 
   fun endFocus(result: String, correctionMinutes: Double) {
-    repository.endFocus(result, correctionMinutes)?.let { sessionId ->
-      viewModelScope.launch {
+    viewModelScope.launch {
+      repository.endFocus(result, correctionMinutes)?.let { sessionId ->
         runCatching { reminders.cancelSession(sessionId) }
           .onFailure { Log.e("FocusWellPush", "Failed to cancel focus reminder", it) }
       }
@@ -141,10 +104,10 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   }
 
   fun startLeisure() {
-    val reserveMinutes = uiState.value.reserveMinutes
-    val rules = uiState.value.rules
-    val leisure = repository.startLeisure() ?: return
     viewModelScope.launch {
+      val reserveMinutes = uiState.value.reserveMinutes
+      val rules = uiState.value.rules
+      val leisure = repository.startLeisure() ?: return@launch
       runCatching {
         reminders.scheduleLeisureReminders(
           sessionId = leisure.reminderSessionId,
@@ -157,25 +120,34 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   }
 
   fun endLeisure() {
-    repository.endLeisure()?.let { sessionId ->
-      viewModelScope.launch {
+    viewModelScope.launch {
+      repository.endLeisure()?.let { sessionId ->
         runCatching { reminders.cancelSession(sessionId) }
           .onFailure { Log.e("FocusWellPush", "Failed to cancel leisure reminder", it) }
       }
     }
   }
 
-  fun endDepleted() = repository.endDepleted()
+  fun endDepleted() {
+    viewModelScope.launch { repository.endDepleted() }
+  }
 
-  fun exportJson(): String = repository.exportJson()
+  fun exportJson(onExported: (String) -> Unit) {
+    viewModelScope.launch {
+      initialization.join()
+      onExported(repository.exportJson())
+    }
+  }
 
   fun importJson(raw: String) {
-    importError.value =
-      if (repository.importJson(raw)) {
-        null
-      } else {
-        "Import failed. Check that the JSON came from FocusWell export."
-      }
+    viewModelScope.launch {
+      importError.value =
+        if (repository.importJson(raw)) {
+          null
+        } else {
+          "Import failed. Check that the JSON came from FocusWell export."
+        }
+    }
   }
 
   fun startCloudSync() {
@@ -187,9 +159,9 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
           Intent(Intent.ACTION_VIEW, cloudSync.authUri())
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
-        _cloudSyncState.value = _cloudSyncState.value.copy(message = "Finish GitHub sign in in the browser.", error = null)
+        _cloudSyncState.value = _cloudSyncState.value.cloudSignInPrompted()
       }.onFailure { error ->
-        _cloudSyncState.value = _cloudSyncState.value.copy(error = error.message ?: "Could not open GitHub sign in.")
+        _cloudSyncState.value = _cloudSyncState.value.cloudSignInOpenFailed(error)
       }
       return
     }
@@ -197,23 +169,24 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   }
 
   fun handleCloudSyncRedirect(uri: Uri) {
-    if (uri.scheme != "focuswell" || uri.host != "sync" || uri.path != "/oauth") return
-    val error = uri.getQueryParameter("error")
-    if (error != null) {
-      _cloudSyncState.value = _cloudSyncState.value.copy(error = "GitHub sign in failed: $error")
-      return
-    }
-    val code = uri.getQueryParameter("code") ?: return
-    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, message = "Finishing GitHub sign in.", error = null)
+    val code =
+      when (val redirect = uri.toCloudSyncRedirect()) {
+        is CloudSyncRedirect.Code -> redirect.value
+        is CloudSyncRedirect.Rejected -> {
+          _cloudSyncState.value = _cloudSyncState.value.cloudOAuthRejected(redirect.error)
+          return
+        }
+        CloudSyncRedirect.Ignored -> return
+      }
+    _cloudSyncState.value = _cloudSyncState.value.cloudOAuthStarted()
     viewModelScope.launch {
       runCatching { cloudSync.exchangeCode(code) }
         .onSuccess { session ->
-          _cloudSyncState.value = CloudSyncUiState(userLogin = session.user.login, syncing = false, message = "Signed in as ${session.user.login}.")
+          _cloudSyncState.value = cloudOAuthSucceeded(session.user.login)
           checkCloudSnapshot(session)
         }
         .onFailure { error ->
-          _cloudSyncState.value =
-            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "GitHub sign in failed.")
+          _cloudSyncState.value = _cloudSyncState.value.cloudOAuthFailed(error)
         }
     }
   }
@@ -225,19 +198,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun chooseCloudSyncRestore() {
     val payload = _cloudSyncState.value.pendingDecision?.cloudPayload ?: return
-    if (repository.importJson(payload, touchUpdatedAt = false)) {
-      _cloudSyncState.value =
-        _cloudSyncState.value.copy(
-          pendingDecision = null,
-          message = "Restored cloud backup to this device.",
-          error = null,
-        )
-    } else {
-      _cloudSyncState.value =
-        _cloudSyncState.value.copy(
-          pendingDecision = null,
-          error = "Cloud backup could not be restored.",
-        )
+    viewModelScope.launch {
+      if (repository.importJson(payload, touchUpdatedAt = false)) {
+        _cloudSyncState.value = _cloudSyncState.value.cloudRestoreSucceeded()
+      } else {
+        _cloudSyncState.value = _cloudSyncState.value.cloudRestoreFailed()
+      }
     }
   }
 
@@ -251,7 +217,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun signOutCloudSync() {
     cloudSync.signOut()
-    _cloudSyncState.value = CloudSyncUiState(message = "Signed out of cloud sync.")
+    _cloudSyncState.value = cloudSignedOut()
   }
 
   fun dismissImportError() {
@@ -259,17 +225,20 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   }
 
   fun clearAllData() {
-    repository.clearAllData()
-    reminders.rotateIdentity()
-    _pushRegistrationState.value = PushRegistrationUiState(status = reminders.cachedRegistrationStatus())
+    viewModelScope.launch {
+      repository.clearAllData()
+      reminders.rotateIdentity()
+      _pushRegistrationState.value = PushRegistrationUiState(status = reminders.cachedRegistrationStatus())
+    }
   }
 
   private fun checkCloudSnapshot(session: CloudSyncSession) {
-    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, error = null, pendingDecision = null)
+    _cloudSyncState.value = _cloudSyncState.value.cloudCheckStarted()
     viewModelScope.launch {
+      initialization.join()
       runCatching { cloudSync.getSnapshot(session) }
         .onSuccess { snapshot ->
-          _cloudSyncState.value = _cloudSyncState.value.copy(syncing = false, userLogin = session.user.login)
+          _cloudSyncState.value = _cloudSyncState.value.cloudSnapshotLoaded(session.user.login)
           if (snapshot == null) {
             uploadLocalSnapshot(session)
           } else {
@@ -277,75 +246,39 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
           }
         }
         .onFailure { error ->
-          _cloudSyncState.value =
-            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "Cloud sync failed.")
+          _cloudSyncState.value = _cloudSyncState.value.cloudCheckFailed(error)
         }
     }
   }
 
   private fun decideCloudSync(snapshot: CloudSnapshot) {
     val localUpdatedAt = repository.state.value.stateUpdatedAt
-    val cloudUpdatedAt = snapshot.metadata.updatedAtUtc
-    _cloudSyncState.value =
-      when {
-        localUpdatedAt.isAfter(cloudUpdatedAt) ->
-          _cloudSyncState.value.copy(
-            pendingDecision =
-              CloudSyncDecision(
-                kind = CloudSyncDecisionKind.Upload,
-                localUpdatedAt = localUpdatedAt,
-                cloudMetadata = snapshot.metadata,
-                cloudPayload = null,
-              ),
-            message = null,
-            error = null,
-          )
-        cloudUpdatedAt.isAfter(localUpdatedAt) ->
-          _cloudSyncState.value.copy(
-            pendingDecision =
-              CloudSyncDecision(
-                kind = CloudSyncDecisionKind.Restore,
-                localUpdatedAt = localUpdatedAt,
-                cloudMetadata = snapshot.metadata,
-                cloudPayload = snapshot.payload.toString(),
-              ),
-            message = null,
-            error = null,
-          )
-        else ->
-          _cloudSyncState.value.copy(message = "Local and cloud backups are already in sync.", error = null)
-      }
+    _cloudSyncState.value = _cloudSyncState.value.withCloudDecision(localUpdatedAt = localUpdatedAt, snapshot = snapshot)
   }
 
   private fun uploadLocalSnapshot(session: CloudSyncSession) {
-    _cloudSyncState.value = _cloudSyncState.value.copy(syncing = true, pendingDecision = null, error = null)
-    val localState = repository.state.value
-    val payload = JSONObject(repository.exportJson())
+    _cloudSyncState.value = _cloudSyncState.value.cloudUploadStarted()
     viewModelScope.launch {
+      initialization.join()
+      val localState = repository.state.value
+      val payload = cloudPayloadFromExport(repository.exportJson())
       runCatching { cloudSync.putSnapshot(session = session, updatedAtUtc = localState.stateUpdatedAt, payload = payload) }
         .onSuccess {
-          _cloudSyncState.value =
-            _cloudSyncState.value.copy(
-              syncing = false,
-              userLogin = session.user.login,
-              message = "Uploaded local backup to cloud.",
-              error = null,
-            )
+          _cloudSyncState.value = _cloudSyncState.value.cloudUploadSucceeded(session.user.login)
         }
         .onFailure { error ->
-          _cloudSyncState.value =
-            _cloudSyncState.value.copy(syncing = false, error = error.message ?: "Cloud upload failed.")
+          _cloudSyncState.value = _cloudSyncState.value.cloudUploadFailed(error)
         }
     }
   }
 
   fun refreshPushRegistration(forceTokenRefresh: Boolean = true) {
     if (_pushRegistrationState.value.refreshing) return
-    _pushRegistrationState.value = _pushRegistrationState.value.copy(refreshing = true)
+    _pushRegistrationState.value = _pushRegistrationState.value.refreshStarted()
     viewModelScope.launch {
       runCatching { reminders.refreshFcmRegistration(forceTokenRefresh = forceTokenRefresh) }
         .onSuccess { status ->
-          _pushRegistrationState.value = PushRegistrationUiState(status = status)
+          _pushRegistrationState.value = pushRegistrationSucceeded(status)
           if (status.hasFcmToken) {
             Log.i("FocusWellPush", "Refreshed FCM registration with token")
           } else {
@@ -354,23 +287,15 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         }
         .onFailure { error ->
           Log.e("FocusWellPush", "Failed to refresh FCM registration", error)
-          _pushRegistrationState.value =
-            PushRegistrationUiState(
-              status = _pushRegistrationState.value.status.copy(lastError = error.message ?: "Registration failed"),
-            )
+          _pushRegistrationState.value = _pushRegistrationState.value.refreshFailed(error)
         }
     }
   }
 
   fun disablePush() {
     if (_pushRegistrationState.value.refreshing) return
-    _pushRegistrationState.value = _pushRegistrationState.value.copy(refreshing = true)
-    val activeSessionId =
-      when (val active = repository.state.value.activeMode) {
-        is ActiveMode.Focus -> active.reminderSessionId
-        is ActiveMode.Leisure -> active.reminderSessionId
-        else -> null
-      }
+    _pushRegistrationState.value = _pushRegistrationState.value.refreshStarted()
+    val activeSessionId = activeReminderSessionId(repository.state.value.activeMode)
     viewModelScope.launch {
       runCatching {
         activeSessionId?.let {
@@ -379,133 +304,93 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         }
         reminders.disablePush()
       }.onSuccess { status ->
-        _pushRegistrationState.value = PushRegistrationUiState(status = status)
+        _pushRegistrationState.value = pushRegistrationSucceeded(status)
       }.onFailure { error ->
         Log.e("FocusWellPush", "Failed to disable push", error)
-        _pushRegistrationState.value =
-          PushRegistrationUiState(
-            status =
-              reminders.cachedRegistrationStatus().copy(
-                enabled = false,
-                hasFcmToken = false,
-                lastError = error.message ?: "Could not disable push",
-              ),
-          )
+        _pushRegistrationState.value = pushDisableFailed(reminders.cachedRegistrationStatus(), error)
       }
     }
   }
 
   fun checkForUpdate() {
-    if (_updateState.value.checking || _updateState.value.downloading) return
-    _updateState.value = _updateState.value.copy(checking = true, message = null, error = null)
-    viewModelScope.launch {
-      runCatching {
-        withContext(Dispatchers.IO) { updateClient.fetchLatestRelease() }
-      }.onSuccess { release ->
-        val selection =
-          if (release.versionCode > BuildConfig.VERSION_CODE) {
-            selectUpdateAsset(release, Build.SUPPORTED_ABIS.toList())
-          } else {
-            null
-          }
-        _updateState.value =
-          AppUpdateUiState(
-            latestRelease = release,
-            selection = selection,
-            message =
-              when {
-                release.versionCode <= BuildConfig.VERSION_CODE -> "FocusWell is up to date."
-                selection == null -> "Update found, but no APK matches this device."
-                else -> "FocusWell ${release.tagName} is available."
-              },
-          )
-      }.onFailure { error ->
-        _updateState.value = AppUpdateUiState(error = error.message ?: "Update check failed.")
-      }
-    }
+    updateCoordinator.checkForUpdate(viewModelScope)
   }
 
   fun downloadUpdate() {
-    val selection = _updateState.value.selection ?: return
-    if (_updateState.value.downloading) return
-    _updateState.value = _updateState.value.copy(downloading = true, progress = 0, message = "Downloading update.", error = null)
-    viewModelScope.launch {
-      runCatching {
-        updateInstaller.downloadAndVerify(selection) { progress ->
-          _updateState.value = _updateState.value.copy(progress = progress)
-        }
-      }.onSuccess { apk ->
-        _updateState.value =
-          _updateState.value.copy(
-            downloading = false,
-            progress = 100,
-            downloadedApk = apk,
-            message = "Update downloaded. Install when ready.",
-            error = null,
-          )
-      }.onFailure { error ->
-        _updateState.value =
-          _updateState.value.copy(
-            downloading = false,
-            progress = null,
-            downloadedApk = null,
-            error = error.message ?: "Download failed.",
-          )
-      }
-    }
+    updateCoordinator.downloadUpdate(viewModelScope)
   }
 
   fun installDownloadedUpdate() {
-    val apk = _updateState.value.downloadedApk ?: return
-    runCatching { updateInstaller.install(apk) }
-      .onFailure { error ->
-        _updateState.value = _updateState.value.copy(error = error.message ?: "Could not open installer.")
-      }
+    updateCoordinator.installDownloadedUpdate()
   }
 
   fun openUpdateReleasePage() {
-    val release = _updateState.value.latestRelease ?: return
-    runCatching { updateInstaller.openReleasePage(release) }
-      .onFailure { error ->
-        _updateState.value = _updateState.value.copy(error = error.message ?: "Could not open release page.")
-      }
+    updateCoordinator.openReleasePage()
   }
 
-  fun deleteFocusRecord(id: String) = repository.deleteFocusRecord(id)
+  fun deleteFocusRecord(id: String) {
+    viewModelScope.launch { repository.deleteFocusRecord(id) }
+  }
 
-  fun updateFocusRecord(id: String, result: String, activeMinutes: Double) =
-    repository.updateFocusRecord(id, result, activeMinutes)
+  fun updateFocusRecord(id: String, result: String, activeMinutes: Double) {
+    viewModelScope.launch { repository.updateFocusRecord(id, result, activeMinutes) }
+  }
 
-  fun deleteLeisureRecord(id: String) = repository.deleteLeisureRecord(id)
+  fun deleteLeisureRecord(id: String) {
+    viewModelScope.launch { repository.deleteLeisureRecord(id) }
+  }
 
-  fun addIdea(text: String) = repository.addIdea(text)
+  fun addIdea(text: String) {
+    viewModelScope.launch { repository.addIdea(text) }
+  }
 
-  fun moveIdea(id: String, quadrant: IdeaQuadrant) = repository.moveIdea(id, quadrant)
+  fun moveIdea(id: String, quadrant: IdeaQuadrant) {
+    viewModelScope.launch { repository.moveIdea(id, quadrant) }
+  }
 
-  fun updateIdea(id: String, text: String, checklist: List<IdeaChecklistItem>) = repository.updateIdea(id, text, checklist)
+  fun updateIdea(id: String, text: String, checklist: List<IdeaChecklistItem>) {
+    viewModelScope.launch { repository.updateIdea(id, text, checklist) }
+  }
 
-  fun archiveIdea(id: String) = repository.archiveIdea(id)
+  fun archiveIdea(id: String) {
+    viewModelScope.launch { repository.archiveIdea(id) }
+  }
 
-  fun addTag(name: String, multiplier: Double) = repository.addTag(name, multiplier)
+  fun addTag(name: String, multiplier: Double) {
+    viewModelScope.launch { repository.addTag(name, multiplier) }
+  }
 
-  fun archiveTag(id: String) = repository.archiveTag(id)
+  fun archiveTag(id: String) {
+    viewModelScope.launch { repository.archiveTag(id) }
+  }
 
-  fun updateTag(id: String, name: String, multiplier: Double) = repository.updateTag(id, name, multiplier)
+  fun updateTag(id: String, name: String, multiplier: Double) {
+    viewModelScope.launch { repository.updateTag(id, name, multiplier) }
+  }
 
-  fun addBooleanTracker(label: String, rewardMinutes: Double) = repository.addBooleanTracker(label, rewardMinutes)
+  fun addBooleanTracker(label: String, rewardMinutes: Double) {
+    viewModelScope.launch { repository.addBooleanTracker(label, rewardMinutes) }
+  }
 
-  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) =
-    repository.addRuleTracker(label, tagName, targetMinutes, rewardMinutes)
+  fun addRuleTracker(label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) {
+    viewModelScope.launch { repository.addRuleTracker(label, tagName, targetMinutes, rewardMinutes) }
+  }
 
-  fun archiveTracker(id: String) = repository.archiveTracker(id)
+  fun archiveTracker(id: String) {
+    viewModelScope.launch { repository.archiveTracker(id) }
+  }
 
-  fun updateManualTracker(id: String, label: String, rewardMinutes: Double) =
-    repository.updateManualTracker(id, label, rewardMinutes)
+  fun updateManualTracker(id: String, label: String, rewardMinutes: Double) {
+    viewModelScope.launch { repository.updateManualTracker(id, label, rewardMinutes) }
+  }
 
-  fun updateRuleTracker(id: String, label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) =
-    repository.updateRuleTracker(id, label, tagName, targetMinutes, rewardMinutes)
+  fun updateRuleTracker(id: String, label: String, tagName: String, targetMinutes: Double, rewardMinutes: Double) {
+    viewModelScope.launch { repository.updateRuleTracker(id, label, tagName, targetMinutes, rewardMinutes) }
+  }
 
-  fun updateRules(rules: FocusWellRules) = repository.updateRules(rules)
+  fun updateRules(rules: FocusWellRules) {
+    viewModelScope.launch { repository.updateRules(rules) }
+  }
 
   fun loadMorningCheckInIfNeeded() {
     val state = repository.state.value
@@ -519,29 +404,22 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
       val segments =
         withContext(Dispatchers.Default) {
           val rules = state.rules.normalized()
-          val date = LocalDate.parse(today)
-          val previousDate = date.minusDays(1)
-          val boundaryStart = previousDate.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
-          val start =
-            state.lastPhoneUsageSettlementAt
-              ?.takeIf { it.isAfter(boundaryStart) }
-              ?: boundaryStart
-          val end = date.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          val window = morningCheckInUsageWindow(state, today)
           phoneUsageSegments(
             context = getApplication(),
-            startedAt = start,
-            endedAt = end,
+            startedAt = window.startedAt,
+            endedAt = window.endedAt,
             focusRecords = state.focusRecords,
             leisureRecords = state.leisureRecords,
             rules = rules,
-            zone = TimeAccounting.focusWellZone,
+            zone = TimeAccounting.focusWellTimeZone,
           )
         }
       _morningCheckInState.value =
         MorningCheckInUiState(
           dailyDate = today,
           startedAt = startedAt,
-          settledUntil = LocalDate.parse(today).atTime(state.rules.normalized().dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant(),
+          settledUntil = morningCheckInUsageWindow(state, today).settledUntil,
           loading = false,
           segments = segments,
         )
@@ -551,14 +429,16 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun completeMorningCheckIn(fairUseSegmentIds: Set<String>) {
     val checkIn = _morningCheckInState.value
     val startedAt = checkIn.startedAt ?: Instant.now()
-    val phoneCost = checkIn.segments.filterNot { it.id in fairUseSegmentIds }.sumOf { it.costMinutes }
-    repository.completeMorningCheckIn(
-      checkInStartedAt = startedAt,
-      phoneCostMinutes = phoneCost,
-      reviewedSegmentCount = checkIn.segments.size,
-      settledUntil = checkIn.settledUntil ?: startedAt,
-    )
-    _morningCheckInState.value = MorningCheckInUiState()
+    val phoneCost = billablePhoneCostMinutes(checkIn.segments, fairUseSegmentIds)
+    viewModelScope.launch {
+      repository.completeMorningCheckIn(
+        checkInStartedAt = startedAt,
+        phoneCostMinutes = phoneCost,
+        reviewedSegmentCount = checkIn.segments.size,
+        settledUntil = checkIn.settledUntil ?: startedAt,
+      )
+      _morningCheckInState.value = MorningCheckInUiState()
+    }
   }
 
   fun startPhoneUsageSettlement() {
@@ -577,27 +457,22 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
       val segments =
         withContext(Dispatchers.Default) {
           val rules = state.rules.normalized()
-          val date = LocalDate.parse(state.dailyDate)
-          val dayStart = date.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
-          val start =
-            state.lastPhoneUsageSettlementAt
-              ?.takeIf { it.isAfter(dayStart) }
-              ?: dayStart
+          val window = phoneUsageSettlementWindow(state, startedAt)
           phoneUsageSegments(
             context = getApplication(),
-            startedAt = start,
-            endedAt = startedAt,
+            startedAt = window.startedAt,
+            endedAt = window.endedAt,
             focusRecords = state.focusRecords,
             leisureRecords = state.leisureRecords,
             rules = rules,
-            zone = TimeAccounting.focusWellZone,
+            zone = TimeAccounting.focusWellTimeZone,
           )
         }
       _phoneSettlementState.value =
         MorningCheckInUiState(
           dailyDate = state.dailyDate,
           startedAt = startedAt,
-          settledUntil = startedAt,
+          settledUntil = phoneUsageSettlementWindow(state, startedAt).settledUntil,
           loading = false,
           segments = segments,
         )
@@ -611,13 +486,15 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun completePhoneUsageSettlement(fairUseSegmentIds: Set<String>) {
     val settlement = _phoneSettlementState.value
     val startedAt = settlement.startedAt ?: Instant.now()
-    val phoneCost = settlement.segments.filterNot { it.id in fairUseSegmentIds }.sumOf { it.costMinutes }
-    repository.completePhoneUsageSettlement(
-      settlementStartedAt = startedAt,
-      phoneCostMinutes = phoneCost,
-      reviewedSegmentCount = settlement.segments.size,
-      settledUntil = settlement.settledUntil ?: startedAt,
-    )
-    _phoneSettlementState.value = MorningCheckInUiState()
+    val phoneCost = billablePhoneCostMinutes(settlement.segments, fairUseSegmentIds)
+    viewModelScope.launch {
+      repository.completePhoneUsageSettlement(
+        settlementStartedAt = startedAt,
+        phoneCostMinutes = phoneCost,
+        reviewedSegmentCount = settlement.segments.size,
+        settledUntil = settlement.settledUntil ?: startedAt,
+      )
+      _phoneSettlementState.value = MorningCheckInUiState()
+    }
   }
 }

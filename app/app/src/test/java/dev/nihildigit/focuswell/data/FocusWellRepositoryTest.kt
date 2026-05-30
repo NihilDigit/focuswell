@@ -12,7 +12,19 @@ import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.defaultTags
 import dev.nihildigit.focuswell.domain.defaultTrackers
-import org.json.JSONObject
+import kotlinx.coroutines.test.runTest
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.boolean
+import kotlinx.serialization.json.buildJsonArray
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonArray
+import kotlinx.serialization.json.jsonObject
+import kotlinx.serialization.json.jsonPrimitive
+import kotlinx.serialization.json.put
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -36,7 +48,7 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun init_backfillsMissingDailyGrantsAcrossBusinessDays() {
+  fun init_backfillsMissingDailyGrantsAcrossBusinessDays() = runTest {
     clock.instant = Instant.parse("2026-05-23T13:00:00Z")
     val store =
       InMemoryFocusWellStore(
@@ -56,7 +68,7 @@ class FocusWellRepositoryTest {
         )
       )
 
-    val repo = FocusWellRepository(store, clock::now)
+    val repo = newRepository(store, clock::now)
 
     assertEquals(240.0, repo.state.value.reserveMinutes, 0.0001)
     assertEquals(
@@ -71,10 +83,10 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun updateAndDeleteFocusRecord_writeAuditableLedgerAdjustments() {
+  fun updateAndDeleteFocusRecord_writeAuditableLedgerAdjustments() = runTest {
     val focus = focusRecord(earnedMinutes = 30.0, activeMinutes = 60.0)
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             focusRecords = listOf(focus),
@@ -101,7 +113,7 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() {
+  fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() = runTest {
     clock.instant = Instant.parse("2026-05-21T00:00:00Z")
     val tracker =
       DailyTracker(
@@ -111,7 +123,7 @@ class FocusWellRepositoryTest {
         rewardMinutes = 15.0,
       )
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           FocusWellUiState(
             dailyDate = "2026-05-20",
@@ -135,12 +147,12 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun init_usesConfiguredDailyGrantAndBoundaryForNewLedgerEntries() {
+  fun init_usesConfiguredDailyGrantAndBoundaryForNewLedgerEntries() = runTest {
     clock.instant = Instant.parse("2026-05-21T07:00:00Z")
     val rules = FocusWellRules(dailyGrantMinutes = 45.0, dayBoundaryHour = 7, sleepProtectionStartHour = 2)
 
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           FocusWellUiState(
             dailyDate = "2026-05-20",
@@ -160,9 +172,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun completeMorningCheckIn_awardsWakeBonusFromRulesWindow() {
+  fun completeMorningCheckIn_awardsWakeBonusFromRulesWindow() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             rules = FocusWellRules(wakeTargetHour = 9),
@@ -185,9 +197,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun completeMorningCheckIn_skipsWakeBonusOutsideRulesWindow() {
+  fun completeMorningCheckIn_skipsWakeBonusOutsideRulesWindow() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             rules = FocusWellRules(wakeTargetHour = 9),
@@ -208,9 +220,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun completePhoneUsageSettlement_deductsAndAdvancesSettlementCursor() {
+  fun completePhoneUsageSettlement_deductsAndAdvancesSettlementCursor() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
@@ -234,7 +246,22 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun deleteLeisureRecord_restoresReserveWithLedgerAdjustment() {
+  fun addConfigItems_usesInjectedClockForGeneratedIds() = runTest {
+    clock.instant = Instant.parse("2026-05-20T05:00:00Z")
+    val repo = newRepository(InMemoryFocusWellStore(baseState()), clock::now)
+
+    repo.addTag("Deep Work", 1.2)
+    repo.addBooleanTracker("Read", 15.0)
+    repo.addRuleTracker("Math quota", "math", 180.0, 60.0)
+
+    val state = repo.state.value
+    assertEquals("tag-1779253200000", state.tags.first { it.name == "Deep Work" }.id)
+    assertEquals("tracker-1779253200000", state.trackers.first { it.label == "Read" }.id)
+    assertEquals("rule-1779253200000", state.trackers.first { it.label == "Math quota" }.id)
+  }
+
+  @Test
+  fun deleteLeisureRecord_restoresReserveWithLedgerAdjustment() = runTest {
     val leisure =
       LeisureRecord(
         id = "leisure-1",
@@ -245,7 +272,7 @@ class FocusWellRepositoryTest {
         dailyDate = "2026-05-20",
       )
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             leisureRecords = listOf(leisure),
@@ -270,9 +297,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun endFocus_subtractsCorrectionBeforeOutcomeMultiplier() {
+  fun endFocus_subtractsCorrectionBeforeOutcomeMultiplier() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(baseState(ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)))),
         clock::now,
       )
@@ -288,9 +315,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun ideas_moveArchiveAndRoundTripThroughJson() {
+  fun ideas_moveArchiveAndRoundTripThroughJson() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(baseState()),
         clock::now,
       )
@@ -315,7 +342,7 @@ class FocusWellRepositoryTest {
     assertEquals(listOf(true, false), idea.checklist.map { it.checked })
     assertEquals(clock.instant, idea.archivedAt)
 
-    val imported = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    val imported = newRepository(InMemoryFocusWellStore(), clock::now)
     assertTrue(imported.importJson(repo.exportJson()))
     assertEquals(IdeaQuadrant.Explore, imported.state.value.ideas.first().quadrant)
     assertEquals(listOf("Sketch matrix", "Check edge cases"), imported.state.value.ideas.first().checklist.map { it.text })
@@ -324,9 +351,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun endLeisure_entersDepletedStateAtReserveExhaustionAndCanExit() {
+  fun endLeisure_entersDepletedStateAtReserveExhaustionAndCanExit() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             activeMode =
@@ -355,9 +382,9 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun importExport_roundTripsStateAndRejectsBadTimestamps() {
+  fun importExport_roundTripsStateAndRejectsBadTimestamps() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             rules = FocusWellRules(longSessionRemindersEnabled = false),
@@ -368,33 +395,32 @@ class FocusWellRepositoryTest {
         clock::now,
       )
     val exported = repo.exportJson()
-    val imported = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    val imported = newRepository(InMemoryFocusWellStore(), clock::now)
 
     assertTrue(imported.importJson(exported))
-    val roundTrip = JSONObject(imported.exportJson())
-    assertEquals(JSONObject(exported).getString("dailyDate"), roundTrip.getString("dailyDate"))
-    assertEquals(JSONObject(exported).getJSONArray("focusRecords").length(), roundTrip.getJSONArray("focusRecords").length())
-    assertEquals(JSONObject(exported).getJSONArray("ledger").length(), roundTrip.getJSONArray("ledger").length())
+    val exportedJson = jsonObject(exported)
+    val roundTrip = jsonObject(imported.exportJson())
+    assertEquals(exportedJson["dailyDate"]?.jsonPrimitive?.contentOrNull, roundTrip["dailyDate"]?.jsonPrimitive?.contentOrNull)
+    assertEquals(exportedJson["focusRecords"]?.jsonArray?.size, roundTrip["focusRecords"]?.jsonArray?.size)
+    assertEquals(exportedJson["ledger"]?.jsonArray?.size, roundTrip["ledger"]?.jsonArray?.size)
     assertEquals(
-      JSONObject(exported).getJSONArray("focusRecords").getJSONObject(0).getString("id"),
-      roundTrip.getJSONArray("focusRecords").getJSONObject(0).getString("id"),
+      exportedJson["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
+      roundTrip["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
     )
-    assertEquals(false, roundTrip.getJSONObject("rules").getBoolean("longSessionRemindersEnabled"))
+    assertEquals(false, roundTrip["rules"]?.jsonObject?.get("longSessionRemindersEnabled")?.jsonPrimitive?.boolean)
 
     val invalid =
-      JSONObject(exported)
-        .apply {
-          getJSONArray("ledger").getJSONObject(0).put("createdAt", "not-an-instant")
-        }
+      exportedJson
+        .withArrayItemObject("ledger", 0) { entry -> entry.withProperty("createdAt", JsonPrimitive("not-an-instant")) }
         .toString()
 
     assertEquals(false, imported.importJson(invalid))
   }
 
   @Test
-  fun importJson_canPreserveCloudUpdateTimestamp() {
+  fun importJson_canPreserveCloudUpdateTimestamp() = runTest {
     val repo =
-      FocusWellRepository(
+      newRepository(
         InMemoryFocusWellStore(
           baseState(
             ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0))
@@ -404,18 +430,66 @@ class FocusWellRepositoryTest {
       )
     val cloudUpdatedAt = "2026-05-18T01:02:03Z"
     val exported =
-      JSONObject(repo.exportJson())
-        .put("stateUpdatedAtUtc", cloudUpdatedAt)
+      jsonObject(repo.exportJson())
+        .withProperty("stateUpdatedAtUtc", JsonPrimitive(cloudUpdatedAt))
         .toString()
 
     clock.instant = Instant.parse("2026-05-20T08:00:00Z")
-    val manualImport = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    val manualImport = newRepository(InMemoryFocusWellStore(), clock::now)
     assertTrue(manualImport.importJson(exported))
     assertEquals(clock.instant, manualImport.state.value.stateUpdatedAt)
 
-    val cloudRestore = FocusWellRepository(InMemoryFocusWellStore(), clock::now)
+    val cloudRestore = newRepository(InMemoryFocusWellStore(), clock::now)
     assertTrue(cloudRestore.importJson(exported, touchUpdatedAt = false))
     assertEquals(Instant.parse(cloudUpdatedAt), cloudRestore.state.value.stateUpdatedAt)
+  }
+
+  @Test
+  fun importExport_preservesPausedFocusReminderMetadata() = runTest {
+    val pausedAt = Instant.parse("2026-05-20T05:30:00Z")
+    val repo =
+      newRepository(
+        InMemoryFocusWellStore(
+          baseState(
+            activeMode =
+              ActiveMode.Focus(
+                task = "Math",
+                type = SessionType.Input,
+                tag = defaultTags.first(),
+                startedAt = Instant.parse("2026-05-20T05:00:00Z"),
+                reminderSessionId = "focus-session",
+                revision = 3,
+                paused = true,
+                pausedAt = pausedAt,
+                pausedDurationMillis = 120_000L,
+              )
+          )
+        ),
+        clock::now,
+      )
+
+    val imported = newRepository(InMemoryFocusWellStore(), clock::now)
+    assertTrue(imported.importJson(repo.exportJson()))
+
+    val activeFocus = imported.state.value.activeMode as ActiveMode.Focus
+    assertEquals("focus-session", activeFocus.reminderSessionId)
+    assertEquals(3, activeFocus.revision)
+    assertEquals(true, activeFocus.paused)
+    assertEquals(pausedAt, activeFocus.pausedAt)
+    assertEquals(120_000L, activeFocus.pausedDurationMillis)
+  }
+
+  @Test
+  fun importJson_treatsLegacyWindDownModeAsInactive() = runTest {
+    val exported =
+      jsonObject(newRepository(InMemoryFocusWellStore(baseState()), clock::now).exportJson())
+        .withProperty("activeMode", buildJsonObject { put("kind", "windDown") })
+        .toString()
+
+    val imported = newRepository(InMemoryFocusWellStore(), clock::now)
+
+    assertTrue(imported.importJson(exported))
+    assertEquals(ActiveMode.None, imported.state.value.activeMode)
   }
 
   private fun baseState(
@@ -470,18 +544,45 @@ class FocusWellRepositoryTest {
     )
 }
 
+private val testJson = Json { ignoreUnknownKeys = true }
+
+private suspend fun newRepository(store: FocusWellStore, now: () -> Instant): FocusWellRepository =
+  FocusWellRepository(store, now).also { it.initialize() }
+
+private fun jsonObject(raw: String): JsonObject = testJson.parseToJsonElement(raw).jsonObject
+
+private fun JsonObject.withProperty(key: String, value: JsonElement): JsonObject =
+  buildJsonObject {
+    this@withProperty.forEach { (existingKey, existingValue) -> put(existingKey, existingValue) }
+    put(key, value)
+  }
+
+private fun JsonObject.withArrayItemObject(
+  key: String,
+  index: Int,
+  transform: (JsonObject) -> JsonObject,
+): JsonObject =
+  withProperty(
+    key,
+    buildJsonArray {
+      this@withArrayItemObject[key]?.jsonArray?.forEachIndexed { currentIndex, element ->
+        add(if (currentIndex == index) transform(element.jsonObject) else element)
+      }
+    },
+  )
+
 private class InMemoryFocusWellStore(
   initial: FocusWellUiState? = null,
 ) : FocusWellStore {
   var current: FocusWellUiState? = initial
 
-  override fun loadState(): FocusWellUiState? = current
+  override suspend fun loadState(): FocusWellUiState? = current
 
-  override fun persistChange(previous: FocusWellUiState?, next: FocusWellUiState) {
+  override suspend fun persistChange(previous: FocusWellUiState?, next: FocusWellUiState) {
     current = next
   }
 
-  override fun clear() {
+  override suspend fun clear() {
     current = null
   }
 }

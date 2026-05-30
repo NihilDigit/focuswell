@@ -215,7 +215,7 @@ The check-in UI is a three-step flow:
    stay visual and compact.
 3. Settlement: animate correction and final accounting as checked rows and
    transparent numbers. Do not show the reserve well here. If the Daily Grant is
-   paused, show an ice/freeze treatment on a `+60 x3` grant component.
+   paused, show an ice/freeze treatment on a configured daily grant times three component, for example `60m x3` with the default grant.
 
 ## Ideas
 

@@ -8,17 +8,15 @@ import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONArray
-import org.json.JSONObject
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
-import java.time.Duration
 import java.time.Instant
-import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
 import java.util.UUID
+import kotlin.time.Duration.Companion.hours
 
 data class DeviceIdentity(
   val deviceId: String,
@@ -37,6 +35,7 @@ class ReminderClient(context: Context) {
   private val appContext = context.applicationContext
   private val prefs = context.getSharedPreferences("focuswell-reminders", Context.MODE_PRIVATE)
   private val backendUrl = BuildConfig.FOCUSWELL_BACKEND_URL.trimEnd('/')
+  private val json = Json { explicitNulls = false }
 
   val identity: DeviceIdentity
     get() {
@@ -78,11 +77,11 @@ class ReminderClient(context: Context) {
       reminders =
         buildList {
           if (rules.normalized().longSessionRemindersEnabled) {
-            add(reminder("focus_duration_1h", now.plus(Duration.ofHours(1))))
-            add(reminder("focus_duration_3h", now.plus(Duration.ofHours(3))))
-            add(reminder("focus_duration_5h", now.plus(Duration.ofHours(5))))
+            add(reminder("focus_duration_1h", now.plusMillis(1.hours.inWholeMilliseconds)))
+            add(reminder("focus_duration_3h", now.plusMillis(3.hours.inWholeMilliseconds)))
+            add(reminder("focus_duration_5h", now.plusMillis(5.hours.inWholeMilliseconds)))
           } else {
-            add(reminder("focus_stale_3h", now.plus(Duration.ofHours(3))))
+            add(reminder("focus_stale_3h", now.plusMillis(3.hours.inWholeMilliseconds)))
           }
         },
     )
@@ -100,9 +99,9 @@ class ReminderClient(context: Context) {
     val reminders =
       buildList {
         if (rules.normalized().longSessionRemindersEnabled) {
-          add(reminder("leisure_duration_1h", now.plus(Duration.ofHours(1))))
-          add(reminder("leisure_duration_3h", now.plus(Duration.ofHours(3))))
-          add(reminder("leisure_duration_5h", now.plus(Duration.ofHours(5))))
+          add(reminder("leisure_duration_1h", now.plusMillis(1.hours.inWholeMilliseconds)))
+          add(reminder("leisure_duration_3h", now.plusMillis(3.hours.inWholeMilliseconds)))
+          add(reminder("leisure_duration_5h", now.plusMillis(5.hours.inWholeMilliseconds)))
         }
         if (reserveMinutes > 10.0) add(reminder("leisure_10m_left", leisureCostDueAt(now, reserveMinutes - 10.0, rules)))
         if (reserveMinutes > 5.0) add(reminder("leisure_5m_left", leisureCostDueAt(now, reserveMinutes - 5.0, rules)))
@@ -118,10 +117,11 @@ class ReminderClient(context: Context) {
     post(
       path = "/api/reminders/cancel",
       body =
-        JSONObject()
-          .put("deviceId", identity.deviceId)
-          .put("installSecret", identity.installSecret)
-          .put("sessionId", sessionId),
+        CancelSessionRequest(
+          deviceId = identity.deviceId,
+          installSecret = identity.installSecret,
+          sessionId = sessionId,
+        ),
     )
   }
 
@@ -162,13 +162,12 @@ class ReminderClient(context: Context) {
     post(
       path = "/api/devices/register",
       body =
-        JSONObject()
-          .put("deviceId", identity.deviceId)
-          .put("installSecretHash", sha256Hex(identity.installSecret))
-          .put("nowUtc", Instant.now().toString())
-          .apply {
-            if (token != null) put("fcmToken", token)
-          },
+        RegisterDeviceRequest(
+          deviceId = identity.deviceId,
+          installSecretHash = sha256Hex(identity.installSecret),
+          nowUtc = Instant.now().toString(),
+          fcmToken = token,
+        ),
     )
     val registeredAt = Instant.now()
     val status =
@@ -194,19 +193,20 @@ class ReminderClient(context: Context) {
   private suspend fun schedule(
     sessionId: String,
     revision: Int,
-    reminders: List<JSONObject>,
+    reminders: List<ReminderRequest>,
   ) {
     if (reminders.isEmpty()) return
     val identity = identity
     post(
       path = "/api/reminders/schedule",
       body =
-        JSONObject()
-          .put("deviceId", identity.deviceId)
-          .put("installSecret", identity.installSecret)
-          .put("sessionId", sessionId)
-          .put("revision", revision)
-          .put("reminders", JSONArray(reminders)),
+        ScheduleRemindersRequest(
+          deviceId = identity.deviceId,
+          installSecret = identity.installSecret,
+          sessionId = sessionId,
+          revision = revision,
+          reminders = reminders,
+        ),
     )
   }
 
@@ -218,7 +218,8 @@ class ReminderClient(context: Context) {
       }
     }
 
-  private suspend fun post(path: String, body: JSONObject) {
+  private suspend inline fun <reified T> post(path: String, body: T) {
+    val bodyText = json.encodeToString(body)
     withContext(Dispatchers.IO) {
       val connection = (URL("$backendUrl$path").openConnection() as HttpURLConnection).apply {
         requestMethod = "POST"
@@ -228,7 +229,7 @@ class ReminderClient(context: Context) {
         setRequestProperty("content-type", "application/json")
       }
       try {
-        connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        connection.outputStream.use { it.write(bodyText.toByteArray(Charsets.UTF_8)) }
         val status = connection.responseCode
         if (status !in 200..299) error("Reminder backend returned HTTP $status")
       } finally {
@@ -242,20 +243,11 @@ class ReminderClient(context: Context) {
       .digest(value.toByteArray(Charsets.UTF_8))
       .joinToString("") { "%02x".format(it) }
 
-  private fun reminder(kind: String, dueAt: Instant): JSONObject =
-    JSONObject().put("kind", kind).put("dueAtUtc", dueAt.toString())
+  private fun reminder(kind: String, dueAt: Instant): ReminderRequest =
+    ReminderRequest(kind = kind, dueAtUtc = dueAt.toString())
 
   private fun leisureCostDueAt(startedAt: Instant, costMinutes: Double, rules: FocusWellRules): Instant =
     TimeAccounting.instantWhenLeisureCostReaches(startedAt, costMinutes, rules = rules)
-
-  private fun nextLateNightInstant(now: Instant, rules: FocusWellRules): Instant? {
-    val normalizedRules = rules.normalized()
-    val zone = TimeAccounting.focusWellZone
-    val localNow = LocalDateTime.ofInstant(now, zone)
-    val todayOne = LocalDateTime.of(LocalDate.now(zone), normalizedRules.sleepProtectionStartTime)
-    val nextOne = if (localNow.isBefore(todayOne)) todayOne else todayOne.plusDays(1)
-    return nextOne.atZone(zone).toInstant().takeIf { Duration.between(now, it) <= Duration.ofHours(16) }
-  }
 
   private companion object {
     const val KEY_DEVICE_ID = "deviceId"
@@ -266,3 +258,33 @@ class ReminderClient(context: Context) {
     const val KEY_LAST_REGISTRATION_ERROR = "lastRegistrationError"
   }
 }
+
+@Serializable
+private data class CancelSessionRequest(
+  val deviceId: String,
+  val installSecret: String,
+  val sessionId: String,
+)
+
+@Serializable
+private data class RegisterDeviceRequest(
+  val deviceId: String,
+  val installSecretHash: String,
+  val nowUtc: String,
+  val fcmToken: String? = null,
+)
+
+@Serializable
+private data class ScheduleRemindersRequest(
+  val deviceId: String,
+  val installSecret: String,
+  val sessionId: String,
+  val revision: Int,
+  val reminders: List<ReminderRequest>,
+)
+
+@Serializable
+private data class ReminderRequest(
+  val kind: String,
+  val dueAtUtc: String,
+)

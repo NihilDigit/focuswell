@@ -3,10 +3,10 @@ package dev.nihildigit.focuswell.usage
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
+import kotlinx.datetime.TimeZone
 import org.junit.Assert.assertEquals
 import org.junit.Test
 import java.time.Instant
-import java.time.ZoneOffset
 
 class FocusUsageStatsTest {
   @Test
@@ -104,7 +104,7 @@ class FocusUsageStatsTest {
         intervals = listOf(UsageInterval("app.video", start, start + 5 * 60_000L)),
         startedAtMillis = start,
         endedAtMillis = start + 10 * 60_000L,
-        zone = ZoneOffset.UTC,
+        zone = TimeZone.UTC,
       )
 
     assertEquals(1, segments.size)

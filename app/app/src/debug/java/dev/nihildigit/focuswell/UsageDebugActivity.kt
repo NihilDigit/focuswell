@@ -9,18 +9,28 @@ import android.widget.ScrollView
 import android.widget.TextView
 import dev.nihildigit.focuswell.data.FocusWellRepository
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.time.toKotlinInstant
 import dev.nihildigit.focuswell.usage.clusterPhoneUsageIntervals
 import dev.nihildigit.focuswell.usage.hasUsageAccess
 import dev.nihildigit.focuswell.usage.usageIntervals
-import java.time.Duration
+import kotlinx.datetime.TimeZone
+import kotlinx.datetime.toLocalDateTime
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.Instant
 import java.time.LocalDate
-import java.time.ZoneId
-import java.time.format.DateTimeFormatter
 import kotlin.math.ceil
 import kotlin.math.floor
+import kotlin.time.Duration.Companion.milliseconds
+import kotlin.time.Duration.Companion.minutes
 
 class UsageDebugActivity : Activity() {
+  private val diagnosticsScope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
+
   override fun onCreate(savedInstanceState: Bundle?) {
     super.onCreate(savedInstanceState)
     val textView =
@@ -33,24 +43,31 @@ class UsageDebugActivity : Activity() {
       }
     setContentView(ScrollView(this).apply { addView(textView) })
 
-    Thread {
+    diagnosticsScope.launch {
       val report =
-        runCatching { buildUsageReport() }
-          .getOrElse { error -> "Usage diagnostics failed:\n${Log.getStackTraceString(error)}" }
+        withContext(Dispatchers.Default) {
+          runCatching { buildUsageReport() }
+            .getOrElse { error -> "Usage diagnostics failed:\n${Log.getStackTraceString(error)}" }
+        }
       Log.i("FocusWellUsageDebug", report.chunkedLogSafe())
-      runOnUiThread { textView.text = report }
-    }.start()
+      textView.text = report
+    }
+  }
+
+  override fun onDestroy() {
+    diagnosticsScope.cancel()
+    super.onDestroy()
   }
 
   private fun buildUsageReport(): String {
     val repository = FocusWellRepository(this)
     val state = repository.state.value
     val rules = state.rules.normalized()
-    val zone = TimeAccounting.focusWellZone
+    val zone = TimeAccounting.focusWellTimeZone
     val today = TimeAccounting.dailyDate(Instant.now(), rules = rules)
     val date = intent.getStringExtra("dailyDate")?.let(LocalDate::parse) ?: today
-    val start = date.minusDays(1).atTime(rules.dayBoundaryTime).atZone(zone).toInstant()
-    val end = date.atTime(rules.dayBoundaryTime).atZone(zone).toInstant()
+    val start = TimeAccounting.businessDayBoundaryInstant(date.toString(), dayOffset = -1, rules = rules)
+    val end = TimeAccounting.businessDayBoundaryInstant(date.toString(), rules = rules)
     val excluded =
       state.leisureRecords
         .filter { it.deletedAt == null && it.endedAt.isAfter(start) && it.startedAt.isBefore(end) }
@@ -85,7 +102,7 @@ class UsageDebugActivity : Activity() {
       appendLine()
       appendLine("Raw screen intervals (${screen.size})")
       screen.take(80).forEachIndexed { index, interval ->
-        appendLine("${index + 1}. ${interval.first.short(zone)} -> ${interval.second.short(zone)} ${Duration.ofMillis(interval.second - interval.first).toMinutes()}m")
+        appendLine("${index + 1}. ${interval.first.short(zone)} -> ${interval.second.short(zone)} ${(interval.second - interval.first).milliseconds.inWholeMinutes}m")
       }
       appendLine()
       appendLine("Foreground ∩ screen intervals (${effective.size})")
@@ -98,7 +115,7 @@ class UsageDebugActivity : Activity() {
       appendLine("Segments (${segments.size})")
       segments.forEachIndexed { index, segment ->
         val screenMinutes = segment.slices.sumOf { it.durationMillis } / 60_000.0
-        val spanMinutes = Duration.between(segment.startedAt, segment.endedAt).toMillis() / 60_000.0
+        val spanMinutes = (segment.endedAt.toEpochMilli() - segment.startedAt.toEpochMilli()) / 60_000.0
         appendLine("${index + 1}. ${segment.startedAt.short(zone)} -> ${segment.endedAt.short(zone)} span=${spanMinutes.fmt()}m screen=${screenMinutes.fmt()}m cost=${segment.costMinutes.fmt()}m slices=${segment.slices.size}")
         segment.slices.forEach { slice ->
           appendLine("   - ${slice.appName} ${slice.startedAt.short(zone)} -> ${slice.endedAt.short(zone)} ${(slice.durationMillis / 60_000.0).fmt()}m")
@@ -182,7 +199,7 @@ class UsageDebugActivity : Activity() {
     startedAt: Instant,
     endedAt: Instant,
   ): String {
-    val minuteMillis = Duration.ofMinutes(1).toMillis()
+    val minuteMillis = 1.minutes.inWholeMilliseconds
     val firstMinute = floor(startedAt.toEpochMilli() / minuteMillis.toDouble()).toLong() * minuteMillis
     val lastMinute = ceil(endedAt.toEpochMilli() / minuteMillis.toDouble()).toLong() * minuteMillis
     val minuteTotals = linkedMapOf<Long, Long>()
@@ -201,15 +218,18 @@ class UsageDebugActivity : Activity() {
     return buildString {
       appendLine("Occupied minutes ${occupied.size}")
       occupied.take(120).forEach { minute ->
-        appendLine("- ${minute.short(TimeAccounting.focusWellZone)} ${(minuteTotals[minute] ?: 0L) / 1000}s")
+        appendLine("- ${minute.short(TimeAccounting.focusWellTimeZone)} ${(minuteTotals[minute] ?: 0L) / 1000}s")
       }
     }
   }
 }
 
-private fun Long.short(zone: ZoneId): String = Instant.ofEpochMilli(this).short(zone)
+private fun Long.short(zone: TimeZone): String = Instant.ofEpochMilli(this).short(zone)
 
-private fun Instant.short(zone: ZoneId): String = DateTimeFormatter.ofPattern("MM-dd HH:mm:ss").format(atZone(zone))
+private fun Instant.short(zone: TimeZone): String {
+  val local = toKotlinInstant().toLocalDateTime(zone)
+  return "%02d-%02d %02d:%02d:%02d".format(local.month.ordinal + 1, local.day, local.hour, local.minute, local.second)
+}
 
 private fun dev.nihildigit.focuswell.usage.UsageInterval.durationText(): String =
   "${((endedAtMillis - startedAtMillis).coerceAtLeast(0) / 60_000.0).fmt()}m"

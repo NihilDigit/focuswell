@@ -13,10 +13,15 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.security.MessageDigest
 import java.util.Locale
+import kotlin.time.Clock
+import kotlin.time.ExperimentalTime
+import kotlin.time.Instant
 
+@OptIn(ExperimentalTime::class)
 class AppUpdateInstaller(
   private val context: Context,
   private val client: GitHubReleaseClient = GitHubReleaseClient(),
+  private val now: () -> Instant = Clock.System::now,
 ) {
   private val appContext = context.applicationContext
 
@@ -66,7 +71,7 @@ class AppUpdateInstaller(
 
   private suspend fun downloadApk(asset: AppUpdateAsset, onProgress: (Int) -> Unit): File {
     val manager = appContext.getSystemService(DownloadManager::class.java)
-    val destinationName = "updates/${System.currentTimeMillis()}-${asset.name}"
+    val destinationName = updateDestinationName(asset.name, now())
     val request =
       DownloadManager.Request(Uri.parse(asset.downloadUrl))
         .setTitle(asset.name)
@@ -129,3 +134,7 @@ class AppUpdateInstaller(
     return digest.digest().joinToString(separator = "") { "%02x".format(Locale.US, it.toInt() and 0xff) }
   }
 }
+
+@OptIn(ExperimentalTime::class)
+internal fun updateDestinationName(assetName: String, downloadedAt: Instant): String =
+  "updates/${downloadedAt.toEpochMilliseconds()}-$assetName"

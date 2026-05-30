@@ -1,36 +1,31 @@
 package dev.nihildigit.focuswell.updates
 
-import org.json.JSONObject
+import kotlinx.serialization.SerialName
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.json.Json
 import java.net.HttpURLConnection
 import java.net.URL
 
 class GitHubReleaseClient(
   private val latestReleaseUrl: String = "https://api.github.com/repos/NihilDigit/focuswell/releases/latest",
 ) {
+  private val json = Json { ignoreUnknownKeys = true }
+
   fun fetchLatestRelease(): AppUpdateRelease {
-    val json = JSONObject(fetchText(latestReleaseUrl, accept = "application/vnd.github+json"))
-    val assetsJson = json.optJSONArray("assets")
-    val assets =
-      buildList {
-        if (assetsJson != null) {
-          for (index in 0 until assetsJson.length()) {
-            val asset = assetsJson.getJSONObject(index)
-            add(
-              AppUpdateAsset(
-                name = asset.getString("name"),
-                downloadUrl = asset.getString("browser_download_url"),
-                sizeBytes = asset.optLong("size", 0L),
-              ),
-            )
-          }
-        }
-      }
+    val release = json.decodeFromString(GitHubReleaseResponse.serializer(), fetchText(latestReleaseUrl, accept = "application/vnd.github+json"))
     return AppUpdateRelease(
-      tagName = json.getString("tag_name"),
-      name = json.optString("name", json.getString("tag_name")),
-      body = json.optString("body"),
-      htmlUrl = json.getString("html_url"),
-      assets = assets,
+      tagName = release.tagName,
+      name = release.name ?: release.tagName,
+      body = release.body.orEmpty(),
+      htmlUrl = release.htmlUrl,
+      assets =
+        release.assets.map { asset ->
+          AppUpdateAsset(
+            name = asset.name,
+            downloadUrl = asset.downloadUrl,
+            sizeBytes = asset.sizeBytes,
+          )
+        },
     )
   }
 
@@ -52,3 +47,19 @@ class GitHubReleaseClient(
     }
   }
 }
+
+@Serializable
+private data class GitHubReleaseResponse(
+  @SerialName("tag_name") val tagName: String,
+  val name: String? = null,
+  val body: String? = null,
+  @SerialName("html_url") val htmlUrl: String,
+  val assets: List<GitHubReleaseAssetResponse> = emptyList(),
+)
+
+@Serializable
+private data class GitHubReleaseAssetResponse(
+  val name: String,
+  @SerialName("browser_download_url") val downloadUrl: String,
+  @SerialName("size") val sizeBytes: Long = 0L,
+)

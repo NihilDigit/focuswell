@@ -7,6 +7,7 @@ import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.defaultTags
 import dev.nihildigit.focuswell.domain.defaultTrackers
+import kotlinx.coroutines.test.runTest
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -38,7 +39,7 @@ class RoomFocusWellStoreTest {
   }
 
   @Test
-  fun persistsAndLoadsStateThroughRoom() {
+  fun persistsAndLoadsStateThroughRoom() = runTest {
     val state =
       FocusWellUiState(
         dailyDate = "2026-05-20",
@@ -67,7 +68,7 @@ class RoomFocusWellStoreTest {
   }
 
   @Test
-  fun persistsIncrementalDiffsAndDeletesRemovedRows() {
+  fun persistsIncrementalDiffsAndDeletesRemovedRows() = runTest {
     val original =
       FocusWellUiState(
         dailyDate = "2026-05-20",

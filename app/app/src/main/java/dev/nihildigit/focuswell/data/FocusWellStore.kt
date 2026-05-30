@@ -3,9 +3,9 @@ package dev.nihildigit.focuswell.data
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 
 internal interface FocusWellStore {
-  fun loadState(): FocusWellUiState?
+  suspend fun loadState(): FocusWellUiState?
 
-  fun persistChange(previous: FocusWellUiState?, next: FocusWellUiState)
+  suspend fun persistChange(previous: FocusWellUiState?, next: FocusWellUiState)
 
-  fun clear()
+  suspend fun clear()
 }

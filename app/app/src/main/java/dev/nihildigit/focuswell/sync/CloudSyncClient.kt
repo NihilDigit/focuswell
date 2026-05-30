@@ -5,7 +5,12 @@ import android.net.Uri
 import dev.nihildigit.focuswell.BuildConfig
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import org.json.JSONObject
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.encodeToString
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.put
 import java.net.HttpURLConnection
 import java.net.URL
 import java.time.Instant
@@ -25,7 +30,7 @@ data class CloudSnapshotMetadata(
 
 data class CloudSnapshot(
   val metadata: CloudSnapshotMetadata,
-  val payload: JSONObject,
+  val payload: JsonObject,
 )
 
 data class CloudSyncSession(
@@ -36,6 +41,11 @@ data class CloudSyncSession(
 class CloudSyncClient(context: Context) {
   private val prefs = context.applicationContext.getSharedPreferences("focuswell-cloud-sync", Context.MODE_PRIVATE)
   private val backendUrl = BuildConfig.FOCUSWELL_BACKEND_URL.trimEnd('/')
+  private val json =
+    Json {
+      ignoreUnknownKeys = true
+      explicitNulls = false
+    }
 
   fun cachedSession(): CloudSyncSession? {
     val token = prefs.getString(KEY_ACCESS_TOKEN, null) ?: return null
@@ -56,13 +66,15 @@ class CloudSyncClient(context: Context) {
       .build()
 
   suspend fun exchangeCode(code: String): CloudSyncSession {
-    val json =
-      postJson(
+    val response =
+      requestJson<OAuthExchangeResponse>(
         path = "/api/sync/oauth/exchange",
-        body = JSONObject().put("code", code),
+        method = "POST",
+        token = null,
+        body = json.encodeToString(OAuthExchangeRequest(code = code)),
       )
-    val user = json.getJSONObject("user").toUser()
-    val session = CloudSyncSession(accessToken = json.getString("accessToken"), user = user)
+    val user = response.user.toDomain()
+    val session = CloudSyncSession(accessToken = response.accessToken, user = user)
     prefs
       .edit()
       .putString(KEY_ACCESS_TOKEN, session.accessToken)
@@ -73,46 +85,46 @@ class CloudSyncClient(context: Context) {
   }
 
   suspend fun getSnapshot(session: CloudSyncSession): CloudSnapshot? {
-    val json = requestJson(path = "/api/sync/snapshot", method = "GET", token = session.accessToken)
-    val snapshot = json.optJSONObject("snapshot") ?: return null
+    val response = requestJson<GetSnapshotResponse>(path = "/api/sync/snapshot", method = "GET", token = session.accessToken)
+    val snapshot = response.snapshot ?: return null
     return CloudSnapshot(
-      metadata = snapshot.getJSONObject("metadata").toMetadata(),
-      payload = snapshot.getJSONObject("payload"),
+      metadata = snapshot.metadata.toDomain(),
+      payload = snapshot.payload,
     )
   }
 
   suspend fun putSnapshot(
     session: CloudSyncSession,
     updatedAtUtc: Instant,
-    payload: JSONObject,
+    payload: JsonObject,
   ): CloudSnapshotMetadata {
-    val json =
-      requestJson(
+    val response =
+      requestJson<PutSnapshotResponse>(
         path = "/api/sync/snapshot",
         method = "POST",
         token = session.accessToken,
         body =
-          JSONObject()
-            .put("updatedAtUtc", updatedAtUtc.toString())
-            .put("appVersion", BuildConfig.VERSION_NAME)
-            .put("payload", payload),
+          json.encodeToString(
+            PutSnapshotRequest(
+              updatedAtUtc = updatedAtUtc.toString(),
+              appVersion = BuildConfig.VERSION_NAME,
+              payload = payload,
+            )
+          ),
       )
-    return json.getJSONObject("metadata").toMetadata()
+    return response.metadata.toDomain()
   }
 
   fun signOut() {
     prefs.edit().clear().apply()
   }
 
-  private suspend fun postJson(path: String, body: JSONObject): JSONObject =
-    requestJson(path = path, method = "POST", token = null, body = body)
-
-  private suspend fun requestJson(
+  private suspend inline fun <reified T> requestJson(
     path: String,
     method: String,
     token: String?,
-    body: JSONObject? = null,
-  ): JSONObject =
+    body: String? = null,
+  ): T =
     withContext(Dispatchers.IO) {
       val connection = (URL("$backendUrl$path").openConnection() as HttpURLConnection).apply {
         requestMethod = method
@@ -124,7 +136,7 @@ class CloudSyncClient(context: Context) {
         if (body != null) doOutput = true
       }
       try {
-        if (body != null) connection.outputStream.use { it.write(body.toString().toByteArray(Charsets.UTF_8)) }
+        if (body != null) connection.outputStream.use { it.write(body.toByteArray(Charsets.UTF_8)) }
         val status = connection.responseCode
         val text =
           (if (status in 200..299) connection.inputStream else connection.errorStream)
@@ -132,22 +144,11 @@ class CloudSyncClient(context: Context) {
             ?.use { it.readText() }
             .orEmpty()
         if (status !in 200..299) error("Cloud sync returned HTTP $status")
-        JSONObject(text)
+        json.decodeFromString<T>(text)
       } finally {
         connection.disconnect()
       }
     }
-
-  private fun JSONObject.toUser(): CloudSyncUser =
-    CloudSyncUser(id = getLong("id"), login = getString("login"))
-
-  private fun JSONObject.toMetadata(): CloudSnapshotMetadata =
-    CloudSnapshotMetadata(
-      updatedAtUtc = Instant.parse(getString("updatedAtUtc")),
-      uploadedAtUtc = Instant.parse(getString("uploadedAtUtc")),
-      appVersion = getString("appVersion"),
-      jsonHash = getString("jsonHash"),
-    )
 
   private companion object {
     const val GITHUB_CLIENT_ID = "Ov23liyYDohki31BD358"
@@ -156,4 +157,62 @@ class CloudSyncClient(context: Context) {
     const val KEY_GITHUB_USER_ID = "githubUserId"
     const val KEY_GITHUB_LOGIN = "githubLogin"
   }
+}
+
+@Serializable
+private data class OAuthExchangeRequest(
+  val code: String,
+)
+
+@Serializable
+private data class OAuthExchangeResponse(
+  val accessToken: String,
+  val user: CloudSyncUserJson,
+)
+
+@Serializable
+private data class CloudSyncUserJson(
+  val id: Long,
+  val login: String,
+) {
+  fun toDomain(): CloudSyncUser = CloudSyncUser(id = id, login = login)
+}
+
+@Serializable
+private data class GetSnapshotResponse(
+  val snapshot: CloudSnapshotJson? = null,
+)
+
+@Serializable
+private data class PutSnapshotRequest(
+  val updatedAtUtc: String,
+  val appVersion: String,
+  val payload: JsonObject,
+)
+
+@Serializable
+private data class PutSnapshotResponse(
+  val metadata: CloudSnapshotMetadataJson,
+)
+
+@Serializable
+private data class CloudSnapshotJson(
+  val metadata: CloudSnapshotMetadataJson,
+  val payload: JsonObject = buildJsonObject {},
+)
+
+@Serializable
+private data class CloudSnapshotMetadataJson(
+  val updatedAtUtc: String,
+  val uploadedAtUtc: String,
+  val appVersion: String,
+  val jsonHash: String,
+) {
+  fun toDomain(): CloudSnapshotMetadata =
+    CloudSnapshotMetadata(
+      updatedAtUtc = Instant.parse(updatedAtUtc),
+      uploadedAtUtc = Instant.parse(uploadedAtUtc),
+      appVersion = appVersion,
+      jsonHash = jsonHash,
+    )
 }

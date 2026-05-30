@@ -3,6 +3,8 @@ package dev.nihildigit.focuswell.domain
 import java.time.Instant
 import java.time.LocalTime
 
+const val PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS: Long = 3
+
 enum class SessionType(val label: String, val rate: Double) {
   Input("Input", 0.5),
   Output("Output", 0.25),
