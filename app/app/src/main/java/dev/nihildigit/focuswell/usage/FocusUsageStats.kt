@@ -64,6 +64,7 @@ fun phoneUsageSegments(
     startedAtMillis = startedAt.toEpochMilli(),
     endedAtMillis = endedAt.toEpochMilli(),
     excludedIntervals = excludedSessionIntervals(startedAt, endedAt, focusRecords, leisureRecords),
+    chargeFreePackages = rules.normalized().phoneUsageChargeFreePackages,
     appName = { packageName -> packageManager.appLabel(packageName) ?: packageName.fallbackAppName() },
     rules = rules,
     zone = zone,

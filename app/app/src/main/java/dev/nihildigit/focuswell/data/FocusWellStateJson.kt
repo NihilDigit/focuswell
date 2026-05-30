@@ -81,6 +81,7 @@ private fun FocusWellRules.toSerialized(): SerializedRules =
     sleepProtectionEndHour = sleepProtectionEndHour,
     sleepProtectionMultiplier = sleepProtectionMultiplier,
     longSessionRemindersEnabled = longSessionRemindersEnabled,
+    phoneUsageChargeFreePackages = phoneUsageChargeFreePackages.toList(),
   )
 
 private fun SerializedRules.toDomain(): FocusWellRules =
@@ -92,6 +93,7 @@ private fun SerializedRules.toDomain(): FocusWellRules =
     sleepProtectionEndHour = sleepProtectionEndHour,
     sleepProtectionMultiplier = sleepProtectionMultiplier,
     longSessionRemindersEnabled = longSessionRemindersEnabled,
+    phoneUsageChargeFreePackages = phoneUsageChargeFreePackages.toSet(),
   )
 
 private fun ActiveMode.toSerialized(): SerializedActiveMode =

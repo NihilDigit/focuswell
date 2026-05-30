@@ -19,6 +19,7 @@ import androidx.compose.material.icons.rounded.Remove
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
@@ -226,6 +227,43 @@ internal fun SettingsSwitchRow(
       Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
     Switch(checked = checked, onCheckedChange = onCheckedChange)
+  }
+}
+
+@Composable
+internal fun SettingsRuleActionRow(
+  title: String,
+  value: String,
+  supporting: String,
+  icon: ImageVector,
+  actionLabel: String,
+  onClick: () -> Unit,
+) {
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
+  ) {
+    Surface(
+      color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f),
+      contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+      shape = CircleShape,
+    ) {
+      Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+    }
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    Text(
+      value,
+      style = tabularNumbers(MaterialTheme.typography.titleMedium),
+      fontWeight = FontWeight.Bold,
+      textAlign = TextAlign.End,
+    )
+    TextButton(onClick = onClick, modifier = Modifier.height(44.dp)) {
+      Text(actionLabel)
+    }
   }
 }
 

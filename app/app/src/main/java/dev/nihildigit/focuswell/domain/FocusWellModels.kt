@@ -60,6 +60,7 @@ data class FocusWellRules(
   val sleepProtectionEndHour: Int = 7,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
+  val phoneUsageChargeFreePackages: Set<String> = emptySet(),
 ) {
   val safeDailyGrantMinutes: Double
     get() = dailyGrantMinutes.coerceIn(0.0, 24.0 * 60.0)
@@ -78,6 +79,13 @@ data class FocusWellRules(
 
   val safeSleepProtectionMultiplier: Double
     get() = sleepProtectionMultiplier.coerceIn(1.0, 5.0)
+
+  val safePhoneUsageChargeFreePackages: Set<String>
+    get() =
+      phoneUsageChargeFreePackages
+        .map { it.trim() }
+        .filter { it.isNotEmpty() }
+        .toSortedSet()
 
   val dayBoundaryTime: LocalTime
     get() = LocalTime.of(safeDayBoundaryHour, 0)
@@ -100,6 +108,7 @@ data class FocusWellRules(
       sleepProtectionEndHour = safeSleepProtectionEndHour,
       sleepProtectionMultiplier = safeSleepProtectionMultiplier,
       longSessionRemindersEnabled = longSessionRemindersEnabled,
+      phoneUsageChargeFreePackages = safePhoneUsageChargeFreePackages,
     )
 }
 

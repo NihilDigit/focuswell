@@ -190,6 +190,9 @@ MVP clustering rules:
 - Existing Focus and Leisure records are excluded from phone-use review.
 - Cost is the actual foreground duration inside occupied minutes, not the
   rounded count of occupied minutes.
+- Charge-free apps still count toward occupied minutes outside Focus and
+  Leisure, but their own foreground duration is not charged. This rule does not
+  make those apps focus-related during Focus settlement.
 - Non-zero costs or earnings below one minute should be displayed as `<1m` or
   `-<1m`, not rounded down to `0m`.
 

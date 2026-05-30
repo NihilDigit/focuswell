@@ -20,6 +20,7 @@ internal fun clusterPhoneUsageIntervals(
   occupiedMillisPerMinute: Long = 50_000L,
   minimumOccupiedMinutes: Int = 5,
   mergeGapMinutes: Int = 1,
+  chargeFreePackages: Set<String> = emptySet(),
   appName: (String) -> String = { it.fallbackAppName() },
   rules: FocusWellRules = FocusWellRules(),
   zone: TimeZone = TimeAccounting.focusWellTimeZone,
@@ -109,7 +110,7 @@ internal fun clusterPhoneUsageIntervals(
         startedAt = Instant.ofEpochMilli(start),
         endedAt = Instant.ofEpochMilli(end),
         costMinutes =
-          slices.sumOf { slice ->
+          slices.filterNot { it.packageName in chargeFreePackages }.sumOf { slice ->
             TimeAccounting.leisureCostMinutes(
               startedAt = slice.startedAt.toKotlinInstant(),
               endedAt = slice.endedAt.toKotlinInstant(),

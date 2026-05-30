@@ -29,6 +29,7 @@ internal class RoomFocusWellStore(
             sleepProtectionEndHour = appState.sleepProtectionEndHour,
             sleepProtectionMultiplier = appState.sleepProtectionMultiplier,
             longSessionRemindersEnabled = appState.longSessionRemindersEnabled,
+            phoneUsageChargeFreePackages = appState.phoneUsageChargeFreePackagesJson.toStoredPackageSet(),
           ).normalized(),
         activeMode = appState.toActiveMode(),
         tags = dao.tags().map { it.toDomain() },

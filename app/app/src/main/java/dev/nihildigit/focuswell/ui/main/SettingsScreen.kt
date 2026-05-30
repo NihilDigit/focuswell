@@ -48,6 +48,7 @@ internal fun SettingsScreen(
   val context = LocalContext.current
   var confirmClear by remember { mutableStateOf(false) }
   var confirmExport by remember { mutableStateOf(false) }
+  var selectingChargeFreeApps by remember { mutableStateOf(false) }
   var pendingImportText by remember { mutableStateOf<String?>(null) }
   var pendingExportText by remember { mutableStateOf<String?>(null) }
   val exportLauncher =
@@ -93,6 +94,16 @@ internal fun SettingsScreen(
     )
     return
   }
+  if (selectingChargeFreeApps) {
+    ChargeFreeAppsScreen(
+      selectedPackages = state.rules.normalized().phoneUsageChargeFreePackages,
+      onSelectedPackagesChange = { packages ->
+        onUpdateRules(state.rules.normalized().copy(phoneUsageChargeFreePackages = packages))
+      },
+      onBack = { selectingChargeFreeApps = false },
+    )
+    return
+  }
   LazyColumn(
     contentPadding = PaddingValues(20.dp),
     verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -108,6 +119,7 @@ internal fun SettingsScreen(
       SettingsRulesSection(
         rules = state.rules,
         onUpdateRules = onUpdateRules,
+        onManageChargeFreeApps = { selectingChargeFreeApps = true },
       )
     }
     item {

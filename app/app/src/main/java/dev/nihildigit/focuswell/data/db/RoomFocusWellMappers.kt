@@ -14,6 +14,7 @@ import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.builtins.ListSerializer
+import kotlinx.serialization.builtins.serializer
 import kotlinx.serialization.json.Json
 import java.time.Instant
 
@@ -84,6 +85,8 @@ private fun FocusWellUiState.baseAppStateEntity(
     sleepProtectionEndHour = normalizedRules.sleepProtectionEndHour,
     sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
     longSessionRemindersEnabled = normalizedRules.longSessionRemindersEnabled,
+    phoneUsageChargeFreePackagesJson =
+      packageListJson.encodeToString(normalizedRules.phoneUsageChargeFreePackages.toList()),
     lastCheckInDailyDate = lastCheckInDailyDate,
     lastPhoneUsageSettlementAt = lastPhoneUsageSettlementAt?.toString(),
     dailyGrantPausedUntilDate = dailyGrantPausedUntilDate,
@@ -102,6 +105,13 @@ private fun FocusWellUiState.baseAppStateEntity(
     activePausedDurationMillis = activePausedDurationMillis,
   )
 }
+
+private val packageListJson = Json { ignoreUnknownKeys = true }
+
+internal fun String.toStoredPackageSet(): Set<String> =
+  runCatching {
+    packageListJson.decodeFromString(ListSerializer(String.serializer()), this).toSet()
+  }.getOrDefault(emptySet())
 
 internal fun AppStateEntity.toActiveMode(): ActiveMode =
   when (activeKind) {

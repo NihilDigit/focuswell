@@ -5,6 +5,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
+import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material.icons.rounded.Delete
@@ -46,6 +47,7 @@ internal fun SettingsThemeSection(
 internal fun SettingsRulesSection(
   rules: FocusWellRules,
   onUpdateRules: (FocusWellRules) -> Unit,
+  onManageChargeFreeApps: () -> Unit,
 ) {
   val normalizedRules = rules.normalized()
   CalmPanel {
@@ -97,6 +99,14 @@ internal fun SettingsRulesSection(
       icon = Icons.Rounded.Timer,
       onDecrease = { onUpdateRules(normalizedRules.copy(sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier - 0.5)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier + 0.5)) },
+    )
+    SettingsRuleActionRow(
+      title = "Charge-free apps",
+      value = normalizedRules.phoneUsageChargeFreePackages.size.toString(),
+      supporting = "Free only in phone-use correction.",
+      icon = Icons.Rounded.Apps,
+      actionLabel = "Choose",
+      onClick = onManageChargeFreeApps,
     )
   }
 }

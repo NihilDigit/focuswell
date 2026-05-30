@@ -32,6 +32,7 @@ internal data class SerializedRules(
   val sleepProtectionEndHour: Int = FocusWellRules().sleepProtectionEndHour,
   val sleepProtectionMultiplier: Double = FocusWellRules().sleepProtectionMultiplier,
   val longSessionRemindersEnabled: Boolean = FocusWellRules().longSessionRemindersEnabled,
+  val phoneUsageChargeFreePackages: List<String> = emptyList(),
 )
 
 @Serializable

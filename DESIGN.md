@@ -252,6 +252,7 @@ Settings:
   the APK to the Android package installer. The release page remains a fallback,
   not the primary completion path.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, wake time, sleep-protection start, and sleep rate are adjustable from Settings.
+- Charge-free app selection belongs in Settings Rules. The entry row shows the selected count and opens a plain full-screen list of installed user apps with app title, package name, and checkbox state.
 - Reminder preferences live with rules as compact switch rows. The Push row sits beside Long reminders; off may mean the user disabled remote reminder delivery, FCM registration is missing, or notification permission is missing. Turning it on should request permission and refresh registration. Long reminders should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
 - Destructive reset must offer export first and require a typed phrase before the action enables.

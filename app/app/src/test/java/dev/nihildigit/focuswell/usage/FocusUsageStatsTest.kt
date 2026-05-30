@@ -96,6 +96,29 @@ class FocusUsageStatsTest {
   }
 
   @Test
+  fun clusterPhoneUsageIntervals_usesChargeFreeAppsForClusteringButNotCost() {
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
+
+    val segments =
+      clusterPhoneUsageIntervals(
+        intervals =
+          listOf(
+            UsageInterval("app.words", start, start + 2 * 60_000L),
+            UsageInterval("app.video", start + 2 * 60_000L, start + 4 * 60_000L),
+            UsageInterval("app.words", start + 4 * 60_000L, start + 6 * 60_000L),
+          ),
+        startedAtMillis = start,
+        endedAtMillis = start + 10 * 60_000L,
+        chargeFreePackages = setOf("app.words"),
+        zone = TimeZone.UTC,
+      )
+
+    assertEquals(1, segments.size)
+    assertEquals(2.0, segments.first().costMinutes, 0.0001)
+    assertEquals(listOf("app.words", "app.video"), segments.first().topApps.map { it.packageName })
+  }
+
+  @Test
   fun clusterPhoneUsageIntervals_appliesSleepProtectionMultiplierToCost() {
     val start = Instant.parse("2026-05-20T01:00:00Z").toEpochMilli()
 

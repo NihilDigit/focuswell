@@ -387,7 +387,11 @@ class FocusWellRepositoryTest {
       newRepository(
         InMemoryFocusWellStore(
           baseState(
-            rules = FocusWellRules(longSessionRemindersEnabled = false),
+            rules =
+              FocusWellRules(
+                longSessionRemindersEnabled = false,
+                phoneUsageChargeFreePackages = setOf("app.words"),
+              ),
             focusRecords = listOf(focusRecord()),
             ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1")),
           )
@@ -408,6 +412,10 @@ class FocusWellRepositoryTest {
       roundTrip["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
     )
     assertEquals(false, roundTrip["rules"]?.jsonObject?.get("longSessionRemindersEnabled")?.jsonPrimitive?.boolean)
+    assertEquals(
+      "app.words",
+      roundTrip["rules"]?.jsonObject?.get("phoneUsageChargeFreePackages")?.jsonArray?.first()?.jsonPrimitive?.contentOrNull,
+    )
 
     val invalid =
       exportedJson
