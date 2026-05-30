@@ -283,6 +283,11 @@ Cloud sync is explicit backup transport, not collaborative storage. FocusWell
 does not automatically merge divergent ledgers or continuously sync in the
 background.
 
+JSON export/import and cloud sync share the same typed backup payload. The app
+should keep this payload behind Kotlin serialization models so local backup,
+manual cloud sync, and release-update compatibility are tested against one
+transport shape instead of separate hand-built JSON paths.
+
 ## Reminders
 
 FocusWell uses the backend only for reminder delivery, not as the source of
@@ -318,6 +323,27 @@ permission when needed and refreshes FCM registration.
 Debug builds use the normal Android debug key. Release builds, whether local or
 CI-built, must use the same release keystore. A release build should fail if the
 release signing material is not available.
+
+The Android app must validate remote reminder payloads against the local active
+session before showing a notification. Stale or cancelled reminders are cleanup
+work; matching active-session notifications should not depend on detached
+background work that may be killed after the FCM callback returns.
+
+## Implementation Boundaries
+
+The product model should stay readable in code:
+
+- Accounting and settlement logic live in domain/data helpers, not Compose.
+- UI screens may call ViewModel actions, but should not build JSON, query Room
+  directly, or encode reminder/update protocols.
+- Large entry points remain orchestration shells. Split cohesive behavior into
+  named files for records, sessions, ideas, planning, daily maintenance, backup
+  transport, reminders, updates, and reusable UI state.
+- Time-sensitive business logic should accept a clock or timestamp so release
+  and backup behavior remains deterministic in tests.
+- Prefer Kotlin time APIs in product logic: `kotlin.time` for elapsed durations
+  and absolute instants, `kotlinx-datetime` for local dates, times, and time
+  zones. Keep Java time conversion at interop edges.
 
 ## Browser Extension
 

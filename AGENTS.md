@@ -60,7 +60,21 @@ Use domain names from the product model:
 
 Store timestamps in UTC. Use the device's current system time zone for business-day calculation. Use `dailyDate` for day records.
 
-Large Compose files should be split by screen or component group. `MainScreen.kt` should stay as the entry and shared shell, not the home for every UI component.
+Prefer Kotlin-first APIs and idioms in new Android code:
+
+- Use coroutines and suspend APIs for disk, network, and backend work instead of raw threads, callbacks that outlive their owner, or `runBlocking` in production code.
+- Use Kotlin serialization for JSON. Do not hand-build JSON strings or introduce `org.json` for app payloads.
+- Use `kotlin.time` for durations and absolute instants in new code. Use `kotlinx-datetime` for local dates, local times, and time-zone calculations. Keep `java.time` behind narrow interop boundaries when platform or Room APIs require it.
+- Inject clocks or pass timestamps into pure logic that creates IDs, records, or ledger entries. Do not hide time reads inside business logic that needs deterministic tests.
+
+Keep files and layers small enough to review:
+
+- Large Compose files should be split by screen or component group. `MainScreen.kt` should stay as the entry and shared shell, not the home for every UI component.
+- ViewModels coordinate UI state and use cases. Move durable accounting, persistence, sync, update, and reminder behavior into focused domain/data/service helpers.
+- Repository files should delegate cohesive mutation groups to small functions or files instead of accumulating all product behavior in one class.
+- Room entity mapping, JSON transport models, reminder schedule math, and update download/install coordination should live in dedicated files, not inside UI or repository entry points.
+- Avoid defensive wrappers that only restate defaults or swallow impossible states. Keep validation at trust boundaries and let tests cover expected invariants.
+- Avoid hardcoded accounting values, release labels, URLs, and UI copy when an existing rule, BuildConfig value, string source, or product constant already owns that value.
 
 ## Tests
 
@@ -72,8 +86,33 @@ Add focused tests for changes that affect:
 - Ledger adjustments after edits or deletes.
 - Reminder staleness checks using `sessionId + revision`.
 - Backend skip/send behavior for cancelled or stale reminders.
+- JSON export/import shape, cloud snapshot decisions, and update asset selection.
+- UI state reducers or pure helpers split out of Compose screens.
 
 Name tests after behavior, not implementation details.
+
+Delete or rewrite tests that only assert a mock was called or mirror implementation details without protecting user-visible behavior. Prefer small deterministic unit tests around pure helpers when splitting large files.
+
+Before finishing a broad Android maintenance change, run:
+
+```powershell
+cd app
+.\gradlew.bat testDebugUnitTest compileDebugAndroidTestKotlin assembleDebug
+```
+
+For backend-affecting changes, also run:
+
+```powershell
+cd backend
+bun run check
+bun test
+```
+
+For changes that intentionally remove old implementation styles, scan for regressions before release:
+
+```powershell
+rg "Thread\s*\{|thread\(|runOnUiThread|java\.time\.Duration|Duration\.between|Duration\.of|System\.currentTimeMillis|org\.json|JSONObject|JSONArray|runBlocking|GlobalScope|Thread\.sleep" app/app/src
+```
 
 ## Release Workflow
 

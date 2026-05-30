@@ -4,6 +4,11 @@ FocusWell uses Material 3 Expressive as a usability system. Expressive treatment
 
 Product behavior is defined in [docs/focuswell-product-spec.md](docs/focuswell-product-spec.md). This file defines reusable UI rules.
 
+When a UI surface grows, split by user-facing role before adding more branches
+to the same file. Entry screens own layout composition and navigation state;
+row rendering, sheets, dialogs, drawing, pure UI state reducers, and formatting
+helpers belong in dedicated files with focused tests where behavior can drift.
+
 ## Material 3 Sources
 
 The current design pass used Kimi WebBridge to read the official Material 3 pages in this order:
@@ -243,6 +248,9 @@ Settings:
 - Groups are plain filled surfaces.
 - Keep Settings limited to appearance, rules, and data management. Tags and trackers belong in Plan.
 - Update checks belong in Settings as a quiet maintenance row. Show current/latest version, explicit check/download/install actions, and keep the GitHub release page as a fallback.
+- After a verified GitHub Release APK download, the app should immediately hand
+  the APK to the Android package installer. The release page remains a fallback,
+  not the primary completion path.
 - Rules are compact stepper rows, not long forms. Daily grant, day boundary, wake time, sleep-protection start, and sleep rate are adjustable from Settings.
 - Reminder preferences live with rules as compact switch rows. The Push row sits beside Long reminders; off may mean the user disabled remote reminder delivery, FCM registration is missing, or notification permission is missing. Turning it on should request permission and refresh registration. Long reminders should explain the 1h, 3h, and 5h checkpoints without implying any accounting effect.
 - Clear all data uses a dedicated confirmation screen, not a small dialog.
