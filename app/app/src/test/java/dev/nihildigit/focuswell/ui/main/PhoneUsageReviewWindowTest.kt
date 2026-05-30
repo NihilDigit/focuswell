@@ -68,4 +68,20 @@ class PhoneUsageReviewWindowTest {
     assertEquals(startedAt, window.endedAt)
     assertEquals(startedAt, window.settledUntil)
   }
+
+  @Test
+  fun phoneUsageSettlementWindow_toleratesBlankInitialDailyDate() {
+    val state =
+      FocusWellUiState(
+        dailyDate = "",
+        rules = FocusWellRules(dayBoundaryHour = 4),
+      )
+    val startedAt = Instant.parse("2026-05-20T12:00:00Z")
+
+    val window = phoneUsageSettlementWindow(state, startedAt)
+
+    assertEquals(Instant.parse("2026-05-20T04:00:00Z"), window.startedAt)
+    assertEquals(startedAt, window.endedAt)
+    assertEquals(startedAt, window.settledUntil)
+  }
 }

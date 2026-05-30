@@ -83,6 +83,10 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     phoneSettlementAvailabilityJob =
       viewModelScope.launch {
         val state = repository.state.value
+        if (state.dailyDate.isBlank()) {
+          _phoneSettlementAvailable.value = false
+          return@launch
+        }
         val checkedAt = Instant.now()
         val available =
           withContext(Dispatchers.Default) {

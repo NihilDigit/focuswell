@@ -15,8 +15,11 @@ internal fun morningCheckInUsageWindow(
   dailyDate: String = state.dailyDate,
 ): PhoneUsageReviewWindow {
   val rules = state.rules.normalized()
-  val boundaryEnd = TimeAccounting.businessDayBoundaryInstant(dailyDate, rules = rules)
-  val boundaryStart = TimeAccounting.businessDayBoundaryInstant(dailyDate, dayOffset = -1, rules = rules)
+  val effectiveDailyDate =
+    dailyDate.takeIf { it.isNotBlank() }
+      ?: TimeAccounting.dailyDate(Instant.now(), rules = rules).toString()
+  val boundaryEnd = TimeAccounting.businessDayBoundaryInstant(effectiveDailyDate, rules = rules)
+  val boundaryStart = TimeAccounting.businessDayBoundaryInstant(effectiveDailyDate, dayOffset = -1, rules = rules)
   val startedAt =
     state.lastPhoneUsageSettlementAt
       ?.takeIf { it.isAfter(boundaryStart) }
@@ -33,7 +36,10 @@ internal fun phoneUsageSettlementWindow(
   startedAt: Instant,
 ): PhoneUsageReviewWindow {
   val rules = state.rules.normalized()
-  val dayStart = TimeAccounting.businessDayBoundaryInstant(state.dailyDate, rules = rules)
+  val effectiveDailyDate =
+    state.dailyDate.takeIf { it.isNotBlank() }
+      ?: TimeAccounting.dailyDate(startedAt, rules = rules).toString()
+  val dayStart = TimeAccounting.businessDayBoundaryInstant(effectiveDailyDate, rules = rules)
   val queryStartedAt =
     state.lastPhoneUsageSettlementAt
       ?.takeIf { it.isAfter(dayStart) }
