@@ -16,6 +16,7 @@ internal data class AppStateEntity(
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
   val lastCheckInDailyDate: String? = null,
+  val lastPhoneUsageSettlementAt: String? = null,
   val dailyGrantPausedUntilDate: String? = null,
   val activeKind: String,
   val activeStartedAt: String? = null,

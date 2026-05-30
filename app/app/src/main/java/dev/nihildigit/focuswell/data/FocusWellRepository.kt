@@ -189,6 +189,7 @@ class FocusWellRepository internal constructor(
     checkInStartedAt: Instant,
     phoneCostMinutes: Double,
     reviewedSegmentCount: Int,
+    settledUntil: Instant,
   ) {
     mutate { state ->
       val today = TimeAccounting.dailyDate(checkInStartedAt, rules = state.rules)
@@ -222,9 +223,51 @@ class FocusWellRepository internal constructor(
 
       state.copy(
         lastCheckInDailyDate = todayText,
+        lastPhoneUsageSettlementAt = maxSettlementInstant(state.lastPhoneUsageSettlementAt, settledUntil),
         dailyGrantPausedUntilDate =
           if (exceeded) today.plusDays(3).toString() else state.dailyGrantPausedUntilDate,
         ledger = entries.asReversed() + state.ledger,
+      )
+    }
+  }
+
+  fun completePhoneUsageSettlement(
+    settlementStartedAt: Instant,
+    phoneCostMinutes: Double,
+    reviewedSegmentCount: Int,
+    settledUntil: Instant,
+  ) {
+    mutate { state ->
+      val today = TimeAccounting.dailyDate(settlementStartedAt, rules = state.rules)
+      val available = state.ledger.sumOf { it.deltaMinutes }.coerceAtLeast(0.0)
+      val safePhoneCost = phoneCostMinutes.coerceAtLeast(0.0)
+      val deducted = minOf(safePhoneCost, available)
+      val exceeded = safePhoneCost > available
+      val entries =
+        if (safePhoneCost > 0.0 || reviewedSegmentCount > 0) {
+          listOf(
+            LedgerEntry(
+              id = "phone-settlement-${settlementStartedAt.toEpochMilli()}",
+              title = if (exceeded) "Phone usage cleared reserve" else "Phone usage",
+              deltaMinutes = -deducted,
+              createdAt = settlementStartedAt,
+              note =
+                if (exceeded) {
+                  "Detected ${safePhoneCost.roundMinutes()}; cleared ${deducted.roundMinutes()}; daily grant paused for 3 days."
+                } else {
+                  "Settled ${safePhoneCost.roundMinutes()} after Fair Use across $reviewedSegmentCount segment${if (reviewedSegmentCount == 1) "" else "s"}."
+                },
+            )
+          )
+        } else {
+          emptyList()
+        }
+
+      state.copy(
+        lastPhoneUsageSettlementAt = maxSettlementInstant(state.lastPhoneUsageSettlementAt, settledUntil),
+        dailyGrantPausedUntilDate =
+          if (exceeded) today.plusDays(3).toString() else state.dailyGrantPausedUntilDate,
+        ledger = entries + state.ledger,
       )
     }
   }
@@ -683,6 +726,7 @@ class FocusWellRepository internal constructor(
       ideas = emptyList(),
       ledger = emptyList(),
       lastCheckInDailyDate = null,
+      lastPhoneUsageSettlementAt = null,
       dailyGrantPausedUntilDate = null,
     )
 
@@ -694,6 +738,9 @@ class FocusWellRepository internal constructor(
 
   private fun dailyGrantInstant(date: LocalDate, rules: FocusWellRules = FocusWellRules()): Instant =
     date.atTime(rules.normalized().dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+
+  private fun maxSettlementInstant(current: Instant?, next: Instant): Instant =
+    if (current == null || next.isAfter(current)) next else current
 
   private fun isDailyGrantPaused(state: FocusWellUiState, date: LocalDate): Boolean {
     val pausedUntil = state.dailyGrantPausedUntilDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
@@ -735,6 +782,7 @@ class FocusWellRepository internal constructor(
       .put("ideas", JSONArray(state.ideas.map(::ideaToJson)))
       .put("ledger", JSONArray(state.ledger.map(::ledgerToJson)))
       .put("lastCheckInDailyDate", state.lastCheckInDailyDate)
+      .put("lastPhoneUsageSettlementAt", state.lastPhoneUsageSettlementAt?.toString())
       .put("dailyGrantPausedUntilDate", state.dailyGrantPausedUntilDate)
 
   private fun jsonToState(json: JSONObject): FocusWellUiState =
@@ -754,6 +802,7 @@ class FocusWellRepository internal constructor(
       ideas = json.optJSONArray("ideas")?.mapObjects(::jsonToIdea).orEmpty(),
       ledger = json.optJSONArray("ledger")?.mapObjects(::jsonToLedger).orEmpty(),
       lastCheckInDailyDate = json.optStringOrNull("lastCheckInDailyDate"),
+      lastPhoneUsageSettlementAt = json.optNullableInstant("lastPhoneUsageSettlementAt"),
       dailyGrantPausedUntilDate = json.optStringOrNull("dailyGrantPausedUntilDate"),
     ).withComputedTrackers().withLedgerBackedReserve()
 

@@ -17,7 +17,7 @@ import androidx.sqlite.db.SupportSQLiteDatabase
     IdeaEntity::class,
     LedgerEntryEntity::class,
   ],
-  version = 15,
+  version = 16,
   exportSchema = true,
 )
 internal abstract class FocusWellDatabase : RoomDatabase() {
@@ -45,6 +45,7 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
               MIGRATION_12_13,
               MIGRATION_13_14,
               MIGRATION_14_15,
+              MIGRATION_15_16,
             )
             .build()
             .also { instance = it }
@@ -182,6 +183,14 @@ internal abstract class FocusWellDatabase : RoomDatabase() {
         override fun migrate(db: SupportSQLiteDatabase) {
           db.execSQL("UPDATE app_state SET sleepProtectionStartHour = 23 WHERE sleepProtectionStartHour = 21")
           db.execSQL("UPDATE app_state SET sleepProtectionEndHour = 7 WHERE sleepProtectionEndHour = 5")
+        }
+      }
+
+    private val MIGRATION_15_16 =
+      object : Migration(15, 16) {
+        override fun migrate(db: SupportSQLiteDatabase) {
+          db.execSQL("ALTER TABLE app_state ADD COLUMN lastPhoneUsageSettlementAt TEXT")
+          db.execSQL("UPDATE daily_trackers SET rewardMinutes = 30.0 WHERE id = 'aerobic' AND rewardMinutes = 15.0")
         }
       }
   }

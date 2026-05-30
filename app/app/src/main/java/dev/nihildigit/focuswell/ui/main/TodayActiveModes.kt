@@ -167,6 +167,7 @@ private const val LEISURE_END_HOLD_MILLIS = 950
 @Composable
 internal fun IdleTimerSurface(
   onStartFocusClick: () -> Unit,
+  onSettlePhoneUse: () -> Unit,
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
@@ -210,6 +211,18 @@ internal fun IdleTimerSurface(
           Text("Start Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
         }
       }
+    }
+    TextButton(
+      onClick = {
+        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+        onSettlePhoneUse()
+      },
+      modifier = Modifier.fillMaxWidth().height(44.dp),
+      shape = RoundedCornerShape(22.dp),
+    ) {
+      Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(18.dp))
+      Spacer(Modifier.width(8.dp))
+      Text("Settle phone use")
     }
   }
 }

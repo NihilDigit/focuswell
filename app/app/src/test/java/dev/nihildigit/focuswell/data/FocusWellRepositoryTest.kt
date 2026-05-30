@@ -176,6 +176,7 @@ class FocusWellRepositoryTest {
       checkInStartedAt = Instant.parse("2026-05-20T08:00:00Z"),
       phoneCostMinutes = 0.0,
       reviewedSegmentCount = 0,
+      settledUntil = Instant.parse("2026-05-20T04:00:00Z"),
     )
 
     val wakeBonus = repo.state.value.ledger.first { it.id == "wake-bonus-2026-05-20" }
@@ -200,9 +201,36 @@ class FocusWellRepositoryTest {
       checkInStartedAt = Instant.parse("2026-05-20T07:59:00Z"),
       phoneCostMinutes = 0.0,
       reviewedSegmentCount = 0,
+      settledUntil = Instant.parse("2026-05-20T04:00:00Z"),
     )
 
     assertTrue(repo.state.value.ledger.none { it.id.startsWith("wake-bonus-") })
+  }
+
+  @Test
+  fun completePhoneUsageSettlement_deductsAndAdvancesSettlementCursor() {
+    val repo =
+      FocusWellRepository(
+        InMemoryFocusWellStore(
+          baseState(
+            ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
+          )
+        ),
+        clock::now,
+      )
+
+    repo.completePhoneUsageSettlement(
+      settlementStartedAt = Instant.parse("2026-05-20T09:00:00Z"),
+      phoneCostMinutes = 18.0,
+      reviewedSegmentCount = 2,
+      settledUntil = Instant.parse("2026-05-20T08:55:00Z"),
+    )
+
+    val state = repo.state.value
+    assertEquals(42.0, state.reserveMinutes, 0.0001)
+    assertEquals(Instant.parse("2026-05-20T08:55:00Z"), state.lastPhoneUsageSettlementAt)
+    assertEquals("Phone usage", state.ledger.first().title)
+    assertEquals(-18.0, state.ledger.first().deltaMinutes, 0.0001)
   }
 
   @Test

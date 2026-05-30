@@ -221,6 +221,7 @@ data class FocusWellUiState(
   val ideas: List<Idea> = emptyList(),
   val ledger: List<LedgerEntry> = emptyList(),
   val lastCheckInDailyDate: String? = null,
+  val lastPhoneUsageSettlementAt: Instant? = null,
   val dailyGrantPausedUntilDate: String? = null,
   val importError: String? = null,
 )
@@ -233,7 +234,7 @@ val defaultTags =
 
 val defaultTrackers =
   listOf(
-    DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 15.0),
+    DailyTracker(id = "aerobic", label = "Aerobic", completed = false, rewardMinutes = 30.0),
     DailyTracker(id = "vocabulary", label = "Vocabulary", completed = false, rewardMinutes = 15.0),
     DailyTracker(id = "codewars", label = "CodeWars", completed = false, rewardMinutes = 15.0),
     DailyTracker(

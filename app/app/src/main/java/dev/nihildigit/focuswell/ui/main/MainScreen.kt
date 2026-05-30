@@ -12,6 +12,7 @@ import androidx.compose.animation.AnimatedContentTransitionScope
 import androidx.compose.animation.ContentTransform
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FiniteAnimationSpec
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
@@ -117,8 +118,10 @@ import androidx.compose.material.icons.rounded.Upload
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -138,6 +141,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.gestures.detectDragGestures
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -175,6 +179,7 @@ import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import com.materialkolor.blend.Blend
 import com.materialkolor.hct.Hct
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.Duration
 import java.time.Instant
 import java.time.LocalDate
@@ -291,6 +296,7 @@ fun MainScreen(
   val cloudSyncState by viewModel.cloudSyncState.collectAsStateWithLifecycle()
   val pushRegistrationState by viewModel.pushRegistrationState.collectAsStateWithLifecycle()
   val morningCheckInState by viewModel.morningCheckInState.collectAsStateWithLifecycle()
+  val phoneSettlementState by viewModel.phoneSettlementState.collectAsStateWithLifecycle()
   LaunchedEffect(state.dailyDate, state.lastCheckInDailyDate) {
     viewModel.loadMorningCheckInIfNeeded()
   }
@@ -306,6 +312,7 @@ fun MainScreen(
     cloudSyncState = cloudSyncState,
     pushRegistrationState = pushRegistrationState,
     morningCheckInState = morningCheckInState,
+    phoneSettlementState = phoneSettlementState,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
     onStartFocus = viewModel::startFocus,
@@ -348,6 +355,9 @@ fun MainScreen(
     onRefreshPushRegistration = viewModel::refreshPushRegistration,
     onDisablePush = viewModel::disablePush,
     onCompleteMorningCheckIn = viewModel::completeMorningCheckIn,
+    onStartPhoneUsageSettlement = viewModel::startPhoneUsageSettlement,
+    onCancelPhoneUsageSettlement = viewModel::cancelPhoneUsageSettlement,
+    onCompletePhoneUsageSettlement = viewModel::completePhoneUsageSettlement,
     themeMode = themeMode,
     onThemeModeChange = onThemeModeChange,
     modifier = modifier,
@@ -362,6 +372,7 @@ internal fun MainScreen(
   cloudSyncState: CloudSyncUiState,
   pushRegistrationState: PushRegistrationUiState,
   morningCheckInState: MorningCheckInUiState,
+  phoneSettlementState: MorningCheckInUiState,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
   onStartFocus: (String, SessionType, String?) -> Unit,
@@ -404,6 +415,9 @@ internal fun MainScreen(
   onRefreshPushRegistration: () -> Unit,
   onDisablePush: () -> Unit = {},
   onCompleteMorningCheckIn: (Set<String>) -> Unit = {},
+  onStartPhoneUsageSettlement: () -> Unit = {},
+  onCancelPhoneUsageSettlement: () -> Unit = {},
+  onCompletePhoneUsageSettlement: (Set<String>) -> Unit = {},
   notificationPermissionGranted: Boolean = true,
   onEnablePush: () -> Unit = {},
   themeMode: ThemeMode,
@@ -443,7 +457,8 @@ internal fun MainScreen(
   BoxWithConstraints(modifier = modifier.fillMaxSize()) {
     val useRail = maxWidth >= 600.dp
     val checkInRequired = state.lastCheckInDailyDate != state.dailyDate
-    val navigationHidden = state.activeMode is ActiveMode.Focus || checkInRequired
+    val phoneSettlementActive = phoneSettlementState.startedAt != null || phoneSettlementState.loading
+    val navigationHidden = state.activeMode is ActiveMode.Focus || checkInRequired || phoneSettlementActive
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {
@@ -469,11 +484,26 @@ internal fun MainScreen(
             onComplete = onCompleteMorningCheckIn,
             modifier = Modifier.weight(1f),
           )
+        } else if (phoneSettlementActive) {
+          PhoneUsageSettlementGate(
+            state = phoneSettlementState,
+            appState = state,
+            onCancel = onCancelPhoneUsageSettlement,
+            onComplete = onCompletePhoneUsageSettlement,
+            modifier = Modifier.weight(1f),
+          )
         } else {
           DestinationContent(
             state = state,
             onToggleTracker = onToggleTracker,
             onStartFocusClick = { showFocusSheet = true },
+            onSettlePhoneUse = {
+              if (hasUsageAccess(context)) {
+                onStartPhoneUsageSettlement()
+              } else {
+                showUsageAccessPrompt = true
+              }
+            },
             onStartLeisure = {
               requestReminderPermissionIfNeeded()
               onStartLeisure()
@@ -554,7 +584,7 @@ internal fun MainScreen(
       title = { Text("Enable app correction") },
       text = {
         Text(
-          "FocusWell can use Android usage access to show app time at focus settlement. Usage data stays local.",
+          "FocusWell can use Android usage access to review phone use and show app time at focus settlement. Usage data stays local.",
         )
       },
       confirmButton = {
@@ -633,10 +663,73 @@ private fun MorningCheckInGate(
               exceeded = exceeded,
               fairUseCount = fairUseIds.size,
               reviewedSegmentCount = state.segments.size,
+              showIncome = true,
               onBack = { step = CheckInStep.Correction },
               onDone = { onComplete(fairUseIds) },
             )
         }
+      }
+    }
+  }
+}
+
+@Composable
+private fun PhoneUsageSettlementGate(
+  state: MorningCheckInUiState,
+  appState: FocusWellUiState,
+  onCancel: () -> Unit,
+  onComplete: (Set<String>) -> Unit,
+  modifier: Modifier = Modifier,
+) {
+  var step by remember(state.startedAt) { mutableStateOf(CheckInStep.Correction) }
+  var fairUseIds by remember(state.startedAt, state.segments) { mutableStateOf(emptySet<String>()) }
+  val phoneCost = state.segments.filterNot { it.id in fairUseIds }.sumOf { it.costMinutes }
+  val available = appState.reserveMinutes
+  val deducted = minOf(phoneCost, available)
+  val remaining = (available - deducted).coerceAtLeast(0.0)
+  val exceeded = phoneCost > available
+  Surface(
+    color = MaterialTheme.colorScheme.background,
+    modifier = modifier.fillMaxSize(),
+  ) {
+    AnimatedContent(
+      targetState = step,
+      transitionSpec = {
+        fadeIn(animationSpec = tween(durationMillis = 140, delayMillis = 40)) togetherWith
+          fadeOut(animationSpec = tween(durationMillis = 90))
+      },
+      label = "phone-settlement-step",
+      modifier = Modifier.fillMaxSize(),
+    ) {
+      when (it) {
+        CheckInStep.Income,
+        CheckInStep.Correction ->
+          CheckInCorrectionScreen(
+            state = state,
+            fairUseIds = fairUseIds,
+            phoneCost = phoneCost,
+            onToggleFairUse = { segmentId ->
+              fairUseIds = if (segmentId in fairUseIds) fairUseIds - segmentId else fairUseIds + segmentId
+            },
+            onContinue = { step = CheckInStep.Settlement },
+            onCancel = onCancel,
+            title = "Phone use",
+            subtitle = "Settle recent blocks now.",
+          )
+
+        CheckInStep.Settlement ->
+          CheckInSettlementScreen(
+            incomeMinutes = 0.0,
+            phoneCost = phoneCost,
+            deducted = deducted,
+            remaining = remaining,
+            exceeded = exceeded,
+            fairUseCount = fairUseIds.size,
+            reviewedSegmentCount = state.segments.size,
+            showIncome = false,
+            onBack = { step = CheckInStep.Correction },
+            onDone = { onComplete(fairUseIds) },
+          )
       }
     }
   }
@@ -701,6 +794,9 @@ private fun CheckInCorrectionScreen(
   phoneCost: Double,
   onToggleFairUse: (String) -> Unit,
   onContinue: () -> Unit,
+  onCancel: (() -> Unit)? = null,
+  title: String = "Correction",
+  subtitle: String = "Swipe right for Fair Use.",
 ) {
   val segments = remember(state.segments) { state.segments.sortedBy { it.startedAt } }
   var currentIndex by remember(segments) { mutableStateOf(0) }
@@ -716,21 +812,28 @@ private fun CheckInCorrectionScreen(
       verticalAlignment = Alignment.Top,
     ) {
       CheckInStepHeader(
-        title = "Correction",
-        subtitle = "Swipe right for Fair Use.",
+        title = title,
+        subtitle = subtitle,
       )
-      if (reviewHistory.isNotEmpty()) {
-        TextButton(
-          onClick = {
-            val last = reviewHistory.last()
-            reviewHistory = reviewHistory.dropLast(1)
-            currentIndex = (currentIndex - 1).coerceAtLeast(0)
-            if (last.second && last.first in fairUseIds) {
-              onToggleFairUse(last.first)
-            }
-          },
-        ) {
-          Text("Undo")
+      Row(horizontalArrangement = Arrangement.spacedBy(2.dp), verticalAlignment = Alignment.CenterVertically) {
+        if (reviewHistory.isNotEmpty()) {
+          TextButton(
+            onClick = {
+              val last = reviewHistory.last()
+              reviewHistory = reviewHistory.dropLast(1)
+              currentIndex = (currentIndex - 1).coerceAtLeast(0)
+              if (last.second && last.first in fairUseIds) {
+                onToggleFairUse(last.first)
+              }
+            },
+          ) {
+            Text("Undo")
+          }
+        }
+        if (onCancel != null) {
+          TextButton(onClick = onCancel) {
+            Text("Cancel")
+          }
         }
       }
     }
@@ -798,6 +901,7 @@ private fun CheckInSettlementScreen(
   exceeded: Boolean,
   fairUseCount: Int,
   reviewedSegmentCount: Int,
+  showIncome: Boolean = true,
   onBack: () -> Unit,
   onDone: () -> Unit,
 ) {
@@ -811,13 +915,15 @@ private fun CheckInSettlementScreen(
         subtitle = "Review the final accounting.",
       )
     }
-    item {
-      AnimatedAccountingItem(
-        label = "Income",
-        amount = incomeMinutes,
-        tone = MaterialTheme.colorScheme.primary,
-        delayMillis = 0,
-      )
+    if (showIncome) {
+      item {
+        AnimatedAccountingItem(
+          label = "Income",
+          amount = incomeMinutes,
+          tone = MaterialTheme.colorScheme.primary,
+          delayMillis = 0,
+        )
+      }
     }
     item {
       AnimatedAccountingItem(
@@ -825,7 +931,7 @@ private fun CheckInSettlementScreen(
         amount = fairUseCount.toDouble(),
         valueText = "$fairUseCount / $reviewedSegmentCount",
         tone = MaterialTheme.colorScheme.secondary,
-        delayMillis = 170,
+        delayMillis = if (showIncome) 170 else 0,
       )
     }
     item {
@@ -834,7 +940,7 @@ private fun CheckInSettlementScreen(
         amount = -deducted,
         valueText = signedCompactMinutes(-deducted),
         tone = MaterialTheme.colorScheme.tertiary,
-        delayMillis = 340,
+        delayMillis = if (showIncome) 340 else 170,
       )
     }
     item {
@@ -869,13 +975,16 @@ private fun PhoneUsageSegmentCard(
   onCount: () -> Unit,
   onFairUse: () -> Unit,
 ) {
-  var offsetX by remember(segment.id) { mutableStateOf(0f) }
+  val scope = rememberCoroutineScope()
+  val offsetX = remember(segment.id) { Animatable(0f) }
+  var cardWidth by remember(segment.id) { mutableFloatStateOf(0f) }
   val threshold = with(LocalDensity.current) { 116.dp.toPx() }
-  val rotation = (offsetX / threshold).coerceIn(-1f, 1f) * 5f
-  val fairAlpha = (offsetX / threshold).coerceIn(0f, 1f)
-  val countAlpha = (-offsetX / threshold).coerceIn(0f, 1f)
-  val dragProgress = (abs(offsetX) / threshold).coerceIn(0f, 1f)
-  val draggedRight = offsetX > 0f
+  val offset = offsetX.value
+  val rotation = (offset / threshold).coerceIn(-1f, 1f) * 4f
+  val fairAlpha = (offset / threshold).coerceIn(0f, 1f)
+  val countAlpha = (-offset / threshold).coerceIn(0f, 1f)
+  val dragProgress = (abs(offset) / threshold).coerceIn(0f, 1f)
+  val draggedRight = offset > 0f
   val cardElevation by animateDpAsState(
     targetValue = if (dragProgress > 0.04f) 6.dp else 1.dp,
     animationSpec = focusWellFastEffectsSpec(),
@@ -884,8 +993,8 @@ private fun PhoneUsageSegmentCard(
   val cardColor by animateColorAsState(
     targetValue =
       when {
-        offsetX > 8f -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.26f + dragProgress * 0.22f)
-        offsetX < -8f -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.24f + dragProgress * 0.20f)
+        offset > 8f -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.26f + dragProgress * 0.22f)
+        offset < -8f -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.24f + dragProgress * 0.20f)
         else -> MaterialTheme.colorScheme.surfaceContainerLow
       },
     animationSpec = focusWellFastEffectsSpec(),
@@ -894,8 +1003,8 @@ private fun PhoneUsageSegmentCard(
   val borderColor by animateColorAsState(
     targetValue =
       when {
-        offsetX > 8f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f + dragProgress * 0.34f)
-        offsetX < -8f -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.22f + dragProgress * 0.34f)
+        offset > 8f -> MaterialTheme.colorScheme.primary.copy(alpha = 0.22f + dragProgress * 0.34f)
+        offset < -8f -> MaterialTheme.colorScheme.tertiary.copy(alpha = 0.22f + dragProgress * 0.34f)
         else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.28f)
       },
     animationSpec = focusWellFastEffectsSpec(),
@@ -915,23 +1024,53 @@ private fun PhoneUsageSegmentCard(
       modifier =
         Modifier
           .fillMaxWidth()
+          .onSizeChanged { cardWidth = it.width.toFloat() }
           .graphicsLayer {
-            translationX = offsetX
+            translationX = offset
             rotationZ = rotation
           }
           .pointerInput(segment.id) {
             detectDragGestures(
-              onDragEnd = {
-                when {
-                  offsetX > threshold -> onFairUse()
-                  offsetX < -threshold -> onCount()
-                }
-                offsetX = 0f
+              onDragStart = {
+                scope.launch { offsetX.stop() }
               },
-              onDragCancel = { offsetX = 0f },
+              onDragEnd = {
+                val releasedOffset = offsetX.value
+                val exitDistance = maxOf(cardWidth + threshold, threshold * 3f)
+                when {
+                  releasedOffset > threshold ->
+                    scope.launch {
+                      offsetX.animateTo(exitDistance, animationSpec = tween(durationMillis = 150))
+                      offsetX.snapTo(0f)
+                      onFairUse()
+                    }
+                  releasedOffset < -threshold ->
+                    scope.launch {
+                      offsetX.animateTo(-exitDistance, animationSpec = tween(durationMillis = 150))
+                      offsetX.snapTo(0f)
+                      onCount()
+                    }
+                  else ->
+                    scope.launch {
+                      offsetX.animateTo(
+                        0f,
+                        animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                      )
+                    }
+                }
+              },
+              onDragCancel = {
+                scope.launch {
+                  offsetX.animateTo(
+                    0f,
+                    animationSpec = spring(stiffness = Spring.StiffnessMediumLow, dampingRatio = Spring.DampingRatioNoBouncy),
+                  )
+                }
+              },
               onDrag = { change, dragAmount ->
                 change.consume()
-                offsetX += dragAmount.x
+                val next = offsetX.value + resistedCardDragDelta(offsetX.value, dragAmount.x, threshold)
+                scope.launch { offsetX.snapTo(next) }
               },
             )
           },
@@ -1150,6 +1289,14 @@ private fun mergeNearbyTimelineSlices(slices: List<PhoneUsageSlice>): List<Phone
   }
   merged += current
   return merged
+}
+
+private fun resistedCardDragDelta(currentOffset: Float, delta: Float, threshold: Float): Float {
+  val next = currentOffset + delta
+  if (abs(next) <= threshold) return delta
+  val overshoot = (abs(next) - threshold).coerceAtLeast(0f)
+  val resistance = 0.42f / (1f + overshoot / (threshold * 1.8f))
+  return delta * resistance.coerceIn(0.16f, 0.42f)
 }
 
 @Composable
@@ -1473,6 +1620,7 @@ private fun DestinationContent(
   pushRegistrationState: PushRegistrationUiState,
   onToggleTracker: (String) -> Unit,
   onStartFocusClick: () -> Unit,
+  onSettlePhoneUse: () -> Unit,
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
@@ -1527,6 +1675,7 @@ private fun DestinationContent(
           state = state,
           onToggleTracker = onToggleTracker,
           onStartFocusClick = onStartFocusClick,
+          onSettlePhoneUse = onSettlePhoneUse,
           onStartLeisure = onStartLeisure,
           onPauseFocus = onPauseFocus,
           onResumeFocus = onResumeFocus,
@@ -1962,6 +2111,7 @@ internal fun MainScreenPreview() {
       cloudSyncState = CloudSyncUiState(),
       pushRegistrationState = PushRegistrationUiState(status = PushRegistrationStatus(deviceId = "preview", hasFcmToken = false)),
       morningCheckInState = MorningCheckInUiState(),
+      phoneSettlementState = MorningCheckInUiState(),
       onDestination = {},
       onToggleTracker = {},
       onStartFocus = { _, _, _ -> },
@@ -2004,6 +2154,9 @@ internal fun MainScreenPreview() {
       onRefreshPushRegistration = {},
       onDisablePush = {},
       onCompleteMorningCheckIn = {},
+      onStartPhoneUsageSettlement = {},
+      onCancelPhoneUsageSettlement = {},
+      onCompletePhoneUsageSettlement = {},
       notificationPermissionGranted = false,
       onEnablePush = {},
       themeMode = ThemeMode.System,

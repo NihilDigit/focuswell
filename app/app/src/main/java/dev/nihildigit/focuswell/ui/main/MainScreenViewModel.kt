@@ -49,6 +49,7 @@ data class PushRegistrationUiState(
 data class MorningCheckInUiState(
   val dailyDate: String? = null,
   val startedAt: Instant? = null,
+  val settledUntil: Instant? = null,
   val loading: Boolean = false,
   val segments: List<PhoneUsageSegment> = emptyList(),
 )
@@ -89,6 +90,8 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   val cloudSyncState: StateFlow<CloudSyncUiState> = _cloudSyncState
   private val _morningCheckInState = MutableStateFlow(MorningCheckInUiState())
   val morningCheckInState: StateFlow<MorningCheckInUiState> = _morningCheckInState
+  private val _phoneSettlementState = MutableStateFlow(MorningCheckInUiState())
+  val phoneSettlementState: StateFlow<MorningCheckInUiState> = _phoneSettlementState
   private val _pushRegistrationState =
     MutableStateFlow(PushRegistrationUiState(status = reminders.cachedRegistrationStatus()))
   val pushRegistrationState: StateFlow<PushRegistrationUiState> = _pushRegistrationState
@@ -518,7 +521,11 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
           val rules = state.rules.normalized()
           val date = LocalDate.parse(today)
           val previousDate = date.minusDays(1)
-          val start = previousDate.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          val boundaryStart = previousDate.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          val start =
+            state.lastPhoneUsageSettlementAt
+              ?.takeIf { it.isAfter(boundaryStart) }
+              ?: boundaryStart
           val end = date.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
           phoneUsageSegments(
             context = getApplication(),
@@ -534,6 +541,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         MorningCheckInUiState(
           dailyDate = today,
           startedAt = startedAt,
+          settledUntil = LocalDate.parse(today).atTime(state.rules.normalized().dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant(),
           loading = false,
           segments = segments,
         )
@@ -548,7 +556,68 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
       checkInStartedAt = startedAt,
       phoneCostMinutes = phoneCost,
       reviewedSegmentCount = checkIn.segments.size,
+      settledUntil = checkIn.settledUntil ?: startedAt,
     )
     _morningCheckInState.value = MorningCheckInUiState()
+  }
+
+  fun startPhoneUsageSettlement() {
+    val state = repository.state.value
+    val current = _phoneSettlementState.value
+    if (current.loading || current.startedAt != null) return
+    val startedAt = Instant.now()
+    _phoneSettlementState.value =
+      MorningCheckInUiState(
+        dailyDate = state.dailyDate,
+        startedAt = startedAt,
+        settledUntil = startedAt,
+        loading = true,
+      )
+    viewModelScope.launch {
+      val segments =
+        withContext(Dispatchers.Default) {
+          val rules = state.rules.normalized()
+          val date = LocalDate.parse(state.dailyDate)
+          val dayStart = date.atTime(rules.dayBoundaryTime).atZone(TimeAccounting.focusWellZone).toInstant()
+          val start =
+            state.lastPhoneUsageSettlementAt
+              ?.takeIf { it.isAfter(dayStart) }
+              ?: dayStart
+          phoneUsageSegments(
+            context = getApplication(),
+            startedAt = start,
+            endedAt = startedAt,
+            focusRecords = state.focusRecords,
+            leisureRecords = state.leisureRecords,
+            rules = rules,
+            zone = TimeAccounting.focusWellZone,
+          )
+        }
+      _phoneSettlementState.value =
+        MorningCheckInUiState(
+          dailyDate = state.dailyDate,
+          startedAt = startedAt,
+          settledUntil = startedAt,
+          loading = false,
+          segments = segments,
+        )
+    }
+  }
+
+  fun cancelPhoneUsageSettlement() {
+    _phoneSettlementState.value = MorningCheckInUiState()
+  }
+
+  fun completePhoneUsageSettlement(fairUseSegmentIds: Set<String>) {
+    val settlement = _phoneSettlementState.value
+    val startedAt = settlement.startedAt ?: Instant.now()
+    val phoneCost = settlement.segments.filterNot { it.id in fairUseSegmentIds }.sumOf { it.costMinutes }
+    repository.completePhoneUsageSettlement(
+      settlementStartedAt = startedAt,
+      phoneCostMinutes = phoneCost,
+      reviewedSegmentCount = settlement.segments.size,
+      settledUntil = settlement.settledUntil ?: startedAt,
+    )
+    _phoneSettlementState.value = MorningCheckInUiState()
   }
 }

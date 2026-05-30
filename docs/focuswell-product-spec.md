@@ -167,15 +167,15 @@ trackers target 180 minutes for `math` and `408`.
 Default tracker rewards:
 
 - `math` and `408` rule trackers: 60 minutes each.
-- `Aerobic`, `Vocabulary`, and `CodeWars`: 15 minutes each.
+- `Aerobic`: 30 minutes.
+- `Vocabulary` and `CodeWars`: 15 minutes each.
 
 ## Morning Check-In
 
 The first app open of a new FocusWell day requires a morning check-in. The
-check-in reviews local Android usage events from the previous business day and
-clusters foreground phone use outside Focus/Leisure records while the screen is
-interactive into
-review segments.
+check-in reviews unsettled local Android usage events from the previous
+business day and clusters foreground phone use outside Focus/Leisure records
+while the screen is interactive into review segments.
 
 The Income step also settles the wake bonus as an automatic completed item. The
 default target is 05:00 and is configured from Settings Rules. A check-in from
@@ -199,6 +199,11 @@ allowed. If the phone-use cost exceeds the available reserve, the check-in
 clears the reserve and pauses unconditional Daily Grant entries for three
 business days. Focus earnings, tracker rewards, and wake/check-in bonuses remain
 active during the pause.
+
+Today also offers a small phone-use settlement entry. It uses the same
+Correction card review as morning check-in, settles usage from the last
+phone-use settlement point through now, and advances that settlement point so
+morning check-in only reviews the remaining unsettled usage.
 
 The check-in UI is a three-step flow:
 

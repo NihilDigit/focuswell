@@ -149,6 +149,7 @@ internal fun TodayScreen(
   state: FocusWellUiState,
   onToggleTracker: (String) -> Unit,
   onStartFocusClick: () -> Unit,
+  onSettlePhoneUse: () -> Unit,
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
@@ -175,6 +176,7 @@ internal fun TodayScreen(
           ActiveMode.None ->
             IdleTimerSurface(
               onStartFocusClick = onStartFocusClick,
+              onSettlePhoneUse = onSettlePhoneUse,
               onStartLeisure = onStartLeisure,
               leisureEnabled = state.reserveMinutes > 0.0,
             )
