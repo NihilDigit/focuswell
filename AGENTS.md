@@ -131,6 +131,14 @@ Release builds are tag-driven. CI creates the GitHub Release and attaches APKs; 
 
 1. Finish code, docs, version metadata, signing configuration, and CI changes in ordinary commits.
 2. Manually create and push a time-based release tag such as `26.5.4`.
+   Create tags non-interactively. This repo may open the configured editor for
+   annotated or signed tags, which can hang agent sessions. Use:
+
+   ```bash
+   git tag -a 26.5.4 -m "FocusWell 26.5.4"
+   git push origin main 26.5.4
+   ```
+
 3. Wait for CI to build the release APKs and create the GitHub Release.
 4. After CI succeeds, use `gh release edit` to update the generated Release title, description, and notes.
 
