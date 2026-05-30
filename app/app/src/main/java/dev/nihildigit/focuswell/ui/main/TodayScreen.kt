@@ -149,6 +149,7 @@ internal fun TodayScreen(
   onToggleTracker: (String) -> Unit,
   onStartFocusClick: () -> Unit,
   onSettlePhoneUse: () -> Unit,
+  phoneSettlementAvailable: Boolean,
   onStartLeisure: () -> Unit,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
@@ -176,6 +177,7 @@ internal fun TodayScreen(
             IdleTimerSurface(
               onStartFocusClick = onStartFocusClick,
               onSettlePhoneUse = onSettlePhoneUse,
+              phoneSettlementAvailable = phoneSettlementAvailable,
               onStartLeisure = onStartLeisure,
               leisureEnabled = state.reserveMinutes > 0.0,
             )

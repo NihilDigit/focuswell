@@ -18,6 +18,17 @@ Do not scatter product or design decisions across comments. Update the concept d
 
 Android:
 
+Linux/macOS:
+
+```bash
+cd app
+./gradlew testDebugUnitTest assembleDebug
+./gradlew connectedAndroidTest
+./gradlew installDebug
+```
+
+Windows PowerShell:
+
 ```powershell
 cd app
 .\gradlew.bat testDebugUnitTest assembleDebug

@@ -40,6 +40,7 @@ class AppUpdateInstaller(
       apkFile
     }
 
+  @Suppress("DEPRECATION")
   fun install(apkFile: File) {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && !appContext.packageManager.canRequestPackageInstalls()) {
       val settingsIntent =
@@ -47,7 +48,7 @@ class AppUpdateInstaller(
           .setData(Uri.parse("package:${appContext.packageName}"))
           .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
       appContext.startActivity(settingsIntent)
-      return
+      throw AppUpdateInstallPermissionRequired()
     }
 
     val apkUri =
@@ -57,8 +58,10 @@ class AppUpdateInstaller(
         apkFile,
       )
     val installIntent =
-      Intent(Intent.ACTION_VIEW)
-        .setDataAndType(apkUri, "application/vnd.android.package-archive")
+      Intent(Intent.ACTION_INSTALL_PACKAGE)
+        .setData(apkUri)
+        .putExtra(Intent.EXTRA_NOT_UNKNOWN_SOURCE, true)
+        .putExtra(Intent.EXTRA_INSTALLER_PACKAGE_NAME, appContext.packageName)
         .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         .addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
     appContext.startActivity(installIntent)
@@ -138,3 +141,6 @@ class AppUpdateInstaller(
 @OptIn(ExperimentalTime::class)
 internal fun updateDestinationName(assetName: String, downloadedAt: Instant): String =
   "updates/${downloadedAt.toEpochMilliseconds()}-$assetName"
+
+class AppUpdateInstallPermissionRequired :
+  IllegalStateException("Allow FocusWell to install unknown apps, then return and tap Install.")

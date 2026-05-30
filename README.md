@@ -60,12 +60,26 @@ Settings.
 
 ## Build
 
+Linux/macOS:
+
+```bash
+cd app
+./gradlew testDebugUnitTest assembleDebug
+```
+
+Windows PowerShell:
+
 ```powershell
 cd app
 .\gradlew.bat testDebugUnitTest assembleDebug
 ```
 
 Install a debug build:
+
+```bash
+cd app
+./gradlew installDebug
+```
 
 ```powershell
 cd app

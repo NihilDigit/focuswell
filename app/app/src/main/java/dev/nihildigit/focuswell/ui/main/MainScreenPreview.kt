@@ -19,6 +19,7 @@ internal fun MainScreenPreview() {
       pushRegistrationState = PushRegistrationUiState(status = PushRegistrationStatus(deviceId = "preview", hasFcmToken = false)),
       morningCheckInState = MorningCheckInUiState(),
       phoneSettlementState = MorningCheckInUiState(),
+      phoneSettlementAvailable = true,
       onDestination = {},
       onToggleTracker = {},
       onStartFocus = { _, _, _ -> },

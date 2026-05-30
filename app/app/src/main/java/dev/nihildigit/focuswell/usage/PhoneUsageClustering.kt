@@ -134,6 +134,25 @@ internal fun clusterPhoneUsageIntervals(
     }
 }
 
+internal fun hasBillablePhoneUsageSegment(
+  intervals: List<UsageInterval>,
+  startedAtMillis: Long,
+  endedAtMillis: Long,
+  excludedIntervals: List<Pair<Long, Long>> = emptyList(),
+  chargeFreePackages: Set<String> = emptySet(),
+  rules: FocusWellRules = FocusWellRules(),
+  zone: TimeZone = TimeAccounting.focusWellTimeZone,
+): Boolean =
+  clusterPhoneUsageIntervals(
+    intervals = intervals,
+    startedAtMillis = startedAtMillis,
+    endedAtMillis = endedAtMillis,
+    excludedIntervals = excludedIntervals,
+    chargeFreePackages = chargeFreePackages,
+    rules = rules,
+    zone = zone,
+  ).any { it.costMinutes > 0.0 }
+
 private fun List<PhoneUsageSlice>.mergeAdjacentSlices(): List<PhoneUsageSlice> {
   if (isEmpty()) return emptyList()
   val merged = mutableListOf<PhoneUsageSlice>()

@@ -102,7 +102,7 @@ class AppUpdateModelsTest {
     assertFalse(state.downloading)
     assertEquals(100, state.progress)
     assertEquals(apk, state.downloadedApk)
-    assertEquals("Update downloaded. Opening installer.", state.message)
+    assertEquals("Update downloaded. Opening system installer.", state.message)
     assertNull(state.error)
   }
 

@@ -10,6 +10,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.History
@@ -49,6 +54,7 @@ import kotlin.time.Duration.Companion.milliseconds
 internal fun IdleTimerSurface(
   onStartFocusClick: () -> Unit,
   onSettlePhoneUse: () -> Unit,
+  phoneSettlementAvailable: Boolean,
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
 ) {
@@ -93,17 +99,23 @@ internal fun IdleTimerSurface(
         }
       }
     }
-    TextButton(
-      onClick = {
-        haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-        onSettlePhoneUse()
-      },
-      modifier = Modifier.fillMaxWidth().height(44.dp),
-      shape = RoundedCornerShape(22.dp),
+    AnimatedVisibility(
+      visible = phoneSettlementAvailable,
+      enter = fadeIn() + expandVertically(),
+      exit = shrinkVertically() + fadeOut(),
     ) {
-      Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(18.dp))
-      Spacer(Modifier.width(8.dp))
-      Text("Settle phone use")
+      TextButton(
+        onClick = {
+          haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+          onSettlePhoneUse()
+        },
+        modifier = Modifier.fillMaxWidth().height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+      ) {
+        Icon(Icons.Rounded.History, contentDescription = null, modifier = Modifier.size(18.dp))
+        Spacer(Modifier.width(8.dp))
+        Text("Settle phone use")
+      }
     }
   }
 }

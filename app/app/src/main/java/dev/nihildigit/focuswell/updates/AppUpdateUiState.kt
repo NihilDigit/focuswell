@@ -56,7 +56,7 @@ fun AppUpdateUiState.updateDownloadSucceeded(apk: File): AppUpdateUiState =
     downloading = false,
     progress = 100,
     downloadedApk = apk,
-    message = "Update downloaded. Opening installer.",
+    message = "Update downloaded. Opening system installer.",
     error = null,
   )
 
@@ -70,6 +70,9 @@ fun AppUpdateUiState.updateDownloadFailed(error: Throwable): AppUpdateUiState =
 
 fun AppUpdateUiState.updateInstallFailed(error: Throwable): AppUpdateUiState =
   copy(error = error.message ?: "Could not open installer.")
+
+fun AppUpdateUiState.updateInstallPermissionRequired(error: Throwable): AppUpdateUiState =
+  copy(message = error.message ?: "Allow FocusWell to install unknown apps, then return and tap Install.", error = null)
 
 fun AppUpdateUiState.updateReleasePageOpenFailed(error: Throwable): AppUpdateUiState =
   copy(error = error.message ?: "Could not open release page.")

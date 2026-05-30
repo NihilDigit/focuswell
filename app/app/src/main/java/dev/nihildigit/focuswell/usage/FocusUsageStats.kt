@@ -71,6 +71,33 @@ fun phoneUsageSegments(
   )
 }
 
+fun hasPhoneUsageSettlementContent(
+  context: Context,
+  startedAt: Instant,
+  endedAt: Instant,
+  focusRecords: List<FocusRecord>,
+  leisureRecords: List<LeisureRecord>,
+  rules: FocusWellRules = FocusWellRules(),
+  zone: TimeZone = TimeAccounting.focusWellTimeZone,
+): Boolean {
+  if (!hasUsageAccess(context) || !endedAt.isAfter(startedAt)) return false
+
+  return hasBillablePhoneUsageSegment(
+    intervals =
+      usageIntervals(
+        context = context,
+        startedAt = startedAt,
+        endedAt = endedAt,
+      ),
+    startedAtMillis = startedAt.toEpochMilli(),
+    endedAtMillis = endedAt.toEpochMilli(),
+    excludedIntervals = excludedSessionIntervals(startedAt, endedAt, focusRecords, leisureRecords),
+    chargeFreePackages = rules.normalized().phoneUsageChargeFreePackages,
+    rules = rules,
+    zone = zone,
+  )
+}
+
 internal fun excludedSessionIntervals(
   startedAt: Instant,
   endedAt: Instant,

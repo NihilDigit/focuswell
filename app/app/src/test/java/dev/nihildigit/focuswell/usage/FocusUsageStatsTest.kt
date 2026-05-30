@@ -119,6 +119,38 @@ class FocusUsageStatsTest {
   }
 
   @Test
+  fun hasBillablePhoneUsageSegment_ignoresChargeFreeOnlySegments() {
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
+
+    val hasBillableSegment =
+      hasBillablePhoneUsageSegment(
+        intervals = listOf(UsageInterval("app.words", start, start + 6 * 60_000L)),
+        startedAtMillis = start,
+        endedAtMillis = start + 10 * 60_000L,
+        chargeFreePackages = setOf("app.words"),
+        zone = TimeZone.UTC,
+      )
+
+    assertEquals(false, hasBillableSegment)
+  }
+
+  @Test
+  fun hasBillablePhoneUsageSegment_detectsChargeableSegments() {
+    val start = Instant.parse("2026-05-20T12:00:00Z").toEpochMilli()
+
+    val hasBillableSegment =
+      hasBillablePhoneUsageSegment(
+        intervals = listOf(UsageInterval("app.video", start, start + 6 * 60_000L)),
+        startedAtMillis = start,
+        endedAtMillis = start + 10 * 60_000L,
+        chargeFreePackages = setOf("app.words"),
+        zone = TimeZone.UTC,
+      )
+
+    assertEquals(true, hasBillableSegment)
+  }
+
+  @Test
   fun clusterPhoneUsageIntervals_appliesSleepProtectionMultiplierToCost() {
     val start = Instant.parse("2026-05-20T01:00:00Z").toEpochMilli()
 

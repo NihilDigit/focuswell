@@ -203,10 +203,11 @@ clears the reserve and pauses unconditional Daily Grant entries for three
 business days. Focus earnings, tracker rewards, and wake/check-in bonuses remain
 active during the pause.
 
-Today also offers a small phone-use settlement entry. It uses the same
-Correction card review as morning check-in, settles usage from the last
-phone-use settlement point through now, and advances that settlement point so
-morning check-in only reviews the remaining unsettled usage.
+Today also offers a small phone-use settlement entry when the current
+settlement window has billable phone-use content. It uses the same Correction
+card review as morning check-in, settles usage from the last phone-use
+settlement point through now, and advances that settlement point so morning
+check-in only reviews the remaining unsettled usage.
 
 The check-in UI is a three-step flow:
 

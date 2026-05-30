@@ -21,7 +21,9 @@ import dev.nihildigit.focuswell.sync.CloudSyncSession
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.updates.GitHubReleaseClient
+import dev.nihildigit.focuswell.usage.hasPhoneUsageSettlementContent
 import dev.nihildigit.focuswell.usage.phoneUsageSegments
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
@@ -48,6 +50,9 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   val morningCheckInState: StateFlow<MorningCheckInUiState> = _morningCheckInState
   private val _phoneSettlementState = MutableStateFlow(MorningCheckInUiState())
   val phoneSettlementState: StateFlow<MorningCheckInUiState> = _phoneSettlementState
+  private val _phoneSettlementAvailable = MutableStateFlow(false)
+  val phoneSettlementAvailable: StateFlow<Boolean> = _phoneSettlementAvailable
+  private var phoneSettlementAvailabilityJob: Job? = null
   private val _pushRegistrationState =
     MutableStateFlow(PushRegistrationUiState(status = reminders.cachedRegistrationStatus()))
   val pushRegistrationState: StateFlow<PushRegistrationUiState> = _pushRegistrationState
@@ -71,6 +76,30 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
 
   fun selectDestination(destination: Destination) {
     this.destination.value = destination
+  }
+
+  fun refreshPhoneUsageSettlementAvailability() {
+    phoneSettlementAvailabilityJob?.cancel()
+    phoneSettlementAvailabilityJob =
+      viewModelScope.launch {
+        val state = repository.state.value
+        val checkedAt = Instant.now()
+        val available =
+          withContext(Dispatchers.Default) {
+            val rules = state.rules.normalized()
+            val window = phoneUsageSettlementWindow(state, checkedAt)
+            hasPhoneUsageSettlementContent(
+              context = getApplication(),
+              startedAt = window.startedAt,
+              endedAt = window.endedAt,
+              focusRecords = state.focusRecords,
+              leisureRecords = state.leisureRecords,
+              rules = rules,
+              zone = TimeAccounting.focusWellTimeZone,
+            )
+          }
+        _phoneSettlementAvailable.value = available
+      }
   }
 
   fun toggleTracker(id: String) {
@@ -495,6 +524,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         settledUntil = settlement.settledUntil ?: startedAt,
       )
       _phoneSettlementState.value = MorningCheckInUiState()
+      refreshPhoneUsageSettlementAvailability()
     }
   }
 }

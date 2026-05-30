@@ -3,6 +3,7 @@ package dev.nihildigit.focuswell.ui.main
 import android.os.Build
 import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.updates.AppUpdateInstaller
+import dev.nihildigit.focuswell.updates.AppUpdateInstallPermissionRequired
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.updates.GitHubReleaseClient
 import dev.nihildigit.focuswell.updates.appUpdateCheckState
@@ -12,6 +13,7 @@ import dev.nihildigit.focuswell.updates.updateDownloadFailed
 import dev.nihildigit.focuswell.updates.updateDownloadStarted
 import dev.nihildigit.focuswell.updates.updateDownloadSucceeded
 import dev.nihildigit.focuswell.updates.updateInstallFailed
+import dev.nihildigit.focuswell.updates.updateInstallPermissionRequired
 import dev.nihildigit.focuswell.updates.updateReleasePageOpenFailed
 import dev.nihildigit.focuswell.updates.withDownloadProgress
 import kotlinx.coroutines.CoroutineScope
@@ -71,7 +73,12 @@ internal class AppUpdateCoordinator(
     val apk = _state.value.downloadedApk ?: return
     runCatching { updateInstaller.install(apk) }
       .onFailure { error ->
-        _state.value = _state.value.updateInstallFailed(error)
+        _state.value =
+          if (error is AppUpdateInstallPermissionRequired) {
+            _state.value.updateInstallPermissionRequired(error)
+          } else {
+            _state.value.updateInstallFailed(error)
+          }
       }
   }
 

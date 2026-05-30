@@ -30,16 +30,21 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
 import dev.nihildigit.focuswell.domain.ActiveMode
@@ -74,8 +79,35 @@ fun MainScreen(
   val pushRegistrationState by viewModel.pushRegistrationState.collectAsStateWithLifecycle()
   val morningCheckInState by viewModel.morningCheckInState.collectAsStateWithLifecycle()
   val phoneSettlementState by viewModel.phoneSettlementState.collectAsStateWithLifecycle()
+  val phoneSettlementAvailable by viewModel.phoneSettlementAvailable.collectAsStateWithLifecycle()
+  val latestState by rememberUpdatedState(state)
+  val lifecycleOwner = LocalLifecycleOwner.current
   LaunchedEffect(state.dailyDate, state.lastCheckInDailyDate) {
     viewModel.loadMorningCheckInIfNeeded()
+  }
+  DisposableEffect(lifecycleOwner) {
+    val observer =
+      LifecycleEventObserver { _, event ->
+        val current = latestState
+        if (event == Lifecycle.Event.ON_RESUME && current.destination == Destination.Today && current.activeMode == ActiveMode.None) {
+          viewModel.refreshPhoneUsageSettlementAvailability()
+        }
+      }
+    lifecycleOwner.lifecycle.addObserver(observer)
+    onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+  }
+  LaunchedEffect(
+    state.destination,
+    state.dailyDate,
+    state.lastPhoneUsageSettlementAt,
+    state.focusRecords,
+    state.leisureRecords,
+    state.rules,
+    state.activeMode,
+  ) {
+    if (state.destination == Destination.Today && state.activeMode == ActiveMode.None) {
+      viewModel.refreshPhoneUsageSettlementAvailability()
+    }
   }
   LaunchedEffect(syncRedirectUri) {
     syncRedirectUri?.let {
@@ -90,6 +122,7 @@ fun MainScreen(
     pushRegistrationState = pushRegistrationState,
     morningCheckInState = morningCheckInState,
     phoneSettlementState = phoneSettlementState,
+    phoneSettlementAvailable = phoneSettlementAvailable,
     onDestination = viewModel::selectDestination,
     onToggleTracker = viewModel::toggleTracker,
     onStartFocus = viewModel::startFocus,
@@ -150,6 +183,7 @@ internal fun MainScreen(
   pushRegistrationState: PushRegistrationUiState,
   morningCheckInState: MorningCheckInUiState,
   phoneSettlementState: MorningCheckInUiState,
+  phoneSettlementAvailable: Boolean,
   onDestination: (Destination) -> Unit,
   onToggleTracker: (String) -> Unit,
   onStartFocus: (String, SessionType, String?) -> Unit,
@@ -323,6 +357,7 @@ internal fun MainScreen(
             onInstallUpdate = onInstallUpdate,
             onOpenUpdateReleasePage = onOpenUpdateReleasePage,
             notificationPermissionGranted = notificationPermissionReady,
+            phoneSettlementAvailable = phoneSettlementAvailable,
             onEnablePush = ::enablePush,
             onDisablePush = onDisablePush,
             themeMode = themeMode,
