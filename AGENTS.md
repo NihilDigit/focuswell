@@ -130,7 +130,12 @@ rg "Thread\s*\{|thread\(|runOnUiThread|java\.time\.Duration|Duration\.between|Du
 Release builds are tag-driven. CI creates the GitHub Release and attaches APKs; the coding agent edits the final Release text after CI succeeds.
 
 1. Finish code, docs, version metadata, signing configuration, and CI changes in ordinary commits.
-2. Manually create and push a time-based release tag such as `26.5.4`.
+2. Manually create and push the next release tag in the current `YY.M` series,
+   such as `26.5.4`.
+   The patch number is a change sequence within that series. Do not derive it
+   from the day of month, and do not skip ahead because of the calendar date.
+   Check existing tags first, then increment the highest already-published
+   `YY.M.patch` tag by one unless the user explicitly chooses another version.
    Create tags non-interactively. This repo may open the configured editor for
    annotated or signed tags, which can hang agent sessions. Use:
 
