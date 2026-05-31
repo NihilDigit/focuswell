@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -29,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.theme.ThemeMode
 
@@ -41,43 +43,36 @@ internal fun SettingsDataActionRow(
   onClick: () -> Unit,
   destructive: Boolean = false,
 ) {
-  Surface(
-    color = MaterialTheme.colorScheme.surfaceContainerHigh,
-    contentColor = MaterialTheme.colorScheme.onSurface,
-    shape = RoundedCornerShape(18.dp),
-    modifier = Modifier.fillMaxWidth(),
+  Row(
+    modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
+    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    verticalAlignment = Alignment.CenterVertically,
   ) {
-    Row(
-      modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
-      horizontalArrangement = Arrangement.spacedBy(14.dp),
-      verticalAlignment = Alignment.CenterVertically,
+    Surface(
+      color =
+        if (destructive) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
+        else MaterialTheme.colorScheme.secondaryContainer.copy(alpha = 0.62f),
+      contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSecondaryContainer,
+      shape = CircleShape,
     ) {
-      Surface(
-        color =
-          if (destructive) MaterialTheme.colorScheme.error.copy(alpha = 0.12f)
-          else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f),
-        contentColor = if (destructive) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onPrimaryContainer,
-        shape = CircleShape,
+      Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+    }
+    Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+      Text(title, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+    if (destructive) {
+      OutlinedButton(
+        onClick = onClick,
+        modifier = Modifier.height(44.dp),
+        shape = RoundedCornerShape(22.dp),
+        colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
       ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.padding(10.dp).size(20.dp))
+        Text(actionLabel)
       }
-      Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium)
-        Text(supporting, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-      }
-      if (destructive) {
-        OutlinedButton(
-          onClick = onClick,
-          modifier = Modifier.height(44.dp),
-          shape = RoundedCornerShape(22.dp),
-          colors = ButtonDefaults.outlinedButtonColors(contentColor = MaterialTheme.colorScheme.error),
-        ) {
-          Text(actionLabel)
-        }
-      } else {
-        FilledTonalButton(onClick = onClick, modifier = Modifier.height(44.dp), shape = RoundedCornerShape(22.dp)) {
-          Text(actionLabel)
-        }
+    } else {
+      FilledTonalButton(onClick = onClick, modifier = Modifier.height(44.dp), shape = RoundedCornerShape(22.dp)) {
+        Text(actionLabel)
       }
     }
   }

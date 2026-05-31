@@ -7,7 +7,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.AccountBalanceWallet
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Bedtime
-import androidx.compose.material.icons.rounded.CloudUpload
+import androidx.compose.material.icons.rounded.Cloud
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Download
 import androidx.compose.material.icons.rounded.LightMode
@@ -55,7 +55,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Daily grant",
       value = compactMinutes(normalizedRules.dailyGrantMinutes),
-      supporting = "Added at boundary.",
+      supporting = "Added at day boundary",
       icon = Icons.Rounded.AccountBalanceWallet,
       onDecrease = { onUpdateRules(normalizedRules.copy(dailyGrantMinutes = normalizedRules.dailyGrantMinutes - 5.0)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(dailyGrantMinutes = normalizedRules.dailyGrantMinutes + 5.0)) },
@@ -63,7 +63,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Boundary",
       value = normalizedRules.dayBoundaryHour.hourLabel(),
-      supporting = "New day starts here.",
+      supporting = "New day starts here",
       icon = Icons.Rounded.Today,
       onDecrease = { onUpdateRules(normalizedRules.copy(dayBoundaryHour = normalizedRules.dayBoundaryHour - 1)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(dayBoundaryHour = normalizedRules.dayBoundaryHour + 1)) },
@@ -71,7 +71,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Wake time",
       value = normalizedRules.wakeTargetHour.hourLabel(),
-      supporting = "Check-in bonus from 1h before to 30m after.",
+      supporting = "Bonus from 1 hour before to 30 minutes after",
       icon = Icons.Rounded.LightMode,
       onDecrease = { onUpdateRules(normalizedRules.copy(wakeTargetHour = normalizedRules.wakeTargetHour - 1)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(wakeTargetHour = normalizedRules.wakeTargetHour + 1)) },
@@ -79,7 +79,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Sleep start",
       value = normalizedRules.sleepProtectionStartHour.hourLabel(),
-      supporting = "Ideal sleep window begins.",
+      supporting = "Ideal sleep window begins",
       icon = Icons.Rounded.Bedtime,
       onDecrease = { onUpdateRules(normalizedRules.copy(sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour - 1)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour + 1)) },
@@ -87,7 +87,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Sleep end",
       value = normalizedRules.sleepProtectionEndHour.hourLabel(),
-      supporting = "Ideal sleep window ends.",
+      supporting = "Ideal sleep window ends",
       icon = Icons.Rounded.LightMode,
       onDecrease = { onUpdateRules(normalizedRules.copy(sleepProtectionEndHour = normalizedRules.sleepProtectionEndHour - 1)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(sleepProtectionEndHour = normalizedRules.sleepProtectionEndHour + 1)) },
@@ -95,7 +95,7 @@ internal fun SettingsRulesSection(
     SettingsRuleControlRow(
       title = "Sleep rate",
       value = "${normalizedRules.sleepProtectionMultiplier.formatOne()}x",
-      supporting = "Cost multiplier during sleep protection.",
+      supporting = "Cost multiplier during sleep protection",
       icon = Icons.Rounded.Timer,
       onDecrease = { onUpdateRules(normalizedRules.copy(sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier - 0.5)) },
       onIncrease = { onUpdateRules(normalizedRules.copy(sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier + 0.5)) },
@@ -103,7 +103,7 @@ internal fun SettingsRulesSection(
     SettingsRuleActionRow(
       title = "Free apps",
       value = normalizedRules.phoneUsageChargeFreePackages.size.toString(),
-      supporting = "Charge-free in correction.",
+      supporting = "No cost in phone correction",
       icon = Icons.Rounded.Apps,
       actionLabel = "Choose",
       onClick = onManageChargeFreeApps,
@@ -131,7 +131,7 @@ internal fun SettingsRemindersSection(
     )
     SettingsSwitchRow(
       title = "Long reminders",
-      supporting = "Notify at 1h, 3h, and 5h during focus or leisure.",
+      supporting = "Notify at 1 hour, 3 hours, and 5 hours during focus or leisure",
       icon = Icons.Rounded.Timer,
       checked = normalizedRules.longSessionRemindersEnabled,
       onCheckedChange = { onUpdateRules(normalizedRules.copy(longSessionRemindersEnabled = it)) },
@@ -151,14 +151,14 @@ internal fun SettingsDataSection(
   CalmPanel {
     Text("Data", style = MaterialTheme.typography.titleLarge)
     SettingsDataActionRow(
-      title = "Sync with Cloud",
+      title = "Cloud backup",
       supporting =
         when {
-          cloudSyncState.syncing -> "Checking GitHub cloud backup."
-          cloudSyncState.userLogin != null -> "Signed in as ${cloudSyncState.userLogin}."
-          else -> "Use GitHub to store one cloud JSON backup."
+          cloudSyncState.syncing -> "Checking FocusWell cloud"
+          cloudSyncState.userLogin != null -> "Signed in as ${cloudSyncState.userLogin}"
+          else -> "Sign in with GitHub to use FocusWell cloud"
         },
-      icon = Icons.Rounded.CloudUpload,
+      icon = Icons.Rounded.Cloud,
       actionLabel = if (cloudSyncState.syncing) "Syncing" else "Sync",
       onClick = onStartCloudSync,
     )
@@ -169,21 +169,21 @@ internal fun SettingsDataSection(
     }
     SettingsDataActionRow(
       title = "Export",
-      supporting = "Save a complete JSON backup.",
+      supporting = "Save a complete JSON backup",
       icon = Icons.Rounded.Download,
       actionLabel = "Export",
       onClick = onExport,
     )
     SettingsDataActionRow(
       title = "Import",
-      supporting = "Restore from a JSON export.",
+      supporting = "Restore from a JSON export",
       icon = Icons.Rounded.Upload,
       actionLabel = "Import",
       onClick = onImport,
     )
     SettingsDataActionRow(
-      title = "Clear all data",
-      supporting = "Remove records, reserve history, trackers, and settings.",
+      title = "Reset",
+      supporting = "Remove records, reserve history, trackers, and settings",
       icon = Icons.Rounded.Delete,
       actionLabel = "Clear",
       onClick = onClearAllData,

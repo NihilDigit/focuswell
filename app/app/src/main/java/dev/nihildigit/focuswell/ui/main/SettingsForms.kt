@@ -48,7 +48,7 @@ internal fun SettingsAddTagForm(
 ) {
   SettingsCreateForm(
     title = "New tag",
-    supporting = "Tags multiply focus earnings.",
+    supporting = "Tags multiply focus earnings",
     actionLabel = "Add tag",
     icon = Icons.Rounded.Add,
     enabled = tagName.isNotBlank(),
@@ -84,7 +84,7 @@ internal fun SettingsAddBooleanTrackerForm(
 ) {
   SettingsCreateForm(
     title = "New checklist item",
-    supporting = "Manual daily completion.",
+    supporting = "Manual daily completion",
     actionLabel = "Add tracker",
     icon = Icons.Rounded.CheckCircle,
     enabled = trackerLabel.isNotBlank() && trackerReward.toDoubleOrNull() != null,
@@ -126,7 +126,7 @@ internal fun SettingsAddRuleTrackerForm(
   var showTagPicker by remember { mutableStateOf(false) }
   SettingsCreateForm(
     title = "New rule tracker",
-    supporting = "Auto-completes from focused time.",
+    supporting = "Auto-completes from focused time",
     actionLabel = "Add rule",
     icon = Icons.Rounded.Timer,
     enabled = ruleLabel.isNotBlank() && tags.any { it.name == ruleTag } && ruleHours.toDoubleOrNull() != null && ruleReward.toDoubleOrNull() != null,

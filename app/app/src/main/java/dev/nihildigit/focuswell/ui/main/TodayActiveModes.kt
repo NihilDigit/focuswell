@@ -24,6 +24,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.Timer
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -60,42 +61,64 @@ internal fun IdleTimerSurface(
 ) {
   val haptics = LocalHapticFeedback.current
   Column(
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp),
+    verticalArrangement = Arrangement.spacedBy(12.dp),
+    modifier = Modifier.fillMaxWidth(),
   ) {
-    Column(verticalArrangement = Arrangement.spacedBy(5.dp)) {
-      Text("Ready when you are", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-      Text(
-        "Start focus to earn reserve, or spend leisure with one tap.",
-        color = MaterialTheme.colorScheme.onSurfaceVariant,
-      )
-    }
-    Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-      Button(
-        onClick = {
-          haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-          onStartFocusClick()
-        },
-        modifier = Modifier.weight(1f).height(76.dp),
-        shape = FocusActionShape,
-      ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Icon(Icons.Rounded.Timer, contentDescription = null)
-          Text("Start Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+    Surface(
+      color = MaterialTheme.colorScheme.surfaceContainer,
+      contentColor = MaterialTheme.colorScheme.onSurface,
+      shape = TodayPanelShape,
+      modifier = Modifier.fillMaxWidth(),
+    ) {
+      Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+          Text("Ready when you are", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+          Text(
+            "Start focus to earn reserve, or spend leisure when it’s time",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+          )
         }
-      }
-      FilledTonalButton(
-        onClick = {
-          haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-          onStartLeisure()
-        },
-        enabled = leisureEnabled,
-        modifier = Modifier.weight(1f).height(76.dp),
-        shape = LeisureActionShape,
-      ) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Icon(Icons.Rounded.Bedtime, contentDescription = null)
-          Text("Start Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+        Row(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
+          Button(
+            onClick = {
+              haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+              onStartFocusClick()
+            },
+            colors =
+              ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer,
+                contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+              ),
+            modifier = Modifier.weight(1f).height(82.dp),
+            shape = FocusActionShape,
+          ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+              Icon(Icons.Rounded.Timer, contentDescription = null, modifier = Modifier.size(24.dp))
+              Text("Focus", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+          }
+          Button(
+            onClick = {
+              haptics.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+              onStartLeisure()
+            },
+            enabled = leisureEnabled,
+            colors =
+              ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
+                disabledContainerColor = MaterialTheme.colorScheme.surfaceContainerHigh,
+                disabledContentColor = MaterialTheme.colorScheme.onSurfaceVariant,
+              ),
+            modifier = Modifier.weight(1f).height(82.dp),
+            shape = LeisureActionShape,
+          ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(5.dp)) {
+              Icon(Icons.Rounded.Bedtime, contentDescription = null, modifier = Modifier.size(24.dp))
+              Text("Leisure", style = MaterialTheme.typography.labelLarge, maxLines = 1)
+            }
+          }
         }
       }
     }

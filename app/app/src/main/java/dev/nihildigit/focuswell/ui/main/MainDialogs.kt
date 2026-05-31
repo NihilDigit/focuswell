@@ -31,7 +31,7 @@ internal fun UsageAccessPromptDialog(
     title = { Text("Enable app correction") },
     text = {
       Text(
-        "FocusWell can use Android usage access to review phone use and show app time at focus settlement. Usage data stays local.",
+        "FocusWell can use Android usage access to review phone use during settlement. Usage data stays on this device.",
       )
     },
     confirmButton = {

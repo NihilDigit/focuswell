@@ -65,7 +65,7 @@ internal fun CheckInSettlementScreen(
     item {
       CheckInStepHeader(
         title = "Settlement",
-        subtitle = "Review the final accounting.",
+        subtitle = "Review the final accounting",
       )
     }
     if (showIncome) {

@@ -49,7 +49,7 @@ internal fun ClearAllDataScreen(
     item {
       CalmPanel {
         Text("Export first", style = MaterialTheme.typography.titleLarge)
-        Text("Save a JSON backup before clearing if you may need these records later.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Save a JSON backup before clearing if you may need these records later", color = MaterialTheme.colorScheme.onSurfaceVariant)
         FilledTonalButton(onClick = onExport, modifier = Modifier.fillMaxWidth().height(48.dp), shape = RoundedCornerShape(24.dp)) {
           Icon(Icons.Rounded.Download, contentDescription = null, modifier = Modifier.size(20.dp))
           Spacer(Modifier.width(8.dp))
@@ -60,7 +60,7 @@ internal fun ClearAllDataScreen(
     item {
       CalmPanel {
         Text("Confirm", style = MaterialTheme.typography.titleLarge)
-        Text("Type CLEAR to reset FocusWell on this device.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+        Text("Type CLEAR to reset FocusWell on this device", color = MaterialTheme.colorScheme.onSurfaceVariant)
         OutlinedTextField(
           value = phrase,
           onValueChange = onPhraseChange,

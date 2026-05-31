@@ -147,7 +147,7 @@ internal fun PhoneUsageSettlementGate(
             onContinue = { step = CheckInStep.Settlement },
             onCancel = onCancel,
             title = "Phone use",
-            subtitle = "Settle recent blocks now.",
+            subtitle = "Settle recent phone blocks",
           )
 
         CheckInStep.Settlement ->
@@ -175,7 +175,7 @@ private fun CheckInIncomeScreen(
   ) {
     CheckInStepHeader(
       title = "Income",
-      subtitle = "Completed rewards are ready.",
+      subtitle = "Completed rewards are ready",
     )
     Box(
       modifier = Modifier.fillMaxWidth().weight(1f),
@@ -192,7 +192,7 @@ private fun CheckInIncomeScreen(
         if (incomeItems.isEmpty()) {
           CalmPanel {
             Text("No rewards to settle", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text("Continue to phone correction.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("Continue to phone correction", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         } else {
           incomeItems.forEachIndexed { index, item ->
@@ -225,7 +225,7 @@ private fun CheckInCorrectionScreen(
   onContinue: () -> Unit,
   onCancel: (() -> Unit)? = null,
   title: String = "Correction",
-  subtitle: String = "Swipe right for Fair Use.",
+  subtitle: String = "Swipe right for fair use",
 ) {
   val segments = remember(state.segments) { state.segments.sortedBy { it.startedAt } }
   var currentIndex by remember(segments) { mutableStateOf(0) }
@@ -277,7 +277,7 @@ private fun CheckInCorrectionScreen(
       Box(modifier = Modifier.weight(1f)) {
         CalmPanel {
           Text("No phone blocks found", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-          Text("No non-Focus/Leisure phone block reached the review threshold.", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+          Text("No reviewable phone blocks reached the threshold", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
       }
     } else {
@@ -288,7 +288,7 @@ private fun CheckInCorrectionScreen(
         if (currentSegment == null) {
           CalmPanel {
             Text("All blocks reviewed", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-            Text("${fairUseIds.size} marked Fair Use", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("${fairUseIds.size} marked fair use", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         } else {
           PhoneUsageSegmentCard(

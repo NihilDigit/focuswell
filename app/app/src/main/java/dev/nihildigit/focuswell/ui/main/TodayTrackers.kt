@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
-import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -28,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -57,44 +57,93 @@ internal fun TrackerGrid(
     shape = TodayPanelShape,
     modifier = Modifier.fillMaxWidth(),
   ) {
-    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+    Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
       Row(
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.Bottom,
+        verticalAlignment = Alignment.CenterVertically,
       ) {
         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-          Text("Daily", style = MaterialTheme.typography.headlineSmall)
+          Text("Daily", style = MaterialTheme.typography.headlineSmall, color = MaterialTheme.colorScheme.onSurface)
           Text(
             "Resets at ${rules.normalized().safeDayBoundaryHour.todayHourLabel()}",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )
         }
-        Text(
-          "$completedCount/$trackerCount",
-          style = tabularNumbers(MaterialTheme.typography.titleMedium),
-          color = MaterialTheme.colorScheme.onSurfaceVariant,
-        )
+        DailySummaryChip(rewardMinutes = trackers.filter { it.completed }.sumOf { it.rewardMinutes })
       }
       DailyCompletionProgress(progress = dailyProgress)
-      trackers.forEach { tracker ->
-        DailyTrackerTile(
-          tracker = tracker,
-          onClick = { onToggleTracker(tracker.id) },
-          modifier = Modifier.fillMaxWidth(),
+      if (trackers.isEmpty()) {
+        Text(
+          "No daily trackers yet.",
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onSurfaceVariant,
+          modifier = Modifier.padding(vertical = 6.dp),
         )
+      } else {
+        trackers.forEach { tracker ->
+          DailyTrackerTile(
+            tracker = tracker,
+            onClick = { onToggleTracker(tracker.id) },
+            modifier = Modifier.fillMaxWidth(),
+          )
+        }
       }
     }
   }
 }
 
 @Composable
+private fun DailySummaryChip(rewardMinutes: Double) {
+  Surface(
+    color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.64f),
+    contentColor = MaterialTheme.colorScheme.onPrimaryContainer,
+    shape = RoundedCornerShape(22.dp),
+  ) {
+    Row(
+      modifier = Modifier.padding(horizontal = 13.dp, vertical = 8.dp),
+      horizontalArrangement = Arrangement.spacedBy(5.dp),
+      verticalAlignment = Alignment.CenterVertically,
+    ) {
+      Text(
+        signedCompactMinutes(rewardMinutes),
+        style = tabularNumbers(MaterialTheme.typography.titleMedium),
+      )
+    }
+  }
+}
+
+@Composable
 private fun DailyCompletionProgress(progress: Float) {
-  LinearProgressIndicator(
-    progress = { progress.coerceIn(0f, 1f) },
-    modifier = Modifier.fillMaxWidth().height(8.dp),
-  )
+  val active = MaterialTheme.colorScheme.primary
+  val track = MaterialTheme.colorScheme.surfaceContainerHigh
+  val endStop = MaterialTheme.colorScheme.onSurfaceVariant
+  Canvas(modifier = Modifier.fillMaxWidth().height(18.dp)) {
+    val height = 12.dp.toPx()
+    val top = (size.height - height) / 2f
+    val radius = height / 2f
+    val activeWidth = size.width * progress.coerceIn(0f, 1f)
+    drawRoundRect(
+      color = track,
+      topLeft = Offset(0f, top),
+      size = Size(size.width, height),
+      cornerRadius = CornerRadius(radius, radius),
+    )
+    if (activeWidth > 0f) {
+      drawRoundRect(
+        color = active,
+        topLeft = Offset(0f, top),
+        size = Size(activeWidth.coerceAtLeast(radius * 1.5f).coerceAtMost(size.width), height),
+        cornerRadius = CornerRadius(radius, radius),
+      )
+    }
+    drawCircle(
+      color = endStop.copy(alpha = 0.58f),
+      radius = 2.2.dp.toPx(),
+      center = Offset(size.width - radius, size.height / 2f),
+    )
+  }
 }
 
 private fun Int.todayHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
@@ -103,7 +152,7 @@ private fun Int.todayHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23)
 internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
   val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
   val targetContainer =
-    if (tracker.completed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.48f)
+    if (tracker.completed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)
     else MaterialTheme.colorScheme.surfaceContainerHigh
   val container by animateColorAsState(
     targetValue = targetContainer,
@@ -127,11 +176,14 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
     enabled = !isRuleTracker,
     color = container,
     contentColor = content,
-    shape = RoundedCornerShape(16.dp),
-    modifier = modifier.heightIn(min = 68.dp),
+    shape = if (tracker.completed) RoundedCornerShape(20.dp) else RoundedCornerShape(16.dp),
+    border =
+      if (tracker.completed) BorderStroke(1.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.16f))
+      else null,
+    modifier = modifier.heightIn(min = 66.dp),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+      modifier = Modifier.padding(horizontal = 12.dp, vertical = 9.dp),
       horizontalArrangement = Arrangement.spacedBy(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -146,14 +198,14 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
           )
-          Text(
-            if (tracker.completed) signedCompactMinutes(tracker.rewardMinutes) else compactMinutes(tracker.rewardMinutes),
-            style = MaterialTheme.typography.labelMedium,
-            color =
-              if (tracker.completed) MaterialTheme.colorScheme.primary
-              else MaterialTheme.colorScheme.onSurfaceVariant,
-            maxLines = 1,
-          )
+          if (!tracker.completed) {
+            Text(
+              compactMinutes(tracker.rewardMinutes),
+              style = MaterialTheme.typography.labelMedium,
+              color = MaterialTheme.colorScheme.onSurfaceVariant,
+              maxLines = 1,
+            )
+          }
         }
       }
     }

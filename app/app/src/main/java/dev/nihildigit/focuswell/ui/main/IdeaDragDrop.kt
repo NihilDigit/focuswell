@@ -93,7 +93,7 @@ internal fun IdeasHeader(
       horizontalArrangement = Arrangement.SpaceBetween,
       verticalAlignment = Alignment.Bottom,
     ) {
-      SectionHeader(title = "Ideas", subtitle = "Capture loose thoughts, then place what deserves attention.")
+      SectionHeader(title = "Ideas", subtitle = "Capture loose thoughts, then place what deserves attention")
     }
     Row(
       horizontalArrangement = Arrangement.spacedBy(8.dp),

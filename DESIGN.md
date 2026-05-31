@@ -68,6 +68,8 @@ History is not a primary screen. Historical records are part of Balance.
 
 Settings is plain. It should be predictable, dense enough to scan, and cautious around destructive actions.
 
+Cloud sync is a FocusWell cloud feature that uses GitHub for sign-in. User-facing copy should not imply the backup is stored in the user's GitHub account. Conflict dialogs must show which side is newer, name the destination that will be replaced, and avoid raw UTC timestamps.
+
 The browser extension popup is narrower than the Android app and has only two surfaces: Home and Settings. Home owns today's whitelist timer, one round enable/disable control, a rule toggle grid rendered from the current JSON rules, and a single lightweight not-allowed count. Settings owns detailed stats, recent behavior, and JSON rule editing.
 
 ## Color And Elevation
@@ -167,6 +169,10 @@ Do not use display type in settings, list rows, or labels. Prefer tabular figure
 
 Large text should stay near a 1.2 line-height ratio. Body and label text should stay near 1.5. Text contrast must meet the Material thresholds: 3:1 for large text, 4.5:1 for small text.
 
+## Content
+
+Follow Material 3 content design for UI copy. Use clear, neutral, direct text that explains the result of an action from the user's point of view. Use sentence case. Avoid title case in headings and buttons unless the term is a product name. Omit periods for short single-sentence labels, subtitles, helper text, and empty states. Keep button labels short, and put explanation in nearby supporting text instead of overloading the label.
+
 ## Icons
 
 Target Material Symbols rounded style. Compose Material Icons are acceptable as a temporary fallback, but keep icon choices centralized enough to replace later.
@@ -198,7 +204,7 @@ Global shell:
 Today:
 
 - Reserve summary: custom status surface with the well motif.
-- Start actions: two large labeled buttons.
+- Start actions: Focus and Leisure are equal-priority session entrances. Present them as a substantial paired action surface with matching size, matching visual weight, and semantic color difference: primary for Focus and tertiary for Leisure. Do not frame Leisure as secondary to Focus, and do not let the action group feel visually thinner than the surrounding Today panels.
 - Start Focus sheet may show a single horizontal row of up to five recent task chips. Chips fill the task field only; they do not start the session.
 - Focus active state: a primary-container task surface with elapsed time, session type/tag, and the current projected earning if ended now.
 - During an active focus session, primary navigation is hidden. Idea capture remains one-way into Inbox; reviewing, sorting, settings, and planning wait until focus ends.
@@ -212,7 +218,7 @@ Today:
 - Correction cards use a low-emphasis filled-card container. The main recall aid is a pure vertical-bar timeline plus a compact app list. Do not show app icons in this surface; map packages by hash to a categorical base palette, harmonize those colors toward the FocusWell seed, then normalize HCT tone/chroma for the current theme. Slice marks are hard-edged variable-width vertical bars with no capsule track; empty space represents time without counted screen use. Visually merge nearby slices from the same package to reduce noise. Use a small color dot for the app list and group non-top packages into Others.
 - Morning check-in segment order follows local clock recall, not the internal business-day traversal: late night `00:00-04:00` first, then morning, afternoon, and evening.
 - Frozen Daily Grant should be calm and literal: an iced or snowflake treatment on a configured daily grant times three component, such as `60m x3` with the default grant. It freezes future unconditional grants only; do not use error color or failure language.
-- Daily trackers: compact determinate progress plus scannable list rows. The summary progress represents completed count only, independent of which tracker was completed. Individual tracker rows own the specific completion state through circular checkbox/timer leading controls; rule trackers show progress as a readable ring around the timer icon, not as a second row bar. Reward minutes are neutral while open and become green `+Xm` when completed. Completion has accounting meaning because each tracker has a configurable minute reward settled at the configured day boundary.
+- Daily trackers: compact determinate progress plus scannable list rows. The summary header may use a small completion capsule and a rounded Material-style progress track, but it should stay below the Leisure well in visual priority. The summary progress represents completed count only, independent of which tracker was completed. Individual tracker rows own the specific completion state through circular checkbox/timer leading controls; rule trackers show progress as a readable ring around the timer icon, not as a second row bar. Reward minutes are neutral while open and become green `+Xm` when completed. Completion has accounting meaning because each tracker has a configurable minute reward settled at the configured day boundary.
 - Indeterminate short waits use the new loading indicator when available; otherwise keep Material progress small and contextual.
 
 Balance:

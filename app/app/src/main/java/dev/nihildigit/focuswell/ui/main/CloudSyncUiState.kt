@@ -32,28 +32,28 @@ internal fun CloudSyncUiState.cloudCheckStarted(): CloudSyncUiState =
   copy(syncing = true, error = null, pendingDecision = null)
 
 internal fun CloudSyncUiState.cloudSignInPrompted(): CloudSyncUiState =
-  copy(message = "Finish GitHub sign in in the browser.", error = null)
+  copy(message = "Finish signing in with GitHub in your browser", error = null)
 
 internal fun CloudSyncUiState.cloudSignInOpenFailed(error: Throwable): CloudSyncUiState =
-  copy(error = error.message ?: "Could not open GitHub sign in.")
+  copy(error = error.message ?: "Could not open GitHub sign-in")
 
 internal fun CloudSyncUiState.cloudOAuthRejected(error: String): CloudSyncUiState =
-  copy(error = "GitHub sign in failed: $error")
+  copy(error = "GitHub sign-in failed: $error")
 
 internal fun CloudSyncUiState.cloudOAuthStarted(): CloudSyncUiState =
-  copy(syncing = true, message = "Finishing GitHub sign in.", error = null)
+  copy(syncing = true, message = "Finishing GitHub sign-in", error = null)
 
 internal fun cloudOAuthSucceeded(userLogin: String): CloudSyncUiState =
-  CloudSyncUiState(userLogin = userLogin, syncing = false, message = "Signed in as $userLogin.")
+  CloudSyncUiState(userLogin = userLogin, syncing = false, message = "Signed in as $userLogin")
 
 internal fun CloudSyncUiState.cloudOAuthFailed(error: Throwable): CloudSyncUiState =
-  copy(syncing = false, error = error.message ?: "GitHub sign in failed.")
+  copy(syncing = false, error = error.message ?: "GitHub sign-in failed")
 
 internal fun CloudSyncUiState.cloudSnapshotLoaded(userLogin: String): CloudSyncUiState =
   copy(syncing = false, userLogin = userLogin)
 
 internal fun CloudSyncUiState.cloudCheckFailed(error: Throwable): CloudSyncUiState =
-  copy(syncing = false, error = error.message ?: "Cloud sync failed.")
+  copy(syncing = false, error = error.message ?: "Cloud sync failed")
 
 internal fun CloudSyncUiState.withCloudDecision(
   localUpdatedAt: Instant,
@@ -63,7 +63,7 @@ internal fun CloudSyncUiState.withCloudDecision(
   return if (decision == null) {
     copy(
       pendingDecision = null,
-      message = "Local and cloud backups are already in sync.",
+      message = "This device and the cloud backup are in sync",
       error = null,
     )
   } else {
@@ -82,28 +82,28 @@ internal fun CloudSyncUiState.cloudUploadSucceeded(userLogin: String): CloudSync
   copy(
     syncing = false,
     userLogin = userLogin,
-    message = "Uploaded local backup to cloud.",
+    message = "Cloud backup updated",
     error = null,
   )
 
 internal fun CloudSyncUiState.cloudUploadFailed(error: Throwable): CloudSyncUiState =
-  copy(syncing = false, error = error.message ?: "Cloud upload failed.")
+  copy(syncing = false, error = error.message ?: "Could not update cloud backup")
 
 internal fun CloudSyncUiState.cloudRestoreSucceeded(): CloudSyncUiState =
   copy(
     pendingDecision = null,
-    message = "Restored cloud backup to this device.",
+    message = "This device is restored from the cloud backup",
     error = null,
   )
 
 internal fun CloudSyncUiState.cloudRestoreFailed(): CloudSyncUiState =
   copy(
     pendingDecision = null,
-    error = "Cloud backup could not be restored.",
+    error = "Could not restore cloud backup",
   )
 
 internal fun cloudSignedOut(): CloudSyncUiState =
-  CloudSyncUiState(message = "Signed out of cloud sync.")
+  CloudSyncUiState(message = "Signed out of cloud sync")
 
 internal sealed interface CloudSyncRedirect {
   data class Code(val value: String) : CloudSyncRedirect

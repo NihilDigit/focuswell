@@ -57,7 +57,7 @@ class CloudSyncUiStateTest {
 
     assertNull(state.pendingDecision)
     assertNull(state.error)
-    assertEquals("Local and cloud backups are already in sync.", state.message)
+    assertEquals("This device and the cloud backup are in sync", state.message)
   }
 
   @Test
@@ -67,7 +67,7 @@ class CloudSyncUiStateTest {
     assertEquals(false, state.syncing)
     assertEquals("nihildigit", state.userLogin)
     assertNull(state.error)
-    assertEquals("Uploaded local backup to cloud.", state.message)
+    assertEquals("Cloud backup updated", state.message)
   }
 
   @Test
@@ -84,7 +84,7 @@ class CloudSyncUiStateTest {
       ).cloudRestoreFailed()
 
     assertNull(state.pendingDecision)
-    assertEquals("Cloud backup could not be restored.", state.error)
+    assertEquals("Could not restore cloud backup", state.error)
   }
 
   @Test
@@ -93,7 +93,7 @@ class CloudSyncUiStateTest {
 
     assertEquals(true, state.syncing)
     assertNull(state.error)
-    assertEquals("Finishing GitHub sign in.", state.message)
+    assertEquals("Finishing GitHub sign-in", state.message)
   }
 
   @Test
@@ -102,7 +102,7 @@ class CloudSyncUiStateTest {
 
     assertEquals(false, state.syncing)
     assertEquals("nihildigit", state.userLogin)
-    assertEquals("Signed in as nihildigit.", state.message)
+    assertEquals("Signed in as nihildigit", state.message)
   }
 
   @Test
