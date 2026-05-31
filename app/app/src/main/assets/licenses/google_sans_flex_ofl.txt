@@ -1,0 +1,10 @@
+Google Sans Flex
+Copyright 2015 Google LLC. All Rights Reserved.
+
+This Font Software is licensed under the SIL Open Font License, Version 1.1.
+The full license text is available at https://openfontlicense.org.
+
+The OFL allows the licensed fonts to be used, studied, modified and
+redistributed freely as long as they are not sold by themselves. The fonts,
+including any derivative works, can be bundled, embedded, redistributed and/or
+sold with software, subject to the full license terms.

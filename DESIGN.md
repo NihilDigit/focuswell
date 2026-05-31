@@ -159,6 +159,8 @@ Use Material roles by meaning:
 
 The 2025 expressive type scale adds emphasized styles. In FocusWell, emphasis belongs to the reserve amount, the active mode title, and the next safe action. It does not belong to settings labels, row metadata, or destructive confirmation text.
 
+FocusWell uses Google Sans Flex as the app typeface. Body, label, title, and most headline roles use the normal width family for compact reading. Display roles and the largest headline role use a rounded, 72pt, semi-expanded ExtraBold instance for reserve and timer hero moments. Do not use that expressive instance inside rows, settings, labels, or dense controls.
+
 Do not use display type in settings, list rows, or labels. Prefer tabular figures for timers, ledger amounts, counts, and changing numeric values. Use monospace only as a fallback.
 
 Large text should stay near a 1.2 line-height ratio. Body and label text should stay near 1.5. Text contrast must meet the Material thresholds: 3:1 for large text, 4.5:1 for small text.

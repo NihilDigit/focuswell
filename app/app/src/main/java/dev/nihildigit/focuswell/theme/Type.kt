@@ -2,15 +2,31 @@ package dev.nihildigit.focuswell.theme
 
 import androidx.compose.material3.Typography
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
+import dev.nihildigit.focuswell.R
+
+private val FocusWellFontFamily =
+  FontFamily(
+    Font(R.font.google_sans_flex_regular, FontWeight.Normal),
+    Font(R.font.google_sans_flex_medium, FontWeight.Medium),
+    Font(R.font.google_sans_flex_semibold, FontWeight.SemiBold),
+    Font(R.font.google_sans_flex_bold, FontWeight.Bold),
+    Font(R.font.google_sans_flex_extrabold, FontWeight.ExtraBold),
+  )
+
+private val FocusWellExpressiveFontFamily =
+  FontFamily(
+    Font(R.font.google_sans_flex_expressive, FontWeight.ExtraBold),
+  )
 
 val Typography =
   Typography(
     displayLarge =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellExpressiveFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 52.sp,
         lineHeight = 58.sp,
@@ -18,7 +34,7 @@ val Typography =
       ),
     displayMedium =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellExpressiveFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 42.sp,
         lineHeight = 48.sp,
@@ -26,7 +42,7 @@ val Typography =
       ),
     headlineLarge =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellExpressiveFontFamily,
         fontWeight = FontWeight.ExtraBold,
         fontSize = 34.sp,
         lineHeight = 40.sp,
@@ -34,7 +50,7 @@ val Typography =
       ),
     headlineMedium =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 28.sp,
         lineHeight = 34.sp,
@@ -42,7 +58,7 @@ val Typography =
       ),
     headlineSmall =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 24.sp,
         lineHeight = 30.sp,
@@ -50,7 +66,7 @@ val Typography =
       ),
     titleLarge =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 22.sp,
         lineHeight = 28.sp,
@@ -58,7 +74,7 @@ val Typography =
       ),
     titleMedium =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 17.sp,
         lineHeight = 23.sp,
@@ -66,7 +82,7 @@ val Typography =
       ),
     titleSmall =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 15.sp,
         lineHeight = 21.sp,
@@ -74,7 +90,7 @@ val Typography =
       ),
     bodyLarge =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 17.sp,
         lineHeight = 25.sp,
@@ -82,7 +98,7 @@ val Typography =
       ),
     bodyMedium =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -90,7 +106,7 @@ val Typography =
       ),
     bodySmall =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Normal,
         fontSize = 12.sp,
         lineHeight = 17.sp,
@@ -98,7 +114,7 @@ val Typography =
       ),
     labelLarge =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Bold,
         fontSize = 14.sp,
         lineHeight = 20.sp,
@@ -106,7 +122,7 @@ val Typography =
       ),
     labelMedium =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.SemiBold,
         fontSize = 12.sp,
         lineHeight = 16.sp,
@@ -114,7 +130,7 @@ val Typography =
       ),
     labelSmall =
       TextStyle(
-        fontFamily = FontFamily.Default,
+        fontFamily = FocusWellFontFamily,
         fontWeight = FontWeight.Medium,
         fontSize = 11.sp,
         lineHeight = 16.sp,
