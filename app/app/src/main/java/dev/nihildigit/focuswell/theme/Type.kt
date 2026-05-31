@@ -8,7 +8,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.sp
 import dev.nihildigit.focuswell.R
 
-private val FocusWellFontFamily =
+internal val FocusWellFontFamily =
   FontFamily(
     Font(R.font.google_sans_flex_regular, FontWeight.Normal),
     Font(R.font.google_sans_flex_medium, FontWeight.Medium),
@@ -17,7 +17,7 @@ private val FocusWellFontFamily =
     Font(R.font.google_sans_flex_extrabold, FontWeight.ExtraBold),
   )
 
-private val FocusWellExpressiveFontFamily =
+internal val FocusWellExpressiveFontFamily =
   FontFamily(
     Font(R.font.google_sans_flex_expressive, FontWeight.ExtraBold),
   )

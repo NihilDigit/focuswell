@@ -184,7 +184,7 @@ internal fun SettingsRuleControlRow(
 ) {
   Row(
     modifier = Modifier.fillMaxWidth().heightIn(min = 76.dp).padding(vertical = 6.dp),
-    horizontalArrangement = Arrangement.spacedBy(12.dp),
+    horizontalArrangement = Arrangement.spacedBy(10.dp),
     verticalAlignment = Alignment.CenterVertically,
   ) {
     Surface(
@@ -277,26 +277,26 @@ internal fun RuleStepper(
     color = MaterialTheme.colorScheme.surfaceContainerHigh,
     contentColor = MaterialTheme.colorScheme.onSurface,
     shape = CircleShape,
-    modifier = Modifier.height(42.dp),
+    modifier = Modifier.height(40.dp),
   ) {
     Row(
-      modifier = Modifier.padding(horizontal = 4.dp),
+      modifier = Modifier.padding(horizontal = 2.dp),
       verticalAlignment = Alignment.CenterVertically,
-      horizontalArrangement = Arrangement.spacedBy(2.dp),
+      horizontalArrangement = Arrangement.spacedBy(0.dp),
     ) {
-      IconButton(onClick = onDecrease, modifier = Modifier.size(34.dp)) {
-        Icon(Icons.Rounded.Remove, contentDescription = null, modifier = Modifier.size(18.dp))
+      IconButton(onClick = onDecrease, modifier = Modifier.size(30.dp)) {
+        Icon(Icons.Rounded.Remove, contentDescription = null, modifier = Modifier.size(17.dp))
       }
       Text(
         value,
         style = tabularNumbers(MaterialTheme.typography.labelLarge),
         fontWeight = FontWeight.SemiBold,
-        modifier = Modifier.width(58.dp),
+        modifier = Modifier.width(48.dp),
         textAlign = TextAlign.Center,
         maxLines = 1,
       )
-      IconButton(onClick = onIncrease, modifier = Modifier.size(34.dp)) {
-        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+      IconButton(onClick = onIncrease, modifier = Modifier.size(30.dp)) {
+        Icon(Icons.Rounded.Add, contentDescription = null, modifier = Modifier.size(17.dp))
       }
     }
   }

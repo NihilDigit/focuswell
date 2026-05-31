@@ -101,9 +101,9 @@ internal fun SettingsRulesSection(
       onIncrease = { onUpdateRules(normalizedRules.copy(sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier + 0.5)) },
     )
     SettingsRuleActionRow(
-      title = "Charge-free apps",
+      title = "Free apps",
       value = normalizedRules.phoneUsageChargeFreePackages.size.toString(),
-      supporting = "Free only in phone-use correction.",
+      supporting = "Charge-free in correction.",
       icon = Icons.Rounded.Apps,
       actionLabel = "Choose",
       onClick = onManageChargeFreeApps,

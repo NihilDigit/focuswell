@@ -38,7 +38,7 @@ internal fun ReserveWellDrawing(
         right - 8.dp.toPx(),
         top + 72.dp.toPx(),
       )
-    val waterCenterY = rim.center.y + (0.5f - fill) * 20.dp.toPx()
+    val waterCenterY = rim.center.y
     val waterAlpha = 0.46f + fill * 0.28f
     fun disturbancePath(
       centerXRatio: Float,
@@ -61,7 +61,7 @@ internal fun ReserveWellDrawing(
         repeat(steps + 1) { index ->
           val t = index / steps.toFloat()
           val edgeFade = sin((PI * t).toFloat()).coerceAtLeast(0f)
-          val localPhase = (PI * 2).toFloat() * cycles * t + phase * 0.9f + phaseOffset
+          val localPhase = (PI * 2).toFloat() * cycles * t + phaseOffset
           val crest =
             (sin(localPhase) * 0.82f + sin(localPhase * 1.9f + phaseOffset) * 0.18f) *
               amplitude *

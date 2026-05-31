@@ -22,6 +22,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.ActiveMode
+import dev.nihildigit.focuswell.theme.FocusWellExpressiveFontFamily
 import kotlin.time.Duration
 
 @Composable
@@ -57,7 +58,7 @@ internal fun FocusTimerSurface(
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
           Text(
             focus.task,
-            style = MaterialTheme.typography.headlineSmall,
+            style = MaterialTheme.typography.headlineSmall.copy(fontFamily = FocusWellExpressiveFontFamily),
             fontWeight = FontWeight.Bold,
             maxLines = 2,
             overflow = TextOverflow.Ellipsis,

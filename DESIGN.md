@@ -161,6 +161,8 @@ The 2025 expressive type scale adds emphasized styles. In FocusWell, emphasis be
 
 FocusWell uses Google Sans Flex as the app typeface. Body, label, title, and most headline roles use the normal width family for compact reading. Display roles and the largest headline role use a rounded, 72pt, semi-expanded ExtraBold instance for reserve and timer hero moments. Do not use that expressive instance inside rows, settings, labels, or dense controls.
 
+Use platform fallback for CJK idea text instead of bundling a CJK font in the default APK. Revisit an optional downloaded font pack only if real device evidence shows system fallback is not good enough.
+
 Do not use display type in settings, list rows, or labels. Prefer tabular figures for timers, ledger amounts, counts, and changing numeric values. Use monospace only as a fallback.
 
 Large text should stay near a 1.2 line-height ratio. Body and label text should stay near 1.5. Text contrast must meet the Material thresholds: 3:1 for large text, 4.5:1 for small text.
@@ -202,6 +204,7 @@ Today:
 - During an active focus session, primary navigation is hidden. Idea capture remains one-way into Inbox; reviewing, sorting, settings, and planning wait until focus ends.
 - Focus active state may include a quiet idea-capture action. Captured ideas go to Ideas Inbox and do not appear in focus settlement.
 - Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
+- Leisure well ripples are static, scattered marks around the middle of the well. The ripple height and horizontal position should not animate continuously; reserve changes may alter alpha, but decorative water motion makes the well harder to read.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.
 - Manual phone-use settlement is a small Today action below the primary Focus/Leisure pair only when the current settlement window has billable phone-use content. It opens the same Correction card review used by morning check-in, not a new destination.
@@ -216,7 +219,7 @@ Balance:
 
 - Today owns the available leisure reserve. The Leisure well's top-end chip shows today's net movement so the account state stays visible without duplicating Balance.
 - Balance starts with a 7-day net chart and then shows ledger-backed records.
-- The 7-day net chart uses ledger entries as the source of truth, includes coordinate marks, and scales its y-axis from the largest absolute daily movement in the visible 7-day window.
+- The 7-day net chart uses ledger entries as the source of truth, includes coordinate marks, and scales its y-axis from the largest absolute daily movement in the visible 7-day window. Prefer a soft zero-axis tide line with subtle stems and points over hard bars or a stock-price-style line.
 - Records use compact icon-only filter chips, not tabs. Keep `All`, `Focus`, `Leisure`, and `Adjust` on one row on compact phone widths with content descriptions for accessibility.
 - Record rows are amount-first and compact. Focus earning uses primary, leisure spending uses tertiary, and each record type gets a quiet inline type icon. Destructive actions use error only inside details/edit surfaces.
 - Manual balance records are added from a FAB and saved as ledger adjustments.

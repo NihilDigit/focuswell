@@ -1,11 +1,7 @@
 package dev.nihildigit.focuswell.ui.main
 
-import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.infiniteRepeatable
-import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
@@ -24,7 +20,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import kotlin.math.PI
 
 @Composable
 internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
@@ -39,12 +34,6 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
     targetValue = shimmerTarget,
     animationSpec = tween(durationMillis = 300),
     label = "well-shimmer",
-  )
-  val wavePhase by rememberInfiniteTransition(label = "well-wave").animateFloat(
-    initialValue = 0f,
-    targetValue = (PI * 2).toFloat(),
-    animationSpec = infiniteRepeatable(animation = tween(durationMillis = 3600, easing = LinearEasing)),
-    label = "well-wave-phase",
   )
   val headline =
     when {
@@ -62,7 +51,7 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
     Box(modifier = Modifier.height(254.dp)) {
       ReserveWellDrawing(
         fill = fill,
-        phase = wavePhase,
+        phase = 0f,
         shimmer = shimmer,
         modifier = Modifier.matchParentSize(),
       )

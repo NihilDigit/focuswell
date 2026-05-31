@@ -133,9 +133,9 @@ private fun ChargeFreeAppsTopBar(
       Icon(Icons.AutoMirrored.Rounded.ArrowBack, contentDescription = "Back")
     }
     Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-      Text("Charge-free apps", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+      Text("Free apps", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
       Text(
-        "$selectedCount selected",
+        "$selectedCount charge-free",
         style = MaterialTheme.typography.bodySmall,
         color = MaterialTheme.colorScheme.onSurfaceVariant,
       )

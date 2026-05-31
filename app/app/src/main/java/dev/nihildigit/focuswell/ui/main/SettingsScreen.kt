@@ -1,5 +1,6 @@
 package dev.nihildigit.focuswell.ui.main
 
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
@@ -73,6 +74,10 @@ internal fun SettingsScreen(
     }
   var clearPhrase by remember { mutableStateOf("") }
   if (confirmClear) {
+    BackHandler {
+      clearPhrase = ""
+      confirmClear = false
+    }
     ClearAllDataScreen(
       phrase = clearPhrase,
       onPhraseChange = { clearPhrase = it },
@@ -95,6 +100,7 @@ internal fun SettingsScreen(
     return
   }
   if (selectingChargeFreeApps) {
+    BackHandler { selectingChargeFreeApps = false }
     ChargeFreeAppsScreen(
       selectedPackages = state.rules.normalized().phoneUsageChargeFreePackages,
       onSelectedPackagesChange = { packages ->

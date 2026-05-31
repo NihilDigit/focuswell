@@ -28,6 +28,7 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.Idea
@@ -47,6 +48,12 @@ internal fun IdeaRow(
   modifier: Modifier = Modifier,
 ) {
   val hasChecklist = idea.checklist.isNotEmpty()
+  val ideaTextStyle =
+    if (idea.text.hasCjk()) {
+      MaterialTheme.typography.bodyLarge.copy(fontFamily = FontFamily.Default)
+    } else {
+      MaterialTheme.typography.bodyLarge
+    }
   Surface(
     shape = LedgerRowShape,
     color = MaterialTheme.colorScheme.surfaceContainer,
@@ -93,7 +100,7 @@ internal fun IdeaRow(
       ) {
         Text(
           idea.text,
-          style = MaterialTheme.typography.bodyLarge,
+          style = ideaTextStyle,
           maxLines = if (hasChecklist) 4 else 2,
           overflow = TextOverflow.Ellipsis,
         )
@@ -115,6 +122,17 @@ internal fun IdeaRow(
     }
   }
 }
+
+private fun String.hasCjk(): Boolean =
+  any { char ->
+    val block = Character.UnicodeBlock.of(char)
+    block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS ||
+      block == Character.UnicodeBlock.CJK_UNIFIED_IDEOGRAPHS_EXTENSION_A ||
+      block == Character.UnicodeBlock.CJK_COMPATIBILITY_IDEOGRAPHS ||
+      block == Character.UnicodeBlock.HIRAGANA ||
+      block == Character.UnicodeBlock.KATAKANA ||
+      block == Character.UnicodeBlock.HANGUL_SYLLABLES
+  }
 
 @Composable
 private fun IdeaQuadrantLabel(quadrant: IdeaQuadrant) {

@@ -24,6 +24,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.LedgerEntry
+import kotlin.math.abs
 import kotlin.math.ceil
 
 @Composable
@@ -69,7 +70,7 @@ internal fun NetLineChart(points: List<DailyNetPoint>, modifier: Modifier = Modi
   val outline = MaterialTheme.colorScheme.outlineVariant
   val onSurfaceVariant = MaterialTheme.colorScheme.onSurfaceVariant
   Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = modifier.fillMaxWidth()) {
-    val maxAbs = points.maxOfOrNull { kotlin.math.abs(it.netMinutes) }?.coerceAtLeast(15.0) ?: 15.0
+    val maxAbs = points.maxOfOrNull { abs(it.netMinutes) }?.coerceAtLeast(15.0) ?: 15.0
     val axisMax = (ceil(maxAbs / 15.0) * 15.0).coerceAtLeast(15.0)
     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
       Column(
@@ -88,12 +89,18 @@ internal fun NetLineChart(points: List<DailyNetPoint>, modifier: Modifier = Modi
         val chartWidth = size.width - horizontalPadding * 2
         val chartHeight = size.height - topPadding - bottomPadding
         val zeroY = topPadding + chartHeight / 2f
-        listOf(topPadding, zeroY, topPadding + chartHeight).forEach { y ->
+        drawLine(
+          color = outline.copy(alpha = 0.72f),
+          start = Offset(horizontalPadding, topPadding),
+          end = Offset(horizontalPadding, topPadding + chartHeight),
+          strokeWidth = 1.dp.toPx(),
+        )
+        listOf(topPadding, zeroY, topPadding + chartHeight).forEachIndexed { index, y ->
           drawLine(
-            color = outline,
+            color = outline.copy(alpha = if (index == 1) 0.94f else 0.46f),
             start = Offset(horizontalPadding, y),
             end = Offset(size.width - horizontalPadding, y),
-            strokeWidth = 1.dp.toPx(),
+            strokeWidth = if (index == 1) 1.5.dp.toPx() else 1.dp.toPx(),
           )
         }
         val offsets =
@@ -102,19 +109,52 @@ internal fun NetLineChart(points: List<DailyNetPoint>, modifier: Modifier = Modi
             val y = zeroY - (point.netMinutes / axisMax).toFloat() * chartHeight / 2f
             Offset(x, y)
           }
-        if (offsets.size > 1) {
-          val path =
+        fun Path.addSmoothLine(values: List<Offset>) {
+          if (values.isEmpty()) return
+          moveTo(values.first().x, values.first().y)
+          values.zipWithNext().forEach { (from, to) ->
+            val midX = (from.x + to.x) / 2f
+            cubicTo(midX, from.y, midX, to.y, to.x, to.y)
+          }
+        }
+        if (offsets.isNotEmpty()) {
+          val total = points.sumOf { it.netMinutes }
+          val fillColor = if (total < 0.0) tertiary else primary
+          val area =
             Path().apply {
-              moveTo(offsets.first().x, offsets.first().y)
-              offsets.drop(1).forEach { lineTo(it.x, it.y) }
+              addSmoothLine(offsets)
+              lineTo(offsets.last().x, zeroY)
+              lineTo(offsets.first().x, zeroY)
+              close()
             }
-          drawPath(path, color = primary, style = Stroke(width = 4.dp.toPx(), cap = StrokeCap.Round))
+          drawPath(area, color = fillColor.copy(alpha = 0.10f))
         }
         offsets.forEachIndexed { index, offset ->
           val point = points[index]
-          val color = if (point.netMinutes < 0.0) tertiary else primary
-          drawCircle(color = color.copy(alpha = 0.18f), radius = 8.dp.toPx(), center = offset)
-          drawCircle(color = color, radius = 4.dp.toPx(), center = offset)
+          val color =
+            when {
+              point.netMinutes > 0.0 -> primary
+              point.netMinutes < 0.0 -> tertiary
+              else -> onSurfaceVariant
+            }
+          drawLine(
+            color = color.copy(alpha = if (point.netMinutes == 0.0) 0.10f else 0.22f),
+            start = Offset(offset.x, zeroY),
+            end = offset,
+            strokeWidth = 1.dp.toPx(),
+            cap = StrokeCap.Round,
+          )
+        }
+        if (offsets.size > 1) {
+          val path = Path().apply { addSmoothLine(offsets) }
+          drawPath(path, color = outline.copy(alpha = 0.40f), style = Stroke(width = 8.dp.toPx(), cap = StrokeCap.Round))
+          drawPath(path, color = primary, style = Stroke(width = 3.5.dp.toPx(), cap = StrokeCap.Round))
+        }
+        offsets.forEachIndexed { index, offset ->
+          val point = points[index]
+          val color = if (point.netMinutes < 0.0) tertiary else if (point.netMinutes > 0.0) primary else onSurfaceVariant
+          drawCircle(color = color.copy(alpha = 0.16f), radius = 8.dp.toPx(), center = offset)
+          drawCircle(color = color, radius = 3.6.dp.toPx(), center = offset)
         }
       }
     }
