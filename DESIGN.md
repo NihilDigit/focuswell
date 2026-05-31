@@ -217,6 +217,7 @@ Balance:
 - The 7-day net chart uses ledger entries as the source of truth, includes coordinate marks, and scales its y-axis from the largest absolute daily movement in the visible 7-day window.
 - Records use compact icon-only filter chips, not tabs. Keep `All`, `Focus`, `Leisure`, and `Adjust` on one row on compact phone widths with content descriptions for accessibility.
 - Record rows are amount-first and compact. Focus earning uses primary, leisure spending uses tertiary, and each record type gets a quiet inline type icon. Destructive actions use error only inside details/edit surfaces.
+- Manual balance records are added from a FAB and saved as ledger adjustments.
 - Focus outcome states use the same icon and color mapping everywhere they appear.
 - Focus and leisure CRUD lives in Balance. Delete actions should not be permanently visible in the list; show them in an edit/details sheet.
 - Non-zero minute amounts below one minute display as `<1m`, `+<1m`, or `-<1m`; avoid rounding live accounting UI down to `0m`.

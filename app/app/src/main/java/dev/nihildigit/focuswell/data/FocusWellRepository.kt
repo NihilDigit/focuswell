@@ -296,6 +296,18 @@ class FocusWellRepository internal constructor(
     mutate { state -> state.withUpdatedFocusRecord(id = id, result = result, activeMinutes = activeMinutes, updatedAt = updatedAt) }
   }
 
+  suspend fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?) {
+    val createdAt = now()
+    mutate { state ->
+      state.withAddedManualAdjustment(
+        title = title,
+        deltaMinutes = deltaMinutes,
+        note = note,
+        createdAt = createdAt,
+      )
+    }
+  }
+
   suspend fun deleteLeisureRecord(id: String) {
     val deletedAt = now()
     mutate { state -> state.withDeletedLeisureRecord(id = id, deletedAt = deletedAt) }

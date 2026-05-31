@@ -57,7 +57,7 @@ Primary destinations:
 
 - Today: current reserve, active mode, daily trackers, and depleted state.
 - Balance: ledger-backed account view, 7-day net chart, records, and record
-  editing or deletion.
+  additions, editing, or deletion.
 - Ideas: captured ideas, an inbox, and four sorting quadrants.
 - Plan: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Settings: appearance, accounting rules, app update checks, JSON
@@ -245,14 +245,19 @@ of reserving checklist space.
 
 ## Records And Ledger
 
-Current editable records:
+Current balance records:
 
 - focus records
 - leisure records
+- manual balance adjustments
 
 Editing a focus record creates a ledger entry for the delta between old and new
 earned minutes. Deleting a focus or leisure record marks it deleted and writes a
 compensating ledger adjustment.
+
+Manual balance adjustments are direct ledger entries for corrections or one-off
+credits/debits. Negative manual adjustments are capped at the current displayed
+reserve so the app still does not create spendable-time overdraft.
 
 The app preserves the original calculation fields on records, including tag
 multiplier and type rate.

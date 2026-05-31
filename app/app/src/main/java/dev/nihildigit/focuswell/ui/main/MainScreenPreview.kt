@@ -42,6 +42,7 @@ internal fun MainScreenPreview() {
       onClearAllData = {},
       onDeleteFocusRecord = {},
       onUpdateFocusRecord = { _, _, _ -> },
+      onAddManualAdjustment = { _, _, _ -> },
       onDeleteLeisureRecord = {},
       onMoveIdea = { _, _ -> },
       onUpdateIdea = { _, _, _ -> },

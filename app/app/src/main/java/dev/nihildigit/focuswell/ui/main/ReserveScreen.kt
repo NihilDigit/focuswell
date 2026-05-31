@@ -1,14 +1,24 @@
 package dev.nihildigit.focuswell.ui.main
 
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material3.ExtendedFloatingActionButton
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 
@@ -17,11 +27,13 @@ internal fun ReserveScreen(
   state: FocusWellUiState,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
+  onAddManualAdjustment: (String, Double, String?) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
 ) {
   var filter by remember { mutableStateOf(BalanceRecordFilter.All) }
   var editingFocusRecordId by remember { mutableStateOf<String?>(null) }
   var showingLeisureRecordId by remember { mutableStateOf<String?>(null) }
+  var addingAdjustment by remember { mutableStateOf(false) }
   val focusSourceIds = state.focusRecords.mapTo(mutableSetOf()) { it.id }
   val leisureSourceIds = state.leisureRecords.mapTo(mutableSetOf()) { it.id }
   val records =
@@ -38,29 +50,46 @@ internal fun ReserveScreen(
     remember(records, filter) {
       filteredBalanceRecordItems(records, filter)
     }
-  LazyColumn(
-    contentPadding = PaddingValues(20.dp),
-    verticalArrangement = Arrangement.spacedBy(16.dp),
-  ) {
-    item { NetBalanceChart(entries = state.ledger, rules = state.rules) }
-    item {
-      RecordsFilterHeader(
-        selected = filter,
-        onSelected = { filter = it },
-        totalCount = records.size,
-      )
-    }
-    if (filteredRecords.isEmpty()) {
-      item { EmptyRecordText("No matching records yet.") }
-    } else {
-      items(filteredRecords, key = { it.id }) { item ->
-        BalanceRecordRow(
-          item = item,
-          onEditFocusRecord = { editingFocusRecordId = it },
-          onShowLeisureRecord = { showingLeisureRecordId = it },
+  Box(modifier = Modifier.fillMaxSize()) {
+    LazyColumn(
+      contentPadding = PaddingValues(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 108.dp),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      item { NetBalanceChart(entries = state.ledger, rules = state.rules) }
+      item {
+        RecordsFilterHeader(
+          selected = filter,
+          onSelected = { filter = it },
+          totalCount = records.size,
         )
       }
+      if (filteredRecords.isEmpty()) {
+        item { EmptyRecordText("No matching records yet.") }
+      } else {
+        items(filteredRecords, key = { it.id }) { item ->
+          BalanceRecordRow(
+            item = item,
+            onEditFocusRecord = { editingFocusRecordId = it },
+            onShowLeisureRecord = { showingLeisureRecordId = it },
+          )
+        }
+      }
     }
+    ExtendedFloatingActionButton(
+      onClick = { addingAdjustment = true },
+      icon = { Icon(Icons.Rounded.Add, contentDescription = null) },
+      text = { Text("Add record") },
+      modifier = Modifier.align(Alignment.BottomEnd).padding(20.dp),
+    )
+  }
+  if (addingAdjustment) {
+    BalanceAdjustmentSheet(
+      onDismiss = { addingAdjustment = false },
+      onAdd = { title, deltaMinutes, note ->
+        addingAdjustment = false
+        onAddManualAdjustment(title, deltaMinutes, note)
+      },
+    )
   }
   state.focusRecords.firstOrNull { it.id == editingFocusRecordId && it.deletedAt == null }?.let { record ->
     BalanceFocusRecordSheet(

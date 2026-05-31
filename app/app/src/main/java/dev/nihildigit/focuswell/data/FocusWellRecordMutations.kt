@@ -85,3 +85,31 @@ internal fun FocusWellUiState.withDeletedLeisureRecord(
     ledger = listOf(adjustment) + ledger,
   )
 }
+
+internal fun FocusWellUiState.withAddedManualAdjustment(
+  title: String,
+  deltaMinutes: Double,
+  note: String?,
+  createdAt: Instant,
+): FocusWellUiState {
+  val trimmedTitle = title.trim().ifBlank { "Manual adjustment" }
+  val safeDelta =
+    if (deltaMinutes < 0.0) {
+      deltaMinutes.coerceAtLeast(-reserveMinutes)
+    } else {
+      deltaMinutes
+    }
+  if (safeDelta == 0.0) return this
+  val adjustment =
+    LedgerEntry(
+      id = FocusWellIds.manualAdjustment(createdAt),
+      title = trimmedTitle,
+      deltaMinutes = safeDelta,
+      createdAt = createdAt,
+      note = note?.trim()?.ifBlank { null },
+    )
+  return copy(
+    reserveMinutes = (reserveMinutes + safeDelta).coerceAtLeast(0.0),
+    ledger = listOf(adjustment) + ledger,
+  )
+}

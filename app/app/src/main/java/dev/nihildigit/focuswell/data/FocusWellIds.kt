@@ -30,6 +30,8 @@ internal object FocusWellIds {
   fun editAdjustment(sourceId: String, createdAt: Instant): String =
     "edit-$sourceId-${createdAt.toEpochMilli()}"
 
+  fun manualAdjustment(createdAt: Instant): String = "manual-adjustment-${createdAt.toEpochMilli()}"
+
   fun dailyGrant(date: LocalDate): String = "daily-grant-$date"
 
   fun pausedDailyGrant(date: LocalDate): String = "daily-grant-paused-$date"

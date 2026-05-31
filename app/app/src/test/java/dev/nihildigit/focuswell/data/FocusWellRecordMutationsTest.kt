@@ -84,6 +84,39 @@ class FocusWellRecordMutationsTest {
   }
 
   @Test
+  fun withAddedManualAdjustment_addsLedgerEntryAndCapsNegativeDeltaAtReserve() {
+    val state = FocusWellUiState(reserveMinutes = 10.0)
+
+    val updated =
+      state.withAddedManualAdjustment(
+        title = "  Correction  ",
+        deltaMinutes = -15.0,
+        note = "  overcounted  ",
+        createdAt = changedAt,
+      )
+
+    assertEquals(0.0, updated.reserveMinutes, 0.0001)
+    assertEquals("Correction", updated.ledger.first().title)
+    assertEquals(-10.0, updated.ledger.first().deltaMinutes, 0.0001)
+    assertEquals("overcounted", updated.ledger.first().note)
+  }
+
+  @Test
+  fun withAddedManualAdjustment_ignoresZeroDelta() {
+    val state = FocusWellUiState(reserveMinutes = 10.0, ledger = listOf(ledgerEntry()))
+
+    val updated =
+      state.withAddedManualAdjustment(
+        title = "Correction",
+        deltaMinutes = 0.0,
+        note = null,
+        createdAt = changedAt,
+      )
+
+    assertSame(state, updated)
+  }
+
+  @Test
   fun recordMutations_returnSameStateWhenRecordIsMissingOrDeleted() {
     val deletedFocus = focusRecord(earnedMinutes = 10.0, deletedAt = changedAt)
     val state = FocusWellUiState(focusRecords = listOf(deletedFocus))

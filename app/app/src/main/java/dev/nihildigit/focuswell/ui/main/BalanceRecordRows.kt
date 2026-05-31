@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.Add
 import androidx.compose.material.icons.rounded.Bedtime
 import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
@@ -26,6 +28,8 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -205,6 +209,73 @@ internal fun BalanceAdjustmentRow(entry: LedgerEntry) {
         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
       Text(localRecordTime(entry.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    }
+  }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun BalanceAdjustmentSheet(
+  onDismiss: () -> Unit,
+  onAdd: (String, Double, String?) -> Unit,
+) {
+  var title by remember { mutableStateOf("Manual adjustment") }
+  var minutes by remember { mutableStateOf("") }
+  var note by remember { mutableStateOf("") }
+  val parsedMinutes = minutes.toDoubleOrNull()
+  val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+  ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
+    Column(
+      modifier =
+        Modifier
+          .padding(horizontal = 20.dp)
+          .imePadding()
+          .verticalScroll(rememberScrollState()),
+      verticalArrangement = Arrangement.spacedBy(16.dp),
+    ) {
+      Text("Add balance record", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
+      OutlinedTextField(
+        value = title,
+        onValueChange = { title = it },
+        label = { Text("Title") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      OutlinedTextField(
+        value = minutes,
+        onValueChange = { minutes = it },
+        label = { Text("Minutes") },
+        placeholder = { Text("+15 or -10") },
+        singleLine = true,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      OutlinedTextField(
+        value = note,
+        onValueChange = { note = it },
+        label = { Text("Optional note") },
+        minLines = 2,
+        maxLines = 4,
+        modifier = Modifier.fillMaxWidth(),
+      )
+      parsedMinutes?.takeIf { it != 0.0 }?.let { delta ->
+        BalanceDeltaPreview(original = 0.0, updated = delta, delta = delta)
+      }
+      Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
+        OutlinedButton(onClick = onDismiss, modifier = Modifier.weight(1f).height(54.dp), shape = ControlStartShape) {
+          Text("Cancel")
+        }
+        Button(
+          enabled = title.isNotBlank() && parsedMinutes != null && parsedMinutes != 0.0,
+          onClick = { onAdd(title, parsedMinutes ?: 0.0, note.ifBlank { null }) },
+          modifier = Modifier.weight(1f).height(54.dp),
+          shape = ControlEndShape,
+        ) {
+          Icon(Icons.Rounded.Add, contentDescription = null)
+          Spacer(Modifier.width(8.dp))
+          Text("Add")
+        }
+      }
+      Spacer(Modifier.height(16.dp))
     }
   }
 }
