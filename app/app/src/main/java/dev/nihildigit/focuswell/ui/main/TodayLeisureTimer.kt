@@ -10,8 +10,6 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.ExperimentalLayoutApi
-import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -31,11 +29,12 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import dev.nihildigit.focuswell.theme.FocusWellTheme
 import kotlin.math.PI
 import kotlin.math.sin
 
-@OptIn(ExperimentalLayoutApi::class)
 @Composable
 internal fun LeisureTimerSurface(
   remaining: String,
@@ -81,21 +80,8 @@ internal fun LeisureTimerSurface(
         verticalArrangement = Arrangement.spacedBy(18.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
       ) {
-        Row(
-          modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.CenterVertically,
-        ) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Start) {
           StatusBadge("Leisure running", tone)
-          FlowRow(
-            horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.End),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-          ) {
-            StatusBadge("$elapsed elapsed", tone)
-            if (sleepProtection) {
-              StatusBadge("Sleep protection ${sleepProtectionMultiplier.formatOne()}x", tone)
-            }
-          }
         }
         Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
           Text("Remaining", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -112,8 +98,55 @@ internal fun LeisureTimerSurface(
             Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
           }
         }
+        Row(
+          modifier = Modifier.fillMaxWidth(),
+          horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+          LeisureSessionStat(
+            label = "Elapsed",
+            value = elapsed,
+            modifier = Modifier.weight(1f),
+          )
+          if (sleepProtection) {
+            LeisureSessionStat(
+              label = "Sleep protection",
+              value = "${sleepProtectionMultiplier.formatOne()}x cost",
+              modifier = Modifier.weight(1f),
+            )
+          }
+        }
         ExpressiveProgressIndicator(progress = progress, tone = tone)
       }
+    }
+  }
+}
+
+@Composable
+private fun LeisureSessionStat(label: String, value: String, modifier: Modifier = Modifier) {
+  Surface(
+    color = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f),
+    contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+    shape = CalmPanelShape,
+    modifier = modifier,
+  ) {
+    Column(
+      modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp),
+      verticalArrangement = Arrangement.spacedBy(2.dp),
+    ) {
+      Text(
+        label,
+        style = MaterialTheme.typography.labelMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        maxLines = 1,
+        overflow = TextOverflow.Ellipsis,
+      )
+      Text(
+        value,
+        style = tabularNumbers(MaterialTheme.typography.titleMedium),
+        maxLines = 1,
+        softWrap = false,
+        overflow = TextOverflow.Ellipsis,
+      )
     }
   }
 }
@@ -189,5 +222,20 @@ internal fun lowBalanceText(remainingMinutes: Double): String? {
     remainingMinutes <= 5.0 -> "5 min left"
     remainingMinutes <= 10.0 -> "10 min left"
     else -> null
+  }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun LeisureTimerSurfaceSleepProtectionPreview() {
+  FocusWellTheme(dynamicColor = false) {
+    LeisureTimerSurface(
+      remaining = "1:06:42",
+      elapsed = "1h",
+      progress = 0.58f,
+      supporting = null,
+      sleepProtection = true,
+      sleepProtectionMultiplier = 2.0,
+    )
   }
 }

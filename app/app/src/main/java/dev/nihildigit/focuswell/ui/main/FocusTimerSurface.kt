@@ -20,10 +20,17 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.ActiveMode
+import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.theme.FocusWellExpressiveFontFamily
+import dev.nihildigit.focuswell.theme.FocusWellTheme
+import java.time.Instant
 import kotlin.time.Duration
+import kotlin.time.Duration.Companion.hours
+import kotlin.time.Duration.Companion.minutes
 
 @Composable
 internal fun FocusTimerSurface(
@@ -71,28 +78,48 @@ internal fun FocusTimerSurface(
             overflow = TextOverflow.Ellipsis,
           )
         }
-        Row(
+        Column(
           modifier = Modifier.fillMaxWidth(),
-          horizontalArrangement = Arrangement.SpaceBetween,
-          verticalAlignment = Alignment.Bottom,
+          verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-          Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+          Column(verticalArrangement = Arrangement.spacedBy(2.dp), modifier = Modifier.fillMaxWidth()) {
             Text("Elapsed", style = MaterialTheme.typography.labelLarge, color = content)
             Text(
               formatPreciseDuration(elapsed),
               style = tabularNumbers(MaterialTheme.typography.displayMedium),
               maxLines = 1,
               softWrap = false,
+              overflow = TextOverflow.Clip,
             )
           }
-          Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(2.dp)) {
-            Text("If ended now", style = MaterialTheme.typography.labelLarge, color = content)
-            Text(
-              signedCompactMinutes(earnedNow),
-              style = tabularNumbers(MaterialTheme.typography.headlineMedium),
-              fontWeight = FontWeight.ExtraBold,
-              color = tone,
-            )
+          Surface(
+            color = MaterialTheme.colorScheme.surface.copy(alpha = 0.52f),
+            contentColor = content,
+            shape = CalmPanelShape,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Row(
+              modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+              horizontalArrangement = Arrangement.SpaceBetween,
+              verticalAlignment = Alignment.CenterVertically,
+            ) {
+              Text(
+                "If ended now",
+                style = MaterialTheme.typography.labelLarge,
+                color = content,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+              )
+              Text(
+                signedCompactMinutes(earnedNow),
+                style = tabularNumbers(MaterialTheme.typography.headlineSmall),
+                fontWeight = FontWeight.ExtraBold,
+                color = tone,
+                maxLines = 1,
+                softWrap = false,
+              )
+            }
           }
         }
       }
@@ -125,6 +152,24 @@ private fun FocusFieldDrawing(tone: Color, modifier: Modifier = Modifier) {
       topLeft = Offset(-size.width * 0.16f, size.height * 0.60f),
       size = Size(size.width * 0.56f, size.width * 0.56f),
       style = Stroke(width = 14.dp.toPx(), cap = StrokeCap.Round),
+    )
+  }
+}
+
+@Preview(showBackground = true, widthDp = 360)
+@Composable
+private fun FocusTimerSurfaceLongElapsedPreview() {
+  FocusWellTheme(dynamicColor = false) {
+    FocusTimerSurface(
+      focus =
+        ActiveMode.Focus(
+          task = "Draft release notes and verify Android build",
+          type = SessionType.Output,
+          tag = TagConfig(id = "deep", name = "Deep work", multiplier = 1.5),
+          startedAt = Instant.parse("2026-05-31T08:00:00Z"),
+          reminderSessionId = "preview",
+        ),
+      elapsed = 1.hours + 12.minutes,
     )
   }
 }
