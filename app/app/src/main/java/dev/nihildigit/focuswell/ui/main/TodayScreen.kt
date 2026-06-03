@@ -123,6 +123,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.compose.ui.platform.LocalContext
+import dev.nihildigit.focuswell.data.withComputedTrackers
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.Destination
@@ -159,6 +160,13 @@ internal fun TodayScreen(
   onEndDepleted: () -> Unit,
 ) {
   val activeMode = state.activeMode
+  val trackerNow = rememberNow(paused = activeMode !is ActiveMode.Focus || activeMode.paused)
+  val displayTrackers =
+    if (activeMode is ActiveMode.Focus) {
+      state.withComputedTrackers(trackerNow).trackers
+    } else {
+      state.trackers
+    }
   LazyColumn(
     contentPadding = PaddingValues(horizontal = 20.dp, vertical = 18.dp),
     verticalArrangement = Arrangement.spacedBy(18.dp),
@@ -185,6 +193,7 @@ internal fun TodayScreen(
           is ActiveMode.Focus ->
             ActiveFocusSurface(
               focus = mode,
+              now = trackerNow,
               onPauseFocus = onPauseFocus,
               onResumeFocus = onResumeFocus,
               onEndFocus = onEndFocus,
@@ -207,6 +216,7 @@ internal fun TodayScreen(
     item {
       TrackerGrid(
         trackers = state.trackers.filter { it.archivedAt == null },
+        previewTrackers = displayTrackers.filter { it.archivedAt == null },
         rules = state.rules,
         onToggleTracker = onToggleTracker,
       )

@@ -31,6 +31,7 @@ import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.PathEffect
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.text.style.TextOverflow
@@ -41,10 +42,12 @@ import dev.nihildigit.focuswell.domain.FocusWellRules
 @Composable
 internal fun TrackerGrid(
   trackers: List<DailyTracker>,
+  previewTrackers: List<DailyTracker> = trackers,
   rules: FocusWellRules,
   onToggleTracker: (String) -> Unit,
 ) {
   val completedCount = trackers.count { it.completed }
+  val previewById = previewTrackers.associateBy { it.id }
   val trackerCount = trackers.size
   val dailyProgress by animateFloatAsState(
     targetValue = if (trackerCount == 0) 0f else completedCount / trackerCount.toFloat(),
@@ -83,8 +86,11 @@ internal fun TrackerGrid(
         )
       } else {
         trackers.forEach { tracker ->
+          val previewTracker = previewById[tracker.id] ?: tracker
           DailyTrackerTile(
-            tracker = tracker,
+            tracker = previewTracker,
+            savedProgress = trackerProgress(tracker),
+            previewProgress = trackerProgress(previewTracker),
             onClick = { onToggleTracker(tracker.id) },
             modifier = Modifier.fillMaxWidth(),
           )
@@ -149,7 +155,13 @@ private fun DailyCompletionProgress(progress: Float) {
 private fun Int.todayHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
 
 @Composable
-internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifier: Modifier = Modifier) {
+internal fun DailyTrackerTile(
+  tracker: DailyTracker,
+  savedProgress: Float = trackerProgress(tracker),
+  previewProgress: Float = savedProgress,
+  onClick: () -> Unit,
+  modifier: Modifier = Modifier,
+) {
   val isRuleTracker = tracker.ruleTagName != null && tracker.ruleTargetMinutes != null
   val targetContainer =
     if (tracker.completed) MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.62f)
@@ -166,10 +178,15 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
     animationSpec = focusWellFastEffectsSpec(),
     label = "tracker-tile-content",
   )
-  val trackerProgress by animateFloatAsState(
-    targetValue = trackerProgress(tracker),
+  val savedTrackerProgress by animateFloatAsState(
+    targetValue = savedProgress,
     animationSpec = focusWellDefaultSpatialSpec(),
     label = "tracker-rule-progress",
+  )
+  val previewTrackerProgress by animateFloatAsState(
+    targetValue = previewProgress,
+    animationSpec = focusWellDefaultSpatialSpec(),
+    label = "tracker-rule-preview-progress",
   )
   Surface(
     onClick = onClick,
@@ -187,7 +204,12 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
       horizontalArrangement = Arrangement.spacedBy(12.dp),
       verticalAlignment = Alignment.CenterVertically,
     ) {
-      DailyTrackerLeadingState(tracker = tracker, isRuleTracker = isRuleTracker, progress = trackerProgress)
+      DailyTrackerLeadingState(
+        tracker = tracker,
+        isRuleTracker = isRuleTracker,
+        progress = savedTrackerProgress,
+        previewProgress = previewTrackerProgress,
+      )
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
         Text(tracker.label, style = MaterialTheme.typography.titleMedium, maxLines = 1, overflow = TextOverflow.Ellipsis)
         Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -213,11 +235,17 @@ internal fun DailyTrackerTile(tracker: DailyTracker, onClick: () -> Unit, modifi
 }
 
 @Composable
-private fun DailyTrackerLeadingState(tracker: DailyTracker, isRuleTracker: Boolean, progress: Float) {
+private fun DailyTrackerLeadingState(
+  tracker: DailyTracker,
+  isRuleTracker: Boolean,
+  progress: Float,
+  previewProgress: Float,
+) {
   if (isRuleTracker) {
     val indicatorColor =
       if (tracker.completed) MaterialTheme.colorScheme.primary
       else MaterialTheme.colorScheme.onSurfaceVariant
+    val previewColor = MaterialTheme.colorScheme.primary
     Box(contentAlignment = Alignment.Center, modifier = Modifier.size(40.dp)) {
       Canvas(modifier = Modifier.fillMaxSize()) {
         val stroke = 3.dp.toPx()
@@ -227,15 +255,33 @@ private fun DailyTrackerLeadingState(tracker: DailyTracker, isRuleTracker: Boole
           radius = radius,
           style = Stroke(width = stroke),
         )
+        val savedSweep = 360f * progress.coerceIn(0f, 1f)
+        val previewSweep = 360f * (previewProgress - progress).coerceAtLeast(0f).coerceAtMost(1f)
         drawArc(
           color = indicatorColor,
           startAngle = -90f,
-          sweepAngle = 360f * progress.coerceIn(0f, 1f),
+          sweepAngle = savedSweep,
           useCenter = false,
           style = Stroke(width = stroke, cap = StrokeCap.Round),
           size = Size(radius * 2f, radius * 2f),
           topLeft = Offset((size.width - radius * 2f) / 2f, (size.height - radius * 2f) / 2f),
         )
+        if (previewSweep > 0f) {
+          drawArc(
+            color = previewColor.copy(alpha = 0.76f),
+            startAngle = -90f + savedSweep,
+            sweepAngle = previewSweep,
+            useCenter = false,
+            style =
+              Stroke(
+                width = stroke,
+                cap = StrokeCap.Round,
+                pathEffect = PathEffect.dashPathEffect(floatArrayOf(7.dp.toPx(), 5.dp.toPx())),
+              ),
+            size = Size(radius * 2f, radius * 2f),
+            topLeft = Offset((size.width - radius * 2f) / 2f, (size.height - radius * 2f) / 2f),
+          )
+        }
       }
       Surface(
         color =

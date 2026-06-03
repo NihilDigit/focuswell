@@ -3,6 +3,7 @@ serviceAccountKey.json
 app/release-signing.properties
 *.jks
 *.keystore
+.pithagoras/
 .env
 .env.*
 !.env.example

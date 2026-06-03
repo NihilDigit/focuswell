@@ -1,7 +1,10 @@
 package dev.nihildigit.focuswell.data
 
+import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
+import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import java.time.Instant
 import org.junit.Assert.assertEquals
@@ -73,5 +76,56 @@ class FocusWellPlanningMutationsTest {
 
     assertEquals(true, updated.trackers.first { it.id == "manual" }.completed)
     assertEquals(false, updated.trackers.first { it.id == "rule" }.completed)
+  }
+
+  @Test
+  fun withComputedTrackers_activeFocusUpdatesProgressButNotCompletion() {
+    val state =
+      FocusWellUiState(
+        dailyDate = "2026-05-20",
+        activeMode =
+          ActiveMode.Focus(
+            task = "Math",
+            type = SessionType.Input,
+            tag = TagConfig(id = "math", name = "math", multiplier = 2.0),
+            startedAt = Instant.parse("2026-05-20T05:00:00Z"),
+            reminderSessionId = "focus-1",
+          ),
+        trackers =
+          listOf(
+            DailyTracker(
+              id = "math-90m",
+              label = "Math",
+              completed = false,
+              ruleTagName = "math",
+              ruleTargetMinutes = 90.0,
+            )
+          ),
+        focusRecords =
+          listOf(
+            FocusRecord(
+              id = "record-1",
+              task = "Math",
+              result = "As planned",
+              type = SessionType.Input,
+              tagName = "math",
+              tagMultiplier = 2.0,
+              typeRate = 0.5,
+              startedAt = Instant.parse("2026-05-20T03:00:00Z"),
+              endedAt = Instant.parse("2026-05-20T04:00:00Z"),
+              activeDurationMinutes = 60.0,
+              earnedMinutes = 60.0,
+              dailyDate = "2026-05-20",
+            )
+          ),
+      )
+
+    val persisted = state.withComputedTrackers().trackers.single()
+    val displayed = state.withComputedTrackers(Instant.parse("2026-05-20T05:30:00Z")).trackers.single()
+
+    assertEquals(false, persisted.completed)
+    assertEquals("1h 0m / 90m", persisted.progressLabel)
+    assertEquals(false, displayed.completed)
+    assertEquals("1h 30m / 90m", displayed.progressLabel)
   }
 }

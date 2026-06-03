@@ -147,6 +147,7 @@ internal fun IdleTimerSurface(
 @Composable
 internal fun ActiveFocusSurface(
   focus: ActiveMode.Focus,
+  now: Instant? = null,
   onPauseFocus: () -> Unit,
   onResumeFocus: () -> Unit,
   onEndFocus: (String, Double) -> Unit,
@@ -158,8 +159,8 @@ internal fun ActiveFocusSurface(
   var pendingResult by remember { mutableStateOf<Pair<String, Double>?>(null) }
   val haptics = LocalHapticFeedback.current
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
-  val now = rememberNow(paused = focus.paused)
-  val elapsedEnd = if (focus.paused && focus.pausedAt != null) focus.pausedAt else now
+  val currentNow = now ?: rememberNow(paused = focus.paused)
+  val elapsedEnd = if (focus.paused && focus.pausedAt != null) focus.pausedAt else currentNow
   val elapsed =
     (elapsedEnd.toKotlinInstant() - focus.startedAt.toKotlinInstant() - focus.pausedDurationMillis.milliseconds)
       .coerceAtLeast(Duration.ZERO)
