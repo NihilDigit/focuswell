@@ -4,6 +4,8 @@ import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.domain.reserveLocked
+import dev.nihildigit.focuswell.domain.savingsInterestMinutes
 import java.time.Instant
 import java.time.LocalDate
 
@@ -17,23 +19,14 @@ internal class FocusWellDailyMaintenance(
     val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
     val grants =
       generateSequence(grantStart) { date -> date.plusDays(1).takeIf { !it.isAfter(today) } }
-        .filter { date -> FocusWellIds.dailyGrant(date) !in existingIds && FocusWellIds.pausedDailyGrant(date) !in existingIds }
+        .filter { date -> FocusWellIds.dailyGrant(date) !in existingIds }
         .map { date ->
-          if (isDailyGrantPaused(state, date)) {
-            LedgerEntry(
-              id = FocusWellIds.pausedDailyGrant(date),
-              title = "Daily grant paused",
-              deltaMinutes = 0.0,
-              createdAt = dailyGrantInstant(date, state.rules),
-            )
-          } else {
-            LedgerEntry(
-              id = FocusWellIds.dailyGrant(date),
-              title = "Daily grant",
-              deltaMinutes = state.rules.safeDailyGrantMinutes,
-              createdAt = dailyGrantInstant(date, state.rules),
-            )
-          }
+          LedgerEntry(
+            id = FocusWellIds.dailyGrant(date),
+            title = "Daily grant",
+            deltaMinutes = state.rules.safeDailyGrantMinutes,
+            createdAt = dailyGrantInstant(date, state.rules),
+          )
         }
         .toList()
     if (grants.isEmpty()) return state
@@ -69,6 +62,41 @@ internal class FocusWellDailyMaintenance(
     )
   }
 
+  fun settleDailyInterest(state: FocusWellUiState): FocusWellUiState {
+    val currentDate = runCatching { LocalDate.parse(state.dailyDate) }.getOrNull() ?: return state
+    val today = TimeAccounting.dailyDate(now(), rules = state.rules)
+    if (!currentDate.isBefore(today)) return state
+    if (state.reserveLocked) return state
+
+    val normalizedRules = state.rules.normalized()
+    val existingIds = state.ledger.mapTo(mutableSetOf()) { it.id }
+    var runningBalance = state.ledger.sumOf { it.deltaMinutes }.coerceAtLeast(0.0)
+    val interestEntries = mutableListOf<LedgerEntry>()
+    generateSequence(currentDate.plusDays(1)) { date -> date.plusDays(1).takeIf { !it.isAfter(today) } }
+      .forEach { date ->
+        val id = FocusWellIds.dailyInterest(date)
+        if (id !in existingIds) {
+          val interest = savingsInterestMinutes(runningBalance)
+          if (interest > 0.0) {
+            interestEntries +=
+              LedgerEntry(
+                id = id,
+                title = "Savings interest",
+                deltaMinutes = interest,
+                createdAt = dailyGrantInstant(date, normalizedRules),
+                note = "5/8/12% daily savings interest",
+              )
+            runningBalance += interest
+          }
+        }
+      }
+    if (interestEntries.isEmpty()) return state
+    return state.copy(
+      reserveMinutes = state.reserveMinutes + interestEntries.sumOf { it.deltaMinutes },
+      ledger = interestEntries.asReversed() + state.ledger,
+    )
+  }
+
   fun rollDailyState(state: FocusWellUiState): FocusWellUiState {
     val today = TimeAccounting.dailyDate(now(), rules = state.rules).toString()
     if (state.dailyDate == today) return state
@@ -88,8 +116,4 @@ internal class FocusWellDailyMaintenance(
   private fun dailyGrantInstant(date: LocalDate, rules: FocusWellRules = FocusWellRules()): Instant =
     TimeAccounting.businessDayBoundaryInstant(date.toString(), rules = rules)
 
-  private fun isDailyGrantPaused(state: FocusWellUiState, date: LocalDate): Boolean {
-    val pausedUntil = state.dailyGrantPausedUntilDate?.let { runCatching { LocalDate.parse(it) }.getOrNull() } ?: return false
-    return !date.isAfter(pausedUntil)
-  }
 }

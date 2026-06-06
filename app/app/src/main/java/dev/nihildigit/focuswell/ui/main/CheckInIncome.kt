@@ -18,6 +18,9 @@ internal fun checkInIncomeItems(state: FocusWellUiState, startedAt: Instant): Li
   state.ledger.firstOrNull { it.id == "daily-grant-$dailyDate" && it.deltaMinutes > 0.0 }?.let {
     items += CheckInIncomeItem("Daily grant", it.deltaMinutes)
   }
+  state.ledger.firstOrNull { it.id == "daily-interest-$dailyDate" && it.deltaMinutes > 0.0 }?.let {
+    items += CheckInIncomeItem("Savings interest", it.deltaMinutes)
+  }
   val previousDate =
     runCatching { KotlinLocalDate.parse(dailyDate).minus(1, DateTimeUnit.DAY).toString() }
       .getOrNull()

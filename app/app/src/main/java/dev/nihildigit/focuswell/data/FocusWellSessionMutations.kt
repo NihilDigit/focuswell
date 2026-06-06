@@ -5,9 +5,12 @@ import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.RESERVE_RECOVERY_FOCUS_MINUTES
+import dev.nihildigit.focuswell.domain.RESERVE_RECOVERY_GRANT_MINUTES
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.domain.focusOutcomeMultiplier
+import dev.nihildigit.focuswell.domain.reserveLocked
 import dev.nihildigit.focuswell.time.toKotlinInstant
 import java.time.Instant
 import kotlin.time.Duration as KotlinDuration
@@ -94,6 +97,14 @@ internal fun FocusWellUiState.withEndedFocusSession(
   val activeDurationMinutes = activeDuration.inWholeMilliseconds / 60_000.0
   val adjustedActiveMinutes = (activeDurationMinutes - correctionMinutes.coerceAtLeast(0.0)).coerceAtLeast(0.0)
   val savedResult = result.ifBlank { "As planned" }
+  val hasAnyPause = focus.pausedDurationMillis + currentPauseMillis > 0L
+  val unlocksReserve = reserveLocked && adjustedActiveMinutes >= RESERVE_RECOVERY_FOCUS_MINUTES && !hasAnyPause
+  if (reserveLocked && !unlocksReserve) {
+    return EndedFocusSession(
+      state = copy(activeMode = ActiveMode.None),
+      reminderSessionId = focus.reminderSessionId,
+    )
+  }
   val earned =
     TimeAccounting.focusEarnedMinutes(
       activeDurationMinutes = adjustedActiveMinutes,
@@ -125,13 +136,27 @@ internal fun FocusWellUiState.withEndedFocusSession(
       note = record.result,
       sourceId = record.id,
     )
+  val recoveryEntry =
+    if (unlocksReserve) {
+      LedgerEntry(
+        id = FocusWellIds.reserveRecovery(record.id),
+        title = "Recovery focus",
+        deltaMinutes = RESERVE_RECOVERY_GRANT_MINUTES,
+        createdAt = endedAt,
+        note = "2h continuous focus unlocked reserve",
+        sourceId = record.id,
+      )
+    } else {
+      null
+    }
   return EndedFocusSession(
     state =
       copy(
-        reserveMinutes = reserveMinutes + earned,
+        reserveMinutes = reserveMinutes + earned + (recoveryEntry?.deltaMinutes ?: 0.0),
         activeMode = ActiveMode.None,
+        dailyGrantPausedUntilDate = if (unlocksReserve) null else dailyGrantPausedUntilDate,
         focusRecords = listOf(record) + focusRecords,
-        ledger = listOf(entry) + ledger,
+        ledger = listOfNotNull(recoveryEntry, entry) + ledger,
       ),
     reminderSessionId = focus.reminderSessionId,
   )
@@ -141,7 +166,7 @@ internal fun FocusWellUiState.withStartedLeisureSession(
   startedAt: Instant,
   reminderSessionId: String,
 ): StartedLeisureSession? {
-  if (reserveMinutes <= 0.0) return null
+  if (reserveLocked || reserveMinutes <= 0.0) return null
   val leisure = ActiveMode.Leisure(startedAt = startedAt, reminderSessionId = reminderSessionId)
   return StartedLeisureSession(
     state = copy(activeMode = leisure),
@@ -160,6 +185,7 @@ internal fun FocusWellUiState.withEndedLeisureSession(endedAt: Instant): EndedLe
       endedAt
     }
   val cost = if (depleted) reserveMinutes else rawCost
+  val nextReserve = reserveMinutes - cost
   val elapsed =
     (effectiveEndedAt.toKotlinInstant() - leisure.startedAt.toKotlinInstant())
       .inWholeMilliseconds
@@ -184,8 +210,9 @@ internal fun FocusWellUiState.withEndedLeisureSession(endedAt: Instant): EndedLe
   return EndedLeisureSession(
     state =
       copy(
-        reserveMinutes = reserveMinutes - cost,
-        activeMode = if (reserveMinutes - cost <= 0.0) ActiveMode.Depleted else ActiveMode.None,
+        reserveMinutes = nextReserve,
+        activeMode = if (nextReserve <= 0.0) ActiveMode.Depleted else ActiveMode.None,
+        dailyGrantPausedUntilDate = if (nextReserve <= 0.0) TimeAccounting.dailyDate(effectiveEndedAt, rules = rules).toString() else dailyGrantPausedUntilDate,
         leisureRecords = listOf(record) + leisureRecords,
         ledger = listOf(entry) + ledger,
       ),

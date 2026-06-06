@@ -35,6 +35,7 @@ class CheckInIncomeTest {
         ledger =
           listOf(
             ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0),
+            ledger(id = "daily-interest-2026-05-20", title = "Savings interest", delta = 2.0),
             ledger(id = "tracker-reward-2026-05-19-reading", title = "Daily tracker", delta = 15.0, note = "Reading"),
             ledger(id = "tracker-reward-2026-05-18-old", title = "Daily tracker", delta = 10.0, note = "Old"),
             ledger(id = "daily-grant-2026-05-19", title = "Daily grant", delta = 60.0),
@@ -46,6 +47,7 @@ class CheckInIncomeTest {
     assertEquals(
       listOf(
         CheckInIncomeItem("Daily grant", 60.0),
+        CheckInIncomeItem("Savings interest", 2.0),
         CheckInIncomeItem("Reading", 15.0),
         CheckInIncomeItem("Wake bonus", 30.0),
       ),

@@ -70,12 +70,15 @@ class FocusWellRepositoryTest {
 
     val repo = newRepository(store, clock::now)
 
-    assertEquals(240.0, repo.state.value.reserveMinutes, 0.0001)
+    assertEquals(249.4575, repo.state.value.reserveMinutes, 0.0001)
     assertEquals(
       listOf(
         "daily-grant-2026-05-23",
         "daily-grant-2026-05-22",
         "daily-grant-2026-05-21",
+        "daily-interest-2026-05-23",
+        "daily-interest-2026-05-22",
+        "daily-interest-2026-05-21",
         "daily-grant-2026-05-20",
       ),
       repo.state.value.ledger.map { it.id },
@@ -114,7 +117,7 @@ class FocusWellRepositoryTest {
 
   @Test
   fun init_settlesCompletedDailyTrackerRewardsAtDayBoundary() = runTest {
-    clock.instant = Instant.parse("2026-05-21T00:00:00Z")
+    clock.instant = Instant.parse("2026-05-21T04:00:00Z")
     val tracker =
       DailyTracker(
         id = "vocabulary",
@@ -137,9 +140,9 @@ class FocusWellRepositoryTest {
 
     val state = repo.state.value
     assertEquals("2026-05-21", state.dailyDate)
-    assertEquals(135.0, state.reserveMinutes, 0.0001)
+    assertEquals(138.75, state.reserveMinutes, 0.0001)
     assertEquals(
-      listOf("daily-grant-2026-05-21", "tracker-reward-2026-05-20-vocabulary", "daily-grant-2026-05-20"),
+      listOf("daily-grant-2026-05-21", "daily-interest-2026-05-21", "tracker-reward-2026-05-20-vocabulary", "daily-grant-2026-05-20"),
       state.ledger.map { it.id },
     )
     assertEquals(false, state.trackers.first().completed)
@@ -373,6 +376,7 @@ class FocusWellRepositoryTest {
     assertEquals("leisure-session", sessionId)
     assertEquals(0.0, repo.state.value.reserveMinutes, 0.0001)
     assertTrue(repo.state.value.activeMode is ActiveMode.Depleted)
+    assertEquals("2026-05-20", repo.state.value.dailyGrantPausedUntilDate)
     assertEquals(10.0, repo.state.value.leisureRecords.first().costMinutes, 0.0001)
     assertEquals(Instant.parse("2026-05-20T05:05:00Z"), repo.state.value.leisureRecords.first().endedAt)
 

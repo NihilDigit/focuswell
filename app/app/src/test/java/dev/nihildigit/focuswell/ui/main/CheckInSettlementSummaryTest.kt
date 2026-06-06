@@ -45,8 +45,8 @@ class CheckInSettlementSummaryTest {
   }
 
   @Test
-  fun frozenDailyGrantLabel_usesConfiguredDailyGrantAndSharedPauseDays() {
-    assertEquals("45m x3", frozenDailyGrantLabel(FocusWellRules(dailyGrantMinutes = 45.0)))
+  fun frozenDailyGrantLabel_pointsToFocusRestartAndStoredDailyGrant() {
+    assertEquals("2h focus · 45m keeps saving", frozenDailyGrantLabel(FocusWellRules(dailyGrantMinutes = 45.0)))
   }
 
   private fun segment(id: String, costMinutes: Double): PhoneUsageSegment =

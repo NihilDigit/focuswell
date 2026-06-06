@@ -9,7 +9,7 @@ internal data class AppStateEntity(
   val dailyDate: String,
   val stateUpdatedAt: String = "1970-01-01T00:00:00Z",
   val dailyGrantMinutes: Double = 60.0,
-  val dayBoundaryHour: Int = 0,
+  val dayBoundaryHour: Int = 4,
   val wakeTargetHour: Int = 5,
   val sleepProtectionStartHour: Int = 23,
   val sleepProtectionEndHour: Int = 7,

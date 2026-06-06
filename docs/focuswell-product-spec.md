@@ -22,8 +22,8 @@ screen behavior.
 - Plan defines configurable earning inputs: focus tags, daily trackers, tracker rewards, and rule tracker targets.
 - Rules define configurable accounting boundaries: daily grant, daily boundary,
   wake target, sleep-protection start, and sleep-protection cost multiplier.
-  The default rhythm keeps the FocusWell day boundary at midnight and protects
-  a 23:00-07:00 sleep window.
+  Savings interest is a fixed product rule for now. The default rhythm keeps
+  the FocusWell day boundary at 04:00 and protects a 23:00-07:00 sleep window.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -42,8 +42,9 @@ device's current system time zone with the configured daily boundary.
 Default rules:
 
 ```text
-Daily window: 00:00 -> 23:59
+Daily window: 04:00 -> 03:59
 Daily grant: +60 minutes
+Savings interest: unlocked reserve earns 5% daily on the first 6h, 8% from 6h to 24h, and 12% above 24h
 Wake target: 05:00
 Sleep-protection leisure cost: 23:00-07:00 costs 2x
 ```
@@ -74,6 +75,8 @@ Rules:
 
 - A new FocusWell day grants the configured daily minutes.
 - The reserve carries over across days.
+- Unlocked carried reserve earns tiered daily interest at the day boundary: 5% on the first 6h, 8% from 6h to 24h, and 12% above 24h.
+- Locked reserve does not earn interest.
 - Overdraft is not allowed.
 - All reserve changes are ledger entries.
 - Deleted or edited records create ledger adjustments instead of rewriting
@@ -198,10 +201,15 @@ MVP clustering rules:
 
 The user marks necessary segments as Fair Use. Unmarked segments are settled as
 a negative ledger entry, capped at the current reserve so overdraft is still not
-allowed. If the phone-use cost exceeds the available reserve, the check-in
-clears the reserve and pauses unconditional Daily Grant entries for three
-business days. Focus earnings, tracker rewards, and wake/check-in bonuses remain
-active during the pause.
+allowed. If the phone-use cost exceeds the available reserve, the check-in clears the
+spendable reserve and locks Leisure. During the lock, phone-use correction is
+paused, Daily rewards can still be completed and stored, and reserve remains
+saved but cannot be spent. Savings interest does not accrue while locked.
+
+The lock ends only after one uninterrupted focus session reaches at least two
+hours of adjusted active time. Shorter locked-session attempts do not create a
+focus record and do not earn reserve. The unlocking focus session is recorded
+normally and also grants three hours of starter leisure reserve.
 
 Today also offers a small phone-use settlement entry when the current
 settlement window has billable phone-use content. It uses the same Correction
@@ -218,8 +226,9 @@ The check-in UI is a three-step flow:
    it. App names may appear as recall metadata, but the main timeline should
    stay visual and compact.
 3. Settlement: animate correction and final accounting as checked rows and
-   transparent numbers. Do not show the reserve well here. If the Daily Grant is
-   paused, show an ice/freeze treatment on a configured daily grant times three component, for example `60m x3` with the default grant.
+   transparent numbers. Do not show the reserve well here. If Leisure becomes
+   locked, show a calm restart treatment that points to the two-hour focus
+   requirement and makes clear that Daily rewards can keep saving.
 
 ## Ideas
 

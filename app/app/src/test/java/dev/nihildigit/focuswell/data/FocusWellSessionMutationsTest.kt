@@ -2,6 +2,7 @@ package dev.nihildigit.focuswell.data
 
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.SessionType
 import java.time.Instant
@@ -54,6 +55,57 @@ class FocusWellSessionMutationsTest {
     assertEquals(5.0, ended.state.focusRecords.first().activeDurationMinutes, 0.0001)
     assertEquals(2.5, ended.state.focusRecords.first().earnedMinutes, 0.0001)
     assertEquals(2.5, ended.state.ledger.first().deltaMinutes, 0.0001)
+    assertEquals(ActiveMode.None, ended.state.activeMode)
+  }
+
+  @Test
+  fun withEndedFocusSession_twoHourFocusUnfreezesReserveAndAddsStarterGrant() {
+    val state =
+      FocusWellUiState(
+        dailyDate = "2026-05-20",
+        rules = FocusWellRules(dayBoundaryHour = 4),
+        dailyGrantPausedUntilDate = "2026-05-23",
+        activeMode =
+          ActiveMode.Focus(
+            task = "Recovery",
+            type = SessionType.Output,
+            tag = null,
+            startedAt = Instant.parse("2026-05-20T05:00:00Z"),
+            reminderSessionId = "focus-session",
+          ),
+      )
+
+    val ended = state.withEndedFocusSession(endedAt = Instant.parse("2026-05-20T07:00:00Z"), result = "As planned")
+
+    requireNotNull(ended)
+    assertEquals(null, ended.state.dailyGrantPausedUntilDate)
+    assertEquals(210.0, ended.state.reserveMinutes, 0.0001)
+    assertEquals(listOf("Recovery focus", "Focus · Output"), ended.state.ledger.map { it.title })
+  }
+
+  @Test
+  fun withEndedFocusSession_lockedShortFocusDoesNotWriteRecordOrReward() {
+    val state =
+      FocusWellUiState(
+        dailyDate = "2026-05-20",
+        dailyGrantPausedUntilDate = "2026-05-20",
+        activeMode =
+          ActiveMode.Focus(
+            task = "Attempt",
+            type = SessionType.Input,
+            tag = null,
+            startedAt = Instant.parse("2026-05-20T05:00:00Z"),
+            reminderSessionId = "focus-session",
+          ),
+      )
+
+    val ended = state.withEndedFocusSession(endedAt = Instant.parse("2026-05-20T06:59:00Z"), result = "As planned")
+
+    requireNotNull(ended)
+    assertEquals("2026-05-20", ended.state.dailyGrantPausedUntilDate)
+    assertEquals(0.0, ended.state.reserveMinutes, 0.0001)
+    assertEquals(emptyList<LedgerEntry>(), ended.state.ledger)
+    assertEquals(0, ended.state.focusRecords.size)
     assertEquals(ActiveMode.None, ended.state.activeMode)
   }
 

@@ -236,7 +236,7 @@ private fun FrozenDailyGrantPanel(rules: FocusWellRules) {
         }
       }
       Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-        Text("Daily grant paused", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
+        Text("Leisure locked", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
         Text("Unconditional grant only", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
       }
       Text(frozenDailyGrantLabel(rules), style = tabularNumbers(MaterialTheme.typography.titleLarge), fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.secondary)

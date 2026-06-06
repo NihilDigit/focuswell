@@ -12,10 +12,10 @@ class TimeAccountingTest {
   private val shanghai: ZoneId = ZoneId.of("Asia/Shanghai")
 
   @Test
-  fun dailyDate_afterMidnight_usesCurrentBusinessDate() {
+  fun dailyDate_afterMidnightBeforeFour_usesPreviousBusinessDate() {
     val instant = Instant.parse("2026-05-21T16:30:00Z") // 00:30, 2026-05-22 Shanghai
 
-    assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
+    assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant, shanghai))
   }
 
   @Test
@@ -26,8 +26,15 @@ class TimeAccountingTest {
   }
 
   @Test
-  fun dailyDate_exactMidnight_usesNewBusinessDate() {
+  fun dailyDate_exactMidnight_usesPreviousBusinessDate() {
     val instant = Instant.parse("2026-05-21T16:00:00Z") // 00:00, 2026-05-22 Shanghai
+
+    assertEquals(LocalDate.parse("2026-05-21"), TimeAccounting.dailyDate(instant, shanghai))
+  }
+
+  @Test
+  fun dailyDate_exactFour_usesNewBusinessDate() {
+    val instant = Instant.parse("2026-05-21T20:00:00Z") // 04:00, 2026-05-22 Shanghai
 
     assertEquals(LocalDate.parse("2026-05-22"), TimeAccounting.dailyDate(instant, shanghai))
   }

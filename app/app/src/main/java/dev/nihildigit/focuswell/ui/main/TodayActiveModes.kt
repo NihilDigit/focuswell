@@ -58,6 +58,7 @@ internal fun IdleTimerSurface(
   phoneSettlementAvailable: Boolean,
   onStartLeisure: () -> Unit,
   leisureEnabled: Boolean,
+  reserveLocked: Boolean,
 ) {
   val haptics = LocalHapticFeedback.current
   Column(
@@ -72,9 +73,9 @@ internal fun IdleTimerSurface(
     ) {
       Column(modifier = Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-          Text("Ready when you are", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
+          Text(if (reserveLocked) "2h focus to restart" else "Ready when you are", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.SemiBold)
           Text(
-            "Start focus to earn reserve, or spend leisure when it’s time",
+            if (reserveLocked) "Daily minutes can keep saving, but Leisure stays locked until one uninterrupted 2h focus" else "Start focus to earn reserve, or spend leisure when it’s time",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )

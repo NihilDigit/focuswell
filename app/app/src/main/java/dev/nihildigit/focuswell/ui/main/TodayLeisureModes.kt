@@ -147,7 +147,7 @@ internal fun DepletedSurface(
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
           Text("Leisure is out", style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.Bold)
           Text(
-            "Your balance is at zero. Finish this session to return to Today.",
+            "Your balance is at zero. Daily can keep saving, but Leisure stays locked until one uninterrupted 2h focus gives a 3h restart bonus.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
           )

@@ -20,16 +20,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import dev.nihildigit.focuswell.domain.savingsInterestRateLabel
 
 @Composable
-internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
-  val fillTarget = (reserveMinutes / 180.0).coerceIn(0.08, 1.0).toFloat()
+internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double, reserveLocked: Boolean) {
+  val fillTarget = (reserveMinutes / 360.0).coerceIn(0.08, 1.0).toFloat()
   val fill by animateFloatAsState(
     targetValue = fillTarget,
     animationSpec = spring(stiffness = Spring.StiffnessLow, dampingRatio = Spring.DampingRatioNoBouncy),
     label = "well-fill",
   )
-  val shimmerTarget = if (reserveMinutes > 0.0) 1f else 0f
+  val shimmerTarget = if (reserveMinutes > 0.0 && reserveMinutes <= 300.0) 1f else 0f
   val shimmer by animateFloatAsState(
     targetValue = shimmerTarget,
     animationSpec = tween(durationMillis = 300),
@@ -40,7 +41,7 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
       reserveMinutes < 30 -> "Low reserve"
       reserveMinutes < 60 -> "${compactMinutes(reserveMinutes)} left"
       reserveMinutes <= 300 -> "${(reserveMinutes / 60.0).formatOne()} h banked"
-      else -> "Enough for tonight"
+      else -> "${(reserveMinutes / 60.0).formatOne()} h saved"
     }
   Surface(
     color = MaterialTheme.colorScheme.primaryContainer,
@@ -64,6 +65,11 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double) {
       ) {
         Text("Leisure well", style = MaterialTheme.typography.labelLarge)
         Text(headline, style = MaterialTheme.typography.headlineLarge)
+        Text(
+          if (reserveLocked) "Locked: save only" else savingsInterestRateLabel(),
+          style = MaterialTheme.typography.bodyMedium,
+          color = MaterialTheme.colorScheme.onPrimaryContainer,
+        )
       }
       Surface(
         color = MaterialTheme.colorScheme.surface.copy(alpha = 0.72f),

@@ -1,6 +1,5 @@
 package dev.nihildigit.focuswell.data
 
-import dev.nihildigit.focuswell.domain.PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import java.time.Instant
 
@@ -61,7 +60,7 @@ private fun phoneUsageLedgerCharge(
         createdAt = createdAt,
         note =
           if (exceeded) {
-            "Detected ${safePhoneCost.roundMinutes()}; cleared ${deducted.roundMinutes()}; daily grant paused for $PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS days."
+            "Detected ${safePhoneCost.roundMinutes()}; cleared ${deducted.roundMinutes()}; leisure locked until a 2h focus restart."
           } else {
             "$settledPrefix ${safePhoneCost.roundMinutes()} after Fair Use across $reviewedSegmentCount segment${if (reviewedSegmentCount == 1) "" else "s"}."
           },

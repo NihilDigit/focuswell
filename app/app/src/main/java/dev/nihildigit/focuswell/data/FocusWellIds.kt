@@ -22,6 +22,8 @@ internal object FocusWellIds {
 
   fun ledger(sourceId: String): String = "ledger-$sourceId"
 
+  fun reserveRecovery(sourceId: String): String = "reserve-recovery-$sourceId"
+
   fun idea(createdAt: Instant): String = "idea-${createdAt.toEpochMilli()}"
 
   fun deleteAdjustment(sourceId: String, createdAt: Instant): String =
@@ -34,7 +36,7 @@ internal object FocusWellIds {
 
   fun dailyGrant(date: LocalDate): String = "daily-grant-$date"
 
-  fun pausedDailyGrant(date: LocalDate): String = "daily-grant-paused-$date"
+  fun dailyInterest(date: LocalDate): String = "daily-interest-$date"
 
   fun trackerReward(date: LocalDate, trackerId: String): String =
     "tracker-reward-$date-$trackerId"

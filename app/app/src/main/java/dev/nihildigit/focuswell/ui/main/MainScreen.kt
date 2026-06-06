@@ -55,6 +55,7 @@ import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
+import dev.nihildigit.focuswell.domain.reserveLocked
 import dev.nihildigit.focuswell.notifications.canPostNotifications
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.ThemeMode
@@ -104,6 +105,7 @@ fun MainScreen(
     state.leisureRecords,
     state.rules,
     state.activeMode,
+    state.dailyGrantPausedUntilDate,
   ) {
     if (state.destination == Destination.Today && state.activeMode == ActiveMode.None) {
       viewModel.refreshPhoneUsageSettlementAvailability()
@@ -271,7 +273,7 @@ internal fun MainScreen(
     val useRail = maxWidth >= 600.dp
     val checkInRequired = state.lastCheckInDailyDate != state.dailyDate
     val phoneSettlementActive = phoneSettlementState.startedAt != null || phoneSettlementState.loading
-    val navigationHidden = state.activeMode is ActiveMode.Focus || checkInRequired || phoneSettlementActive
+    val navigationHidden = state.activeMode is ActiveMode.Focus || state.reserveLocked || checkInRequired || phoneSettlementActive
     Scaffold(
       modifier = Modifier.fillMaxSize(),
       bottomBar = {

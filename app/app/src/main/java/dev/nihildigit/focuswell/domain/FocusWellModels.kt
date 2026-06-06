@@ -3,7 +3,23 @@ package dev.nihildigit.focuswell.domain
 import java.time.Instant
 import java.time.LocalTime
 
-const val PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS: Long = 3
+const val RESERVE_RECOVERY_FOCUS_MINUTES: Double = 120.0
+const val RESERVE_RECOVERY_GRANT_MINUTES: Double = 180.0
+const val SAVINGS_INTEREST_FIRST_TIER_MINUTES: Double = 360.0
+const val SAVINGS_INTEREST_SECOND_TIER_MINUTES: Double = 1440.0
+const val SAVINGS_INTEREST_FIRST_TIER_RATE: Double = 0.05
+const val SAVINGS_INTEREST_SECOND_TIER_RATE: Double = 0.08
+const val SAVINGS_INTEREST_THIRD_TIER_RATE: Double = 0.12
+
+fun savingsInterestMinutes(reserveMinutes: Double): Double {
+  val balance = reserveMinutes.coerceAtLeast(0.0)
+  val first = minOf(balance, SAVINGS_INTEREST_FIRST_TIER_MINUTES)
+  val second = (minOf(balance, SAVINGS_INTEREST_SECOND_TIER_MINUTES) - SAVINGS_INTEREST_FIRST_TIER_MINUTES).coerceAtLeast(0.0)
+  val third = (balance - SAVINGS_INTEREST_SECOND_TIER_MINUTES).coerceAtLeast(0.0)
+  return first * SAVINGS_INTEREST_FIRST_TIER_RATE + second * SAVINGS_INTEREST_SECOND_TIER_RATE + third * SAVINGS_INTEREST_THIRD_TIER_RATE
+}
+
+fun savingsInterestRateLabel(): String = "5/8/12% daily"
 
 enum class SessionType(val label: String, val rate: Double) {
   Input("Input", 0.5),
@@ -54,7 +70,7 @@ data class DailyTracker(
 
 data class FocusWellRules(
   val dailyGrantMinutes: Double = 60.0,
-  val dayBoundaryHour: Int = 0,
+  val dayBoundaryHour: Int = 4,
   val wakeTargetHour: Int = 5,
   val sleepProtectionStartHour: Int = 23,
   val sleepProtectionEndHour: Int = 7,
@@ -236,6 +252,9 @@ data class FocusWellUiState(
   val dailyGrantPausedUntilDate: String? = null,
   val importError: String? = null,
 )
+
+val FocusWellUiState.reserveLocked: Boolean
+  get() = dailyGrantPausedUntilDate != null
 
 val defaultTags =
   listOf(

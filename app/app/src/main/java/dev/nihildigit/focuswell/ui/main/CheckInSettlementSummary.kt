@@ -1,7 +1,6 @@
 package dev.nihildigit.focuswell.ui.main
 
 import dev.nihildigit.focuswell.domain.FocusWellRules
-import dev.nihildigit.focuswell.domain.PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS
 import dev.nihildigit.focuswell.domain.PhoneUsageSegment
 
 internal data class CheckInSettlementSummary(
@@ -34,4 +33,4 @@ internal fun checkInSettlementSummary(
 }
 
 internal fun frozenDailyGrantLabel(rules: FocusWellRules): String =
-  "${compactMinutes(rules.normalized().dailyGrantMinutes)} x$PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS"
+  "2h focus · ${compactMinutes(rules.normalized().dailyGrantMinutes)} keeps saving"

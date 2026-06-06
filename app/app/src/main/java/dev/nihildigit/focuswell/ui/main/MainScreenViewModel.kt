@@ -14,6 +14,7 @@ import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.domain.reserveLocked
 import dev.nihildigit.focuswell.reminders.ReminderClient
 import dev.nihildigit.focuswell.sync.CloudSnapshot
 import dev.nihildigit.focuswell.sync.CloudSyncClient
@@ -68,7 +69,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
         selectedDestination,
         importError ->
         state.copy(
-          destination = selectedDestination,
+          destination = if (state.reserveLocked) Destination.Today else selectedDestination,
           importError = importError,
         )
       }
@@ -83,7 +84,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     phoneSettlementAvailabilityJob =
       viewModelScope.launch {
         val state = repository.state.value
-        if (state.dailyDate.isBlank()) {
+        if (state.dailyDate.isBlank() || state.reserveLocked) {
           _phoneSettlementAvailable.value = false
           return@launch
         }
@@ -439,18 +440,22 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     _morningCheckInState.value = MorningCheckInUiState(dailyDate = today, startedAt = startedAt, loading = true)
     viewModelScope.launch {
       val segments =
-        withContext(Dispatchers.Default) {
-          val rules = state.rules.normalized()
-          val window = morningCheckInUsageWindow(state, today)
-          phoneUsageSegments(
-            context = getApplication(),
-            startedAt = window.startedAt,
-            endedAt = window.endedAt,
-            focusRecords = state.focusRecords,
-            leisureRecords = state.leisureRecords,
-            rules = rules,
-            zone = TimeAccounting.focusWellTimeZone,
-          )
+        if (state.reserveLocked) {
+          emptyList()
+        } else {
+          withContext(Dispatchers.Default) {
+            val rules = state.rules.normalized()
+            val window = morningCheckInUsageWindow(state, today)
+            phoneUsageSegments(
+              context = getApplication(),
+              startedAt = window.startedAt,
+              endedAt = window.endedAt,
+              focusRecords = state.focusRecords,
+              leisureRecords = state.leisureRecords,
+              rules = rules,
+              zone = TimeAccounting.focusWellTimeZone,
+            )
+          }
         }
       _morningCheckInState.value =
         MorningCheckInUiState(
@@ -481,7 +486,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun startPhoneUsageSettlement() {
     val state = repository.state.value
     val current = _phoneSettlementState.value
-    if (current.loading || current.startedAt != null) return
+    if (state.reserveLocked || current.loading || current.startedAt != null) return
     val startedAt = Instant.now()
     _phoneSettlementState.value =
       MorningCheckInUiState(

@@ -57,7 +57,7 @@ class FocusWellPhoneUsageLedgerTest {
     assertTrue(charge.exceededReserve)
     assertEquals("Phone usage cleared reserve", entry.title)
     assertEquals(-10.0, entry.deltaMinutes, 0.0001)
-    assertEquals("Detected 42m; cleared 10m; daily grant paused for 3 days.", entry.note)
+    assertEquals("Detected 42m; cleared 10m; leisure locked until a 2h focus restart.", entry.note)
   }
 
   @Test

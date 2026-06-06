@@ -134,6 +134,7 @@ import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.domain.reserveLocked
 import dev.nihildigit.focuswell.notifications.postFocusWellNotification
 import dev.nihildigit.focuswell.theme.FocusWellTheme
 import dev.nihildigit.focuswell.theme.ThemeMode
@@ -172,7 +173,7 @@ internal fun TodayScreen(
     verticalArrangement = Arrangement.spacedBy(18.dp),
   ) {
     if (activeMode == ActiveMode.None) {
-      item { ReserveHeader(state.reserveMinutes, todayNetMovement(state.ledger, state.rules)) }
+      item { ReserveHeader(state.reserveMinutes, todayNetMovement(state.ledger, state.rules), state.reserveLocked) }
     }
     item {
       AnimatedContent(
@@ -185,9 +186,10 @@ internal fun TodayScreen(
             IdleTimerSurface(
               onStartFocusClick = onStartFocusClick,
               onSettlePhoneUse = onSettlePhoneUse,
-              phoneSettlementAvailable = phoneSettlementAvailable,
+              phoneSettlementAvailable = phoneSettlementAvailable && !state.reserveLocked,
               onStartLeisure = onStartLeisure,
-              leisureEnabled = state.reserveMinutes > 0.0,
+              leisureEnabled = !state.reserveLocked && state.reserveMinutes > 0.0,
+              reserveLocked = state.reserveLocked,
             )
 
           is ActiveMode.Focus ->

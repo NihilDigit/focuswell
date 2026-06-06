@@ -8,11 +8,11 @@ import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
 import dev.nihildigit.focuswell.domain.LedgerEntry
-import dev.nihildigit.focuswell.domain.PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.domain.defaultTags
 import dev.nihildigit.focuswell.domain.defaultTrackers
+import dev.nihildigit.focuswell.domain.reserveLocked
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.sync.Mutex
@@ -48,6 +48,7 @@ class FocusWellRepository internal constructor(
       return
     }
     settleDailyTrackers()
+    settleDailyInterest()
     ensureDailyGrants()
     rollDailyState()
   }
@@ -130,20 +131,24 @@ class FocusWellRepository internal constructor(
       if (wakeBonus != null) entries += wakeBonus
 
       val phoneCharge =
-        morningCheckInPhoneUsageCharge(
-          dailyDate = todayText,
-          checkInStartedAt = checkInStartedAt,
-          phoneCostMinutes = phoneCostMinutes,
-          availableMinutes = state.ledger.sumOf { it.deltaMinutes } + entries.sumOf { it.deltaMinutes },
-          reviewedSegmentCount = reviewedSegmentCount,
-        )
+        if (state.reserveLocked) {
+          PhoneUsageLedgerCharge(entry = null, exceededReserve = false)
+        } else {
+          morningCheckInPhoneUsageCharge(
+            dailyDate = todayText,
+            checkInStartedAt = checkInStartedAt,
+            phoneCostMinutes = phoneCostMinutes,
+            availableMinutes = state.ledger.sumOf { it.deltaMinutes } + entries.sumOf { it.deltaMinutes },
+            reviewedSegmentCount = reviewedSegmentCount,
+          )
+        }
       phoneCharge.entry?.let { entries += it }
 
       state.copy(
         lastCheckInDailyDate = todayText,
         lastPhoneUsageSettlementAt = maxSettlementInstant(state.lastPhoneUsageSettlementAt, settledUntil),
         dailyGrantPausedUntilDate =
-          if (phoneCharge.exceededReserve) today.plusDays(PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS).toString() else state.dailyGrantPausedUntilDate,
+          if (phoneCharge.exceededReserve) todayText else state.dailyGrantPausedUntilDate,
         ledger = entries.asReversed() + state.ledger,
       )
     }
@@ -158,18 +163,22 @@ class FocusWellRepository internal constructor(
     mutate { state ->
       val today = TimeAccounting.dailyDate(settlementStartedAt, rules = state.rules)
       val phoneCharge =
-        settlementPhoneUsageCharge(
-          settlementStartedAt = settlementStartedAt,
-          phoneCostMinutes = phoneCostMinutes,
-          availableMinutes = state.ledger.sumOf { it.deltaMinutes },
-          reviewedSegmentCount = reviewedSegmentCount,
-        )
+        if (state.reserveLocked) {
+          PhoneUsageLedgerCharge(entry = null, exceededReserve = false)
+        } else {
+          settlementPhoneUsageCharge(
+            settlementStartedAt = settlementStartedAt,
+            phoneCostMinutes = phoneCostMinutes,
+            availableMinutes = state.ledger.sumOf { it.deltaMinutes },
+            reviewedSegmentCount = reviewedSegmentCount,
+          )
+        }
       val entries = phoneCharge.entry?.let(::listOf).orEmpty()
 
       state.copy(
         lastPhoneUsageSettlementAt = maxSettlementInstant(state.lastPhoneUsageSettlementAt, settledUntil),
         dailyGrantPausedUntilDate =
-          if (phoneCharge.exceededReserve) today.plusDays(PHONE_USAGE_DAILY_GRANT_PAUSE_DAYS).toString() else state.dailyGrantPausedUntilDate,
+          if (phoneCharge.exceededReserve) today.toString() else state.dailyGrantPausedUntilDate,
         ledger = entries + state.ledger,
       )
     }
@@ -243,6 +252,7 @@ class FocusWellRepository internal constructor(
       _state.value = seeded
       initialized = true
     }
+    settleDailyInterest()
     ensureDailyGrants()
     rollDailyState()
   }
@@ -281,6 +291,7 @@ class FocusWellRepository internal constructor(
       _state.value = normalized
       initialized = true
     }
+    settleDailyInterest()
     ensureDailyGrants()
     rollDailyState()
     return true
@@ -321,6 +332,10 @@ class FocusWellRepository internal constructor(
     mutate(dailyMaintenance::settleDailyTrackers)
   }
 
+  private suspend fun settleDailyInterest() {
+    mutate(dailyMaintenance::settleDailyInterest)
+  }
+
   private suspend fun rollDailyState() {
     mutate(dailyMaintenance::rollDailyState)
   }
@@ -355,7 +370,7 @@ class FocusWellRepository internal constructor(
   private fun seedState(): FocusWellUiState =
     FocusWellUiState(
       reserveMinutes = 0.0,
-      dailyDate = TimeAccounting.dailyDate(now()).toString(),
+      dailyDate = TimeAccounting.dailyDate(now(), rules = FocusWellRules()).toString(),
       stateUpdatedAt = now(),
       tags = defaultTags,
       trackers = defaultTrackers,

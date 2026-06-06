@@ -20,7 +20,7 @@ class FocusWellIdsTest {
     val date = LocalDate.parse("2026-05-20")
 
     assertEquals("daily-grant-2026-05-20", FocusWellIds.dailyGrant(date))
-    assertEquals("daily-grant-paused-2026-05-20", FocusWellIds.pausedDailyGrant(date))
+    assertEquals("daily-interest-2026-05-20", FocusWellIds.dailyInterest(date))
     assertEquals("tracker-reward-2026-05-20-tracker-1", FocusWellIds.trackerReward(date, "tracker-1"))
     assertEquals("wake-bonus-2026-05-20", FocusWellIds.wakeBonus(date))
   }
