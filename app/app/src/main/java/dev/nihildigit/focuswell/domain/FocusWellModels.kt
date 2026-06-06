@@ -71,9 +71,10 @@ data class DailyTracker(
 data class FocusWellRules(
   val dailyGrantMinutes: Double = 60.0,
   val dayBoundaryHour: Int = 4,
-  val wakeTargetHour: Int = 5,
+  val wakeTargetHour: Int = 7,
+  val wakeTargetMinute: Int = 30,
   val sleepProtectionStartHour: Int = 23,
-  val sleepProtectionEndHour: Int = 7,
+  val sleepProtectionEndHour: Int = 8,
   val sleepProtectionMultiplier: Double = 2.0,
   val longSessionRemindersEnabled: Boolean = true,
   val phoneUsageChargeFreePackages: Set<String> = emptySet(),
@@ -86,6 +87,9 @@ data class FocusWellRules(
 
   val safeWakeTargetHour: Int
     get() = wakeTargetHour.coerceIn(0, 23)
+
+  val safeWakeTargetMinute: Int
+    get() = wakeTargetMinute.coerceIn(0, 59)
 
   val safeSleepProtectionStartHour: Int
     get() = sleepProtectionStartHour.coerceIn(0, 23)
@@ -107,7 +111,7 @@ data class FocusWellRules(
     get() = LocalTime.of(safeDayBoundaryHour, 0)
 
   val wakeTargetTime: LocalTime
-    get() = LocalTime.of(safeWakeTargetHour, 0)
+    get() = LocalTime.of(safeWakeTargetHour, safeWakeTargetMinute)
 
   val sleepProtectionStartTime: LocalTime
     get() = LocalTime.of(safeSleepProtectionStartHour, 0)
@@ -120,6 +124,7 @@ data class FocusWellRules(
       dailyGrantMinutes = safeDailyGrantMinutes,
       dayBoundaryHour = safeDayBoundaryHour,
       wakeTargetHour = safeWakeTargetHour,
+      wakeTargetMinute = safeWakeTargetMinute,
       sleepProtectionStartHour = safeSleepProtectionStartHour,
       sleepProtectionEndHour = safeSleepProtectionEndHour,
       sleepProtectionMultiplier = safeSleepProtectionMultiplier,

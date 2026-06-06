@@ -10,11 +10,11 @@ FocusWell uses configurable accounting rules with these defaults:
 
 - Each day starts at 04:00 in the device's current system time zone.
 - A new FocusWell day grants 60 minutes of leisure reserve.
-- The morning check-in wake target defaults to 05:00 and is configurable in Rules.
+- The morning check-in wake target defaults to 07:30 and is configurable in Rules.
 - Focus earns reserve by elapsed active time, session type, and tag multiplier.
 - Unlocked leisure reserve earns tiered daily savings interest at the day boundary: 5% for the first 6h, 8% from 6h to 24h, and 12% above 24h.
 - Leisure spends reserve by elapsed time.
-- Leisure during the ideal sleep window, 23:00-07:00 by default, spends at 2x speed.
+- Leisure during the ideal sleep window, 23:00-08:00 by default, spends at 2x speed.
 - Edits and deletes create ledger adjustments instead of hiding history.
 - Reminders use `sessionId + revision` so stale callbacks do not notify old sessions.
 
@@ -92,7 +92,7 @@ Build a signed release with the same release key used by CI:
 ```powershell
 Copy-Item app\release-signing.properties.example app\release-signing.properties
 # Fill app\release-signing.properties with the same keystore and passwords stored in GitHub Secrets.
-.\scripts\build-local-release.ps1 -VersionName 26.6.2
+.\scripts\build-local-release.ps1 -VersionName 26.6.3
 ```
 
 Release APKs are split by ABI: `arm64-v8a`, `armeabi-v7a`, and `x86_64`.
@@ -113,4 +113,4 @@ Production backend secrets live in Vercel. Android release signing secrets live 
 
 Releases are manual-tag driven. Use the next `YY.M.patch` tag in the current series, such as `26.5.19`. The patch number is a change sequence within that series, not the day of month. Release CI accepts three-part numeric tags and verifies that the first two parts match the current UTC+8 year and month. After CI creates the GitHub Release and attaches APKs, edit the Release title and notes by hand.
 
-The current public release is [26.6.2](https://github.com/NihilDigit/focuswell/releases/tag/26.6.2).
+The current public release is [26.6.3](https://github.com/NihilDigit/focuswell/releases/tag/26.6.3).

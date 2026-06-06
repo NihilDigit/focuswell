@@ -64,6 +64,14 @@ class TimeAccountingTest {
   }
 
   @Test
+  fun isWakeBonusEligible_usesDefaultSevenThirtyWakeTarget() {
+    assertEquals(true, TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-21T22:30:00Z"), zone = shanghai)) // 06:30 Shanghai
+    assertEquals(true, TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-22T00:00:00Z"), zone = shanghai)) // 08:00 Shanghai
+    assertEquals(false, TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-21T22:29:00Z"), zone = shanghai))
+    assertEquals(false, TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-22T00:01:00Z"), zone = shanghai))
+  }
+
+  @Test
   fun focusEarnedMinutes_appliesTypeRateAndTagMultiplier() {
     val earned =
       TimeAccounting.focusEarnedMinutes(
@@ -111,9 +119,9 @@ class TimeAccountingTest {
   }
 
   @Test
-  fun leisureCostMinutes_returnsToNormalAfterSevenAm() {
-    val startedAt = Instant.parse("2026-05-21T22:40:00Z") // 06:40 Shanghai
-    val endedAt = Instant.parse("2026-05-21T23:20:00Z") // 07:20 Shanghai
+  fun leisureCostMinutes_returnsToNormalAfterEightAm() {
+    val startedAt = Instant.parse("2026-05-21T23:40:00Z") // 07:40 Shanghai
+    val endedAt = Instant.parse("2026-05-22T00:20:00Z") // 08:20 Shanghai
 
     assertEquals(60.0, TimeAccounting.leisureCostMinutes(startedAt, endedAt, shanghai), 0.0001)
   }

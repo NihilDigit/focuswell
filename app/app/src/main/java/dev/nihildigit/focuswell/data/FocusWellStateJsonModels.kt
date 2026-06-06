@@ -28,6 +28,7 @@ internal data class SerializedRules(
   val dailyGrantMinutes: Double = FocusWellRules().dailyGrantMinutes,
   val dayBoundaryHour: Int = FocusWellRules().dayBoundaryHour,
   val wakeTargetHour: Int = FocusWellRules().wakeTargetHour,
+  val wakeTargetMinute: Int = FocusWellRules().wakeTargetMinute,
   val sleepProtectionStartHour: Int = FocusWellRules().sleepProtectionStartHour,
   val sleepProtectionEndHour: Int = FocusWellRules().sleepProtectionEndHour,
   val sleepProtectionMultiplier: Double = FocusWellRules().sleepProtectionMultiplier,

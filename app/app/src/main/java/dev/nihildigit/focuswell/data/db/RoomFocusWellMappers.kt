@@ -81,6 +81,7 @@ private fun FocusWellUiState.baseAppStateEntity(
     dailyGrantMinutes = normalizedRules.dailyGrantMinutes,
     dayBoundaryHour = normalizedRules.dayBoundaryHour,
     wakeTargetHour = normalizedRules.wakeTargetHour,
+    wakeTargetMinute = normalizedRules.wakeTargetMinute,
     sleepProtectionStartHour = normalizedRules.sleepProtectionStartHour,
     sleepProtectionEndHour = normalizedRules.sleepProtectionEndHour,
     sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,

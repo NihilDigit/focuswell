@@ -31,7 +31,7 @@ class CheckInIncomeTest {
     val state =
       FocusWellUiState(
         dailyDate = "2026-05-20",
-        rules = FocusWellRules(wakeTargetHour = 9),
+        rules = FocusWellRules(wakeTargetHour = 9, wakeTargetMinute = 0),
         ledger =
           listOf(
             ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0),
@@ -57,7 +57,7 @@ class CheckInIncomeTest {
 
   @Test
   fun wakeBonusEligible_usesConfiguredWakeWindow() {
-    val rules = FocusWellRules(wakeTargetHour = 9)
+    val rules = FocusWellRules(wakeTargetHour = 9, wakeTargetMinute = 0)
 
     assertTrue(TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-20T08:00:00Z"), rules = rules))
     assertTrue(TimeAccounting.isWakeBonusEligible(Instant.parse("2026-05-20T09:30:00Z"), rules = rules))

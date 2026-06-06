@@ -25,6 +25,7 @@ internal class RoomFocusWellStore(
             dailyGrantMinutes = appState.dailyGrantMinutes,
             dayBoundaryHour = appState.dayBoundaryHour,
             wakeTargetHour = appState.wakeTargetHour,
+            wakeTargetMinute = appState.wakeTargetMinute,
             sleepProtectionStartHour = appState.sleepProtectionStartHour,
             sleepProtectionEndHour = appState.sleepProtectionEndHour,
             sleepProtectionMultiplier = appState.sleepProtectionMultiplier,

@@ -23,7 +23,7 @@ screen behavior.
 - Rules define configurable accounting boundaries: daily grant, daily boundary,
   wake target, sleep-protection start, and sleep-protection cost multiplier.
   Savings interest is a fixed product rule for now. The default rhythm keeps
-  the FocusWell day boundary at 04:00 and protects a 23:00-07:00 sleep window.
+  the FocusWell day boundary at 04:00 and protects a 23:00-08:00 sleep window.
 - The UI can feel lively, but the accounting layer should stay calm and
   trustworthy.
 
@@ -45,8 +45,8 @@ Default rules:
 Daily window: 04:00 -> 03:59
 Daily grant: +60 minutes
 Savings interest: unlocked reserve earns 5% daily on the first 6h, 8% from 6h to 24h, and 12% above 24h
-Wake target: 05:00
-Sleep-protection leisure cost: 23:00-07:00 costs 2x
+Wake target: 07:30
+Sleep-protection leisure cost: 23:00-08:00 costs 2x
 ```
 
 The app stores canonical local state in Room. JSON export/import remains the
@@ -181,7 +181,7 @@ business day and clusters foreground phone use outside Focus/Leisure records
 while the screen is interactive into review segments.
 
 The Income step also settles the wake bonus as an automatic completed item. The
-default target is 05:00 and is configured from Settings Rules. A check-in from
+default target is 07:30 and is configured from Settings Rules. A check-in from
 one hour before the target through thirty minutes after the target earns 30
 minutes. This replaces the previous `Wake by X` daily tracker pattern.
 

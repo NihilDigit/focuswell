@@ -26,6 +26,17 @@ import dev.nihildigit.focuswell.updates.AppUpdateUiState
 
 private fun Int.hourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
 
+private fun FocusWellRules.wakeTargetLabel(): String =
+  "%02d:%02d".format(normalized().wakeTargetHour, normalized().wakeTargetMinute)
+
+private fun FocusWellRules.shiftWakeTarget(deltaMinutes: Int): FocusWellRules {
+  val normalized = normalized()
+  val total = (normalized.wakeTargetHour * 60 + normalized.wakeTargetMinute + deltaMinutes).floorMod(24 * 60)
+  return normalized.copy(wakeTargetHour = total / 60, wakeTargetMinute = total % 60)
+}
+
+private fun Int.floorMod(modulus: Int): Int = ((this % modulus) + modulus) % modulus
+
 @Composable
 internal fun SettingsThemeSection(
   themeMode: ThemeMode,
@@ -70,11 +81,11 @@ internal fun SettingsRulesSection(
     )
     SettingsRuleControlRow(
       title = "Wake time",
-      value = normalizedRules.wakeTargetHour.hourLabel(),
+      value = normalizedRules.wakeTargetLabel(),
       supporting = "Bonus from 1 hour before to 30 minutes after",
       icon = Icons.Rounded.LightMode,
-      onDecrease = { onUpdateRules(normalizedRules.copy(wakeTargetHour = normalizedRules.wakeTargetHour - 1)) },
-      onIncrease = { onUpdateRules(normalizedRules.copy(wakeTargetHour = normalizedRules.wakeTargetHour + 1)) },
+      onDecrease = { onUpdateRules(normalizedRules.shiftWakeTarget(-30)) },
+      onIncrease = { onUpdateRules(normalizedRules.shiftWakeTarget(30)) },
     )
     SettingsRuleControlRow(
       title = "Sleep start",

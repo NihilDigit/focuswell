@@ -180,7 +180,7 @@ class FocusWellRepositoryTest {
       newRepository(
         InMemoryFocusWellStore(
           baseState(
-            rules = FocusWellRules(wakeTargetHour = 9),
+            rules = FocusWellRules(wakeTargetHour = 9, wakeTargetMinute = 0),
             ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
           )
         ),
@@ -205,7 +205,7 @@ class FocusWellRepositoryTest {
       newRepository(
         InMemoryFocusWellStore(
           baseState(
-            rules = FocusWellRules(wakeTargetHour = 9),
+            rules = FocusWellRules(wakeTargetHour = 9, wakeTargetMinute = 0),
             ledger = listOf(ledger(id = "daily-grant-2026-05-20", title = "Daily grant", delta = 60.0)),
           )
         ),
