@@ -224,7 +224,7 @@ Today:
 
 Balance:
 
-- Today owns the available leisure reserve. The Leisure well's top-end chip shows today's net movement so the account state stays visible without duplicating Balance.
+- Today owns the available leisure reserve. The Leisure well's top-end chip shows today's net movement so the account state stays visible without duplicating Balance. When reserve is unlocked, the supporting line should estimate tomorrow's interest from the current balance instead of showing a static rate label.
 - Balance starts with a 7-day net chart and then shows ledger-backed records.
 - The 7-day net chart uses ledger entries as the source of truth, includes coordinate marks, and scales its y-axis from the largest absolute daily movement in the visible 7-day window. Prefer a soft zero-axis tide line with subtle stems and points over hard bars or a stock-price-style line.
 - Records use compact icon-only filter chips, not tabs. Keep `All`, `Focus`, `Leisure`, and `Adjust` on one row on compact phone widths with content descriptions for accessibility.

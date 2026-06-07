@@ -20,7 +20,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import dev.nihildigit.focuswell.domain.savingsInterestRateLabel
+import dev.nihildigit.focuswell.domain.savingsInterestMinutes
 
 @Composable
 internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double, reserveLocked: Boolean) {
@@ -66,7 +66,7 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double, res
         Text("Leisure well", style = MaterialTheme.typography.labelLarge)
         Text(headline, style = MaterialTheme.typography.headlineLarge)
         Text(
-          if (reserveLocked) "Locked: save only" else savingsInterestRateLabel(),
+          reserveInterestPreviewText(reserveMinutes = reserveMinutes, reserveLocked = reserveLocked),
           style = MaterialTheme.typography.bodyMedium,
           color = MaterialTheme.colorScheme.onPrimaryContainer,
         )
@@ -96,4 +96,16 @@ internal fun ReserveHeader(reserveMinutes: Double, todayNetMovement: Double, res
       }
     }
   }
+}
+
+internal fun reserveInterestPreviewText(reserveMinutes: Double, reserveLocked: Boolean): String {
+  if (reserveLocked) return "Locked: save only"
+  if (reserveMinutes <= 0.0) return "No reserve yet"
+  val interest = savingsInterestMinutes(reserveMinutes)
+  return "${signedCompactMinutes(interest)} @${interestRateText(reserveMinutes, interest)} interest"
+}
+
+private fun interestRateText(reserveMinutes: Double, interestMinutes: Double): String {
+  val percent = interestMinutes / reserveMinutes.coerceAtLeast(1.0) * 100.0
+  return "${percent.formatOne().trimEnd('0').trimEnd('.')}%"
 }

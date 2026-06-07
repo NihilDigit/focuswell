@@ -19,8 +19,6 @@ fun savingsInterestMinutes(reserveMinutes: Double): Double {
   return first * SAVINGS_INTEREST_FIRST_TIER_RATE + second * SAVINGS_INTEREST_SECOND_TIER_RATE + third * SAVINGS_INTEREST_THIRD_TIER_RATE
 }
 
-fun savingsInterestRateLabel(): String = "5/8/12% daily"
-
 enum class SessionType(val label: String, val rate: Double) {
   Input("Input", 0.5),
   Output("Output", 0.25),
