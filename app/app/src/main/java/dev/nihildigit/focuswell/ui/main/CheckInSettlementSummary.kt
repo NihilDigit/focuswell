@@ -33,4 +33,7 @@ internal fun checkInSettlementSummary(
 }
 
 internal fun frozenDailyGrantLabel(rules: FocusWellRules): String =
-  "2h focus · ${compactMinutes(rules.normalized().dailyGrantMinutes)} keeps saving"
+  "2h restart"
+
+internal fun frozenDailyGrantSupportingText(rules: FocusWellRules): String =
+  "${compactMinutes(rules.normalized().dailyGrantMinutes)} daily grant keeps saving"

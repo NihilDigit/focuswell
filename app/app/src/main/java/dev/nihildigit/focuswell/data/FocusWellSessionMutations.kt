@@ -98,7 +98,7 @@ internal fun FocusWellUiState.withEndedFocusSession(
   val adjustedActiveMinutes = (activeDurationMinutes - correctionMinutes.coerceAtLeast(0.0)).coerceAtLeast(0.0)
   val savedResult = result.ifBlank { "As planned" }
   val hasAnyPause = focus.pausedDurationMillis + currentPauseMillis > 0L
-  val unlocksReserve = reserveLocked && adjustedActiveMinutes >= RESERVE_RECOVERY_FOCUS_MINUTES && !hasAnyPause
+  val unlocksReserve = reserveLocked && activeDurationMinutes >= RESERVE_RECOVERY_FOCUS_MINUTES && !hasAnyPause
   if (reserveLocked && !unlocksReserve) {
     return EndedFocusSession(
       state = copy(activeMode = ActiveMode.None),

@@ -45,8 +45,11 @@ class CheckInSettlementSummaryTest {
   }
 
   @Test
-  fun frozenDailyGrantLabel_pointsToFocusRestartAndStoredDailyGrant() {
-    assertEquals("2h focus · 45m keeps saving", frozenDailyGrantLabel(FocusWellRules(dailyGrantMinutes = 45.0)))
+  fun frozenDailyGrantCopy_usesShortLabelAndMovesDailyGrantToSupportingText() {
+    val rules = FocusWellRules(dailyGrantMinutes = 45.0)
+
+    assertEquals("2h restart", frozenDailyGrantLabel(rules))
+    assertEquals("45m daily grant keeps saving", frozenDailyGrantSupportingText(rules))
   }
 
   private fun segment(id: String, costMinutes: Double): PhoneUsageSegment =

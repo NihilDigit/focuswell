@@ -207,9 +207,10 @@ paused, Daily rewards can still be completed and stored, and reserve remains
 saved but cannot be spent. Savings interest does not accrue while locked.
 
 The lock ends only after one uninterrupted focus session reaches at least two
-hours of adjusted active time. Shorter locked-session attempts do not create a
-focus record and do not earn reserve. The unlocking focus session is recorded
-normally and also grants three hours of starter leisure reserve.
+hours of raw active time before phone-use correction. Shorter locked-session
+attempts do not create a focus record and do not earn reserve. The unlocking
+focus session is recorded normally with any phone-use correction applied to its
+earnings, and also grants three hours of starter leisure reserve.
 
 Today also offers a small phone-use settlement entry when the current
 settlement window has billable phone-use content. It uses the same Correction

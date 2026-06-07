@@ -84,6 +84,37 @@ class FocusWellSessionMutationsTest {
   }
 
   @Test
+  fun withEndedFocusSession_twoHourRecoveryUsesRawContinuousTimeBeforeUsageCorrection() {
+    val state =
+      FocusWellUiState(
+        dailyDate = "2026-05-20",
+        rules = FocusWellRules(dayBoundaryHour = 4),
+        dailyGrantPausedUntilDate = "2026-05-23",
+        activeMode =
+          ActiveMode.Focus(
+            task = "Recovery with correction",
+            type = SessionType.Input,
+            tag = null,
+            startedAt = Instant.parse("2026-05-20T05:00:00Z"),
+            reminderSessionId = "focus-session",
+          ),
+      )
+
+    val ended = state.withEndedFocusSession(
+      endedAt = Instant.parse("2026-05-20T07:00:00Z"),
+      result = "As planned",
+      correctionMinutes = 70.0,
+    )
+
+    requireNotNull(ended)
+    assertEquals(null, ended.state.dailyGrantPausedUntilDate)
+    assertEquals(25.0 + 180.0, ended.state.reserveMinutes, 0.0001)
+    assertEquals(50.0, ended.state.focusRecords.first().activeDurationMinutes, 0.0001)
+    assertEquals(listOf("Recovery focus", "Focus · Input"), ended.state.ledger.map { it.title })
+    assertEquals(ActiveMode.None, ended.state.activeMode)
+  }
+
+  @Test
   fun withEndedFocusSession_lockedShortFocusDoesNotWriteRecordOrReward() {
     val state =
       FocusWellUiState(
