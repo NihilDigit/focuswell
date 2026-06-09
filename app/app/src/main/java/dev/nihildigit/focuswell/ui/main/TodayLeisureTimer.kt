@@ -225,6 +225,24 @@ internal fun lowBalanceText(remainingMinutes: Double): String? {
   }
 }
 
+internal fun leisureRemainingContextText(
+  reserveMinutes: Double,
+  sleepProtection: Boolean,
+  sleepProtectionMultiplier: Double,
+  sleepProtectionStartHour: Int,
+): String {
+  lowBalanceText(reserveMinutes)?.let { return it }
+  val reserve = "${compactMinutes(reserveMinutes)} reserve"
+  val multiplier = sleepProtectionMultiplier.formatOne()
+  return if (sleepProtection) {
+    "$reserve · ${multiplier}x cost now"
+  } else {
+    "$reserve · ${multiplier}x after ${sleepProtectionStartHour.activeHourLabel()}"
+  }
+}
+
+private fun Int.activeHourLabel(): String = "%02d:00".format(this.coerceIn(0, 23))
+
 @Preview(showBackground = true, widthDp = 360)
 @Composable
 private fun LeisureTimerSurfaceSleepProtectionPreview() {

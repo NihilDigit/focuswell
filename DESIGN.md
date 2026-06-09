@@ -210,7 +210,7 @@ Today:
 - During an active focus session, primary navigation is hidden. Idea capture remains one-way into Inbox; reviewing, sorting, settings, and planning wait until focus ends.
 - Rule tracker rings use a solid arc for saved FocusRecord progress and a dashed arc for active-focus preview. The tracker only enters completed/check state after saved records meet the target; a full dashed preview is not a completed tracker.
 - Focus active state may include a quiet idea-capture action. Captured ideas go to Ideas Inbox and do not appear in focus settlement.
-- Leisure active state: a tertiary/secondary reserve surface with remaining time, sleep-protection state, low-balance messages, and determinate reserve progress.
+- Leisure active state: a tertiary/secondary reserve surface with real remaining clock time, the charged reserve amount, sleep-protection rate context, low-balance messages, and determinate reserve progress.
 - Leisure well ripples are static, scattered marks around the middle of the well. The ripple height and horizontal position should not animate continuously; reserve changes may alter alpha, but decorative water motion makes the well harder to read.
 - Focus and leisure must not share the same visual structure. Focus answers "what am I doing and earning"; leisure answers "how much can I safely keep spending."
 - Leisure ending is a guarded action. Use a visible hold-to-confirm control with pressed state, fill progress, haptic feedback, and tap feedback. Do not rely on Toast alone.

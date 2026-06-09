@@ -79,7 +79,13 @@ internal fun ActiveLeisureSurface(
       remaining = formatPreciseDuration(displayRemaining),
       elapsed = formatDuration(elapsed),
       progress = progress,
-      supporting = lowBalanceText(liveRemainingMinutes),
+      supporting =
+        leisureRemainingContextText(
+          reserveMinutes = liveRemainingMinutes,
+          sleepProtection = isSleepProtection,
+          sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
+          sleepProtectionStartHour = normalizedRules.safeSleepProtectionStartHour,
+        ),
       sleepProtection = isSleepProtection,
       sleepProtectionMultiplier = normalizedRules.sleepProtectionMultiplier,
     )
