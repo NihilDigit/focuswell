@@ -5,8 +5,10 @@ const toggleButton = document.querySelector("#toggleButton");
 const toggleText = document.querySelector("#toggleText");
 const settingsButton = document.querySelector("#settingsButton");
 const backButton = document.querySelector("#backButton");
+const addCurrentPageButton = document.querySelector("#addCurrentPageButton");
 const quickRulesEl = document.querySelector("#quickRules");
 const todayBlockedEl = document.querySelector("#todayBlocked");
+const ruleStatus = document.querySelector("#ruleStatus");
 const totalTimeEl = document.querySelector("#totalTime");
 const allowedCount = document.querySelector("#allowedCount");
 const blockedCount = document.querySelector("#blockedCount");
@@ -59,11 +61,11 @@ function showView(name) {
 }
 
 function eventLabel(type) {
-  if (type === "allowed") return "白名单";
-  if (type === "blocked") return "拦截";
-  if (type === "enabled") return "开启";
-  if (type === "disabled") return "关闭";
-  return "记录";
+  if (type === "allowed") return "Allowed";
+  if (type === "blocked") return "Blocked";
+  if (type === "enabled") return "Started";
+  if (type === "disabled") return "Stopped";
+  return "Event";
 }
 
 function renderQuickRules() {
@@ -80,7 +82,7 @@ function renderQuickRules() {
 
     const status = document.createElement("span");
     status.className = "rule-status";
-    status.textContent = rule.enabled !== false ? "启用" : "停用";
+    status.textContent = rule.enabled !== false ? "On" : "Off";
 
     tile.addEventListener("click", async () => {
       const next = state.patterns.map((item, itemIndex) => (
@@ -106,7 +108,7 @@ function renderUsage() {
   if (rows.every(([, count]) => count === 0)) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "还没有白名单命中";
+    empty.textContent = "No whitelist matches yet";
     usageEl.append(empty);
     return;
   }
@@ -117,7 +119,7 @@ function renderUsage() {
     const name = document.createElement("span");
     name.textContent = label;
     const value = document.createElement("span");
-    value.textContent = `${count} 次`;
+    value.textContent = `${count}`;
     row.append(name, value);
     usageEl.append(row);
   });
@@ -129,7 +131,7 @@ function renderEvents() {
   if (events.length === 0) {
     const empty = document.createElement("div");
     empty.className = "empty";
-    empty.textContent = "暂无记录";
+    empty.textContent = "No activity yet";
     eventsEl.append(empty);
     return;
   }
@@ -156,12 +158,12 @@ function renderJson() {
 
 function render() {
   toggleButton.setAttribute("aria-pressed", state.enabled ? "true" : "false");
-  toggleText.textContent = state.enabled ? "停止" : "开启";
+  toggleText.textContent = state.enabled ? "Stop" : "Start";
   timerEl.textContent = formatDuration(currentTodayElapsed());
   totalTimeEl.textContent = formatDuration(currentTotalElapsed());
   allowedCount.textContent = state.stats.allowedNavigations || 0;
   blockedCount.textContent = state.stats.blockedNavigations || 0;
-  todayBlockedEl.textContent = `今日未放行 ${(state.stats.today && state.stats.today.blockedNavigations) || 0} 次`;
+  todayBlockedEl.textContent = `Blocked today ${(state.stats.today && state.stats.today.blockedNavigations) || 0} times`;
   renderQuickRules();
   renderUsage();
   renderEvents();
@@ -191,25 +193,37 @@ backButton.addEventListener("click", () => {
   showView("home");
 });
 
+addCurrentPageButton.addEventListener("click", async () => {
+  try {
+    state = await send("add-current-tab-rule");
+    render();
+    ruleStatus.textContent = "Current page added to the whitelist";
+    ruleStatus.classList.remove("error");
+  } catch (error) {
+    ruleStatus.textContent = error.message || "Could not add the current page";
+    ruleStatus.classList.add("error");
+  }
+});
+
 saveJsonButton.addEventListener("click", async () => {
   try {
     const parsed = JSON.parse(rulesJson.value);
     if (!Array.isArray(parsed)) {
-      throw new Error("JSON 顶层必须是数组。");
+      throw new Error("The top-level JSON value must be an array.");
     }
     parsed.forEach((rule, index) => {
       if (!rule || typeof rule !== "object") {
-        throw new Error(`第 ${index + 1} 项不是对象。`);
+        throw new Error(`Rule ${index + 1} is not an object.`);
       }
       if (typeof rule.pattern !== "string" || rule.pattern.trim().length === 0) {
-        throw new Error(`第 ${index + 1} 项缺少 pattern。`);
+        throw new Error(`Rule ${index + 1} is missing pattern.`);
       }
       new RegExp(rule.pattern);
     });
     state = await send("update-patterns", { patterns: parsed });
     render();
     showView("settings");
-    jsonStatus.textContent = "已保存";
+    jsonStatus.textContent = "Saved";
     jsonStatus.classList.remove("error");
   } catch (error) {
     jsonStatus.textContent = error.message;

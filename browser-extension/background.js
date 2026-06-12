@@ -154,6 +154,25 @@ function normalizePattern(pattern) {
   return (pattern || "").trim();
 }
 
+function escapeRegex(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function ruleForPage(url) {
+  const parsed = new URL(url);
+  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
+    throw new Error("Only http and https pages can be added");
+  }
+  const pathname = parsed.pathname || "/";
+  const label = pathname === "/" ? parsed.hostname : `${parsed.hostname}${pathname}`;
+  return {
+    id: `page-${parsed.hostname.replace(/[^a-z0-9]+/gi, "-").toLowerCase()}-${now()}`,
+    label,
+    pattern: `^${escapeRegex(parsed.origin)}${escapeRegex(pathname)}([?#].*)?$`,
+    enabled: true
+  };
+}
+
 function compilePatterns(patterns) {
   return patterns
     .filter((item) => item.enabled !== false)
@@ -287,6 +306,27 @@ async function updatePatterns(patterns) {
   return state;
 }
 
+async function addCurrentTabRule() {
+  const tabs = await chrome.tabs.query({ active: true, currentWindow: true });
+  const tab = tabs[0];
+  if (!tab || !tab.url) {
+    throw new Error("No current page found");
+  }
+  const rule = ruleForPage(tab.url);
+  const state = await loadState();
+  const existing = state.patterns.find((item) => normalizePattern(item.pattern) === rule.pattern);
+  if (existing) {
+    existing.enabled = true;
+    pushEvent(state, eventFor("allowed", tab.url, existing.label || existing.id));
+  } else {
+    state.patterns = [...state.patterns, rule];
+    pushEvent(state, eventFor("allowed", tab.url, rule.label));
+  }
+  await saveState(state);
+  await updateBlockingRules(state);
+  return state;
+}
+
 async function resetStats() {
   const state = await syncTimer();
   state.elapsedMs = state.enabled ? 0 : 0;
@@ -380,6 +420,10 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
     }
     if (message.type === "update-patterns") {
       await updatePatterns(message.patterns || []);
+      return getPublicState();
+    }
+    if (message.type === "add-current-tab-rule") {
+      await addCurrentTabRule();
       return getPublicState();
     }
     if (message.type === "reset-stats") {

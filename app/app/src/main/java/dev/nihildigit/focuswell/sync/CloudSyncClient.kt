@@ -3,6 +3,7 @@ package dev.nihildigit.focuswell.sync
 import android.content.Context
 import android.net.Uri
 import dev.nihildigit.focuswell.BuildConfig
+import dev.nihildigit.focuswell.security.SecureStringStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -39,7 +40,7 @@ data class CloudSyncSession(
 )
 
 class CloudSyncClient(context: Context) {
-  private val prefs = context.applicationContext.getSharedPreferences("focuswell-cloud-sync", Context.MODE_PRIVATE)
+  private val prefs = SecureStringStore(context.applicationContext, "focuswell-cloud-sync")
   private val backendUrl = BuildConfig.FOCUSWELL_BACKEND_URL.trimEnd('/')
   private val json =
     Json {
@@ -54,6 +55,12 @@ class CloudSyncClient(context: Context) {
     return CloudSyncSession(accessToken = token, user = CloudSyncUser(id = id, login = login))
   }
 
+  fun beginOAuthUri(): Uri {
+    val state = UUID.randomUUID().toString()
+    prefs.putString(KEY_PENDING_OAUTH_STATE, state)
+    return authUri(state)
+  }
+
   fun authUri(state: String = UUID.randomUUID().toString()): Uri =
     Uri.Builder()
       .scheme("https")
@@ -65,6 +72,12 @@ class CloudSyncClient(context: Context) {
       .appendQueryParameter("state", state)
       .build()
 
+  fun consumePendingOAuthState(state: String?): Boolean {
+    val expected = prefs.getString(KEY_PENDING_OAUTH_STATE, null) ?: return false
+    prefs.remove(KEY_PENDING_OAUTH_STATE)
+    return state == expected
+  }
+
   suspend fun exchangeCode(code: String): CloudSyncSession {
     val response =
       requestJson<OAuthExchangeResponse>(
@@ -75,12 +88,9 @@ class CloudSyncClient(context: Context) {
       )
     val user = response.user.toDomain()
     val session = CloudSyncSession(accessToken = response.accessToken, user = user)
-    prefs
-      .edit()
-      .putString(KEY_ACCESS_TOKEN, session.accessToken)
-      .putLong(KEY_GITHUB_USER_ID, user.id)
-      .putString(KEY_GITHUB_LOGIN, user.login)
-      .apply()
+    prefs.putString(KEY_ACCESS_TOKEN, session.accessToken)
+    prefs.putLong(KEY_GITHUB_USER_ID, user.id)
+    prefs.putString(KEY_GITHUB_LOGIN, user.login)
     return session
   }
 
@@ -116,7 +126,7 @@ class CloudSyncClient(context: Context) {
   }
 
   fun signOut() {
-    prefs.edit().clear().apply()
+    prefs.clear()
   }
 
   private suspend inline fun <reified T> requestJson(
@@ -156,6 +166,7 @@ class CloudSyncClient(context: Context) {
     const val KEY_ACCESS_TOKEN = "accessToken"
     const val KEY_GITHUB_USER_ID = "githubUserId"
     const val KEY_GITHUB_LOGIN = "githubLogin"
+    const val KEY_PENDING_OAUTH_STATE = "pendingOAuthState"
   }
 }
 

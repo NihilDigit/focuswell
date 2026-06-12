@@ -108,12 +108,12 @@ class CloudSyncUiStateTest {
   @Test
   fun cloudSyncRedirect_extractsOAuthCodeAndRejection() {
     assertEquals(
-      CloudSyncRedirect.Code("abc"),
-      cloudSyncRedirect(scheme = "focuswell", host = "sync", path = "/oauth", code = "abc", error = null),
+      CloudSyncRedirect.Code("abc", "state-1"),
+      cloudSyncRedirect(scheme = "focuswell", host = "sync", path = "/oauth", code = "abc", error = null, state = "state-1"),
     )
     assertEquals(
-      CloudSyncRedirect.Rejected("denied"),
-      cloudSyncRedirect(scheme = "focuswell", host = "sync", path = "/oauth", code = null, error = "denied"),
+      CloudSyncRedirect.Rejected("denied", "state-1"),
+      cloudSyncRedirect(scheme = "focuswell", host = "sync", path = "/oauth", code = null, error = "denied", state = "state-1"),
     )
     assertEquals(
       CloudSyncRedirect.Ignored,

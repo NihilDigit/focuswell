@@ -378,8 +378,9 @@ navigations, blocked navigations, per-rule usage, and recent behavior.
 
 The extension UI keeps regex maintenance out of the main screen. Home shows a
 timer, a single enable/disable control, a rule toggle grid parsed from the
-current JSON rules, and today's not-allowed count. Settings contains the full
-stats and JSON rule editor.
+current rules, an action that adds the current page as an enabled whitelist
+rule, and today's not-allowed count. Settings contains the full stats and JSON
+rule editor for advanced changes.
 
 ## Clear All Data
 

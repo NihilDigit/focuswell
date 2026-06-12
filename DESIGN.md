@@ -70,7 +70,7 @@ Settings is plain. It should be predictable, dense enough to scan, and cautious 
 
 Cloud sync is a FocusWell cloud feature that uses GitHub for sign-in. User-facing copy should not imply the backup is stored in the user's GitHub account. Conflict dialogs must show which side is newer, name the destination that will be replaced, and avoid raw UTC timestamps.
 
-The browser extension popup is narrower than the Android app and has only two surfaces: Home and Settings. Home owns today's whitelist timer, one round enable/disable control, a rule toggle grid rendered from the current JSON rules, and a single lightweight not-allowed count. Settings owns detailed stats, recent behavior, and JSON rule editing.
+The browser extension popup is narrower than the Android app and has only two surfaces: Home and Settings. Home owns today's whitelist timer, one round enable/disable control, a rule toggle grid rendered from the current rules, a lightweight action for adding the current page, and a single not-allowed count. Settings owns detailed stats, recent behavior, and JSON rule editing for advanced changes.
 
 ## Color And Elevation
 

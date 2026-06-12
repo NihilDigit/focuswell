@@ -190,7 +190,7 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     if (session == null) {
       runCatching {
         getApplication<Application>().startActivity(
-          Intent(Intent.ACTION_VIEW, cloudSync.authUri())
+          Intent(Intent.ACTION_VIEW, cloudSync.beginOAuthUri())
             .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
         _cloudSyncState.value = _cloudSyncState.value.cloudSignInPrompted()
@@ -205,8 +205,18 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
   fun handleCloudSyncRedirect(uri: Uri) {
     val code =
       when (val redirect = uri.toCloudSyncRedirect()) {
-        is CloudSyncRedirect.Code -> redirect.value
+        is CloudSyncRedirect.Code -> {
+          if (!cloudSync.consumePendingOAuthState(redirect.state)) {
+            _cloudSyncState.value = _cloudSyncState.value.cloudOAuthStateMismatch()
+            return
+          }
+          redirect.value
+        }
         is CloudSyncRedirect.Rejected -> {
+          if (!cloudSync.consumePendingOAuthState(redirect.state)) {
+            _cloudSyncState.value = _cloudSyncState.value.cloudOAuthStateMismatch()
+            return
+          }
           _cloudSyncState.value = _cloudSyncState.value.cloudOAuthRejected(redirect.error)
           return
         }

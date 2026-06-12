@@ -6,6 +6,7 @@ import com.google.firebase.messaging.FirebaseMessaging
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.BuildConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
+import dev.nihildigit.focuswell.security.SecureStringStore
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.Serializable
@@ -34,13 +35,14 @@ data class PushRegistrationStatus(
 class ReminderClient(context: Context) {
   private val appContext = context.applicationContext
   private val prefs = context.getSharedPreferences("focuswell-reminders", Context.MODE_PRIVATE)
+  private val securePrefs = SecureStringStore(context.applicationContext, "focuswell-reminders")
   private val backendUrl = BuildConfig.FOCUSWELL_BACKEND_URL.trimEnd('/')
   private val json = Json { explicitNulls = false }
 
   val identity: DeviceIdentity
     get() {
       val existingDeviceId = prefs.getString(KEY_DEVICE_ID, null)
-      val existingSecret = prefs.getString(KEY_INSTALL_SECRET, null)
+      val existingSecret = securePrefs.getString(KEY_INSTALL_SECRET, null)
       if (existingDeviceId != null && existingSecret != null) {
         return DeviceIdentity(existingDeviceId, existingSecret)
       }
@@ -48,8 +50,8 @@ class ReminderClient(context: Context) {
       prefs
         .edit()
         .putString(KEY_DEVICE_ID, next.deviceId)
-        .putString(KEY_INSTALL_SECRET, next.installSecret)
         .apply()
+      securePrefs.putString(KEY_INSTALL_SECRET, next.installSecret)
       return next
     }
 
@@ -58,12 +60,12 @@ class ReminderClient(context: Context) {
     prefs
       .edit()
       .putString(KEY_DEVICE_ID, next.deviceId)
-      .putString(KEY_INSTALL_SECRET, next.installSecret)
       .putBoolean(KEY_PUSH_ENABLED, true)
       .remove(KEY_LAST_REGISTERED_AT)
       .remove(KEY_LAST_REGISTRATION_HAD_FCM_TOKEN)
       .remove(KEY_LAST_REGISTRATION_ERROR)
       .apply()
+    securePrefs.putString(KEY_INSTALL_SECRET, next.installSecret)
     return next
   }
 
@@ -164,6 +166,7 @@ class ReminderClient(context: Context) {
       body =
         RegisterDeviceRequest(
           deviceId = identity.deviceId,
+          installSecret = identity.installSecret,
           installSecretHash = sha256Hex(identity.installSecret),
           nowUtc = Instant.now().toString(),
           fcmToken = token,
@@ -269,6 +272,7 @@ private data class CancelSessionRequest(
 @Serializable
 private data class RegisterDeviceRequest(
   val deviceId: String,
+  val installSecret: String,
   val installSecretHash: String,
   val nowUtc: String,
   val fcmToken: String? = null,

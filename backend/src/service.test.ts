@@ -216,6 +216,7 @@ test("registering without a fresh FCM token preserves the existing token", async
   await service.registerDevice({
     deviceId: "device-1",
     installSecretHash: await sha256Hex("secret-1"),
+    installSecret: "secret-1",
     nowUtc: "2026-05-22T00:00:00.000Z",
   });
 
@@ -223,4 +224,57 @@ test("registering without a fresh FCM token preserves the existing token", async
   expect(device?.fcmToken).toBe("token-1");
   expect(device?.createdAt).toBe("2026-05-21T00:00:00.000Z");
   expect(device?.lastSeenAt).toBe("2026-05-22T00:00:00.000Z");
+});
+
+test("registering an existing device requires the current install secret", async () => {
+  const store = new MemoryReminderStore();
+  const service = new ReminderService(store, new FakeQStashClient(), new FakeFcmClient());
+
+  await service.registerDevice({
+    deviceId: "device-1",
+    installSecretHash: await sha256Hex("secret-1"),
+    fcmToken: "token-1",
+    nowUtc: "2026-05-21T00:00:00.000Z",
+  });
+
+  await expect(
+    service.registerDevice({
+      deviceId: "device-1",
+      installSecretHash: await sha256Hex("attacker-secret"),
+      fcmToken: "token-2",
+      nowUtc: "2026-05-22T00:00:00.000Z",
+    }),
+  ).rejects.toThrow("unauthorized");
+
+  const device = await store.getDevice("device-1");
+  expect(device?.installSecretHash).toBe(await sha256Hex("secret-1"));
+  expect(device?.fcmToken).toBe("token-1");
+  expect(device?.lastSeenAt).toBe("2026-05-21T00:00:00.000Z");
+});
+
+test("registering an existing device rejects install secret hash rotation", async () => {
+  const store = new MemoryReminderStore();
+  const service = new ReminderService(store, new FakeQStashClient(), new FakeFcmClient());
+
+  await service.registerDevice({
+    deviceId: "device-1",
+    installSecretHash: await sha256Hex("secret-1"),
+    fcmToken: "token-1",
+    nowUtc: "2026-05-21T00:00:00.000Z",
+  });
+
+  await expect(
+    service.registerDevice({
+      deviceId: "device-1",
+      installSecret: "secret-1",
+      installSecretHash: await sha256Hex("secret-2"),
+      fcmToken: "token-2",
+      nowUtc: "2026-05-22T00:00:00.000Z",
+    }),
+  ).rejects.toThrow("identity-rotation-required");
+
+  const device = await store.getDevice("device-1");
+  expect(device?.installSecretHash).toBe(await sha256Hex("secret-1"));
+  expect(device?.fcmToken).toBe("token-1");
+  expect(device?.lastSeenAt).toBe("2026-05-21T00:00:00.000Z");
 });

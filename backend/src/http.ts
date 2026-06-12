@@ -23,17 +23,23 @@ export function sendJson(response: VercelResponse, status: number, body: unknown
 export function parseRegisterDevice(value: unknown): {
   deviceId: string;
   installSecretHash: string;
+  installSecret?: string;
   fcmToken?: string;
   nowUtc: string;
 } {
   const body = asRecord(value);
   const fcmToken = optionalStringField(body, "fcmToken");
+  const installSecret = optionalStringField(body, "installSecret");
   const parsed = {
     deviceId: stringField(body, "deviceId"),
     installSecretHash: stringField(body, "installSecretHash"),
     nowUtc: optionalStringField(body, "nowUtc") ?? new Date().toISOString(),
   };
-  return fcmToken ? { ...parsed, fcmToken } : parsed;
+  return {
+    ...parsed,
+    ...(installSecret ? { installSecret } : {}),
+    ...(fcmToken ? { fcmToken } : {}),
+  };
 }
 
 export function parseSchedulePlan(value: unknown): {

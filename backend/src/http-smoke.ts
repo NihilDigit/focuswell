@@ -12,6 +12,7 @@ const register = await fetch(`${baseUrl}/devices/register`, {
   headers: { "content-type": "application/json" },
   body: JSON.stringify({
     deviceId,
+    installSecret,
     installSecretHash: await sha256Hex(installSecret),
     nowUtc: new Date().toISOString(),
   }),

@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="zh-CN">
+<html lang="en">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -8,79 +8,81 @@
   </head>
   <body>
     <main class="shell">
-      <section id="homeView" class="view active" aria-label="FocusWell 白名单">
+      <section id="homeView" class="view active" aria-label="FocusWell whitelist">
         <header class="topbar">
           <div>
             <p class="eyebrow">FocusWell</p>
-            <h1>浏览白名单</h1>
+            <h1>Browser whitelist</h1>
           </div>
-          <button id="settingsButton" class="icon-button" type="button" aria-label="设置">⚙</button>
+          <button id="settingsButton" class="icon-button" type="button" aria-label="Settings">⚙</button>
         </header>
 
-        <section class="focus-card" aria-label="今日白名单状态">
+        <section class="focus-card" aria-label="Today's whitelist status">
           <div class="timer-band">
-            <p>今日已开启</p>
+            <p>Enabled today</p>
             <strong id="timer">00:00:00</strong>
           </div>
           <button id="toggleButton" class="power-button" type="button" aria-pressed="false">
-            <span id="toggleText">开启</span>
+            <span id="toggleText">Start</span>
           </button>
         </section>
 
         <section class="section">
           <div class="section-title">
-            <h2>规则启用</h2>
+            <h2>Enabled rules</h2>
+            <button id="addCurrentPageButton" class="text-button" type="button">Allow current page</button>
           </div>
           <div id="quickRules" class="quick-rules"></div>
+          <p id="ruleStatus" class="status-line" role="status"></p>
         </section>
 
-        <p id="todayBlocked" class="today-blocked">今日已拦截 0 次</p>
+        <p id="todayBlocked" class="today-blocked">Blocked today 0 times</p>
       </section>
 
-      <section id="settingsView" class="view" aria-label="设置">
+      <section id="settingsView" class="view" aria-label="Settings">
         <header class="topbar">
-          <button id="backButton" class="icon-button" type="button" aria-label="返回">‹</button>
+          <button id="backButton" class="icon-button" type="button" aria-label="Back">‹</button>
           <div class="settings-title">
             <p class="eyebrow">FocusWell</p>
-            <h1>设置</h1>
+            <h1>Settings</h1>
           </div>
         </header>
 
-        <section class="stats-grid" aria-label="本地统计">
+        <section class="stats-grid" aria-label="Local stats">
           <div>
             <span id="totalTime">00:00:00</span>
-            <p>总开启</p>
+            <p>Total enabled</p>
           </div>
           <div>
             <span id="allowedCount">0</span>
-            <p>白名单使用</p>
+            <p>Allowed</p>
           </div>
           <div>
             <span id="blockedCount">0</span>
-            <p>拦截</p>
+            <p>Blocked</p>
           </div>
         </section>
 
         <section class="section">
           <div class="section-title">
-            <h2>白名单使用</h2>
+            <h2>Whitelist use</h2>
           </div>
           <div id="usage" class="usage"></div>
         </section>
 
         <section class="section">
           <div class="section-title">
-            <h2>规则 JSON</h2>
-            <button id="saveJsonButton" class="text-button" type="button">保存</button>
+            <h2>Rule JSON</h2>
+            <button id="saveJsonButton" class="text-button" type="button">Save</button>
           </div>
-          <textarea id="rulesJson" class="json-editor" rows="10" spellcheck="false" aria-label="规则 JSON"></textarea>
+          <textarea id="rulesJson" class="json-editor" rows="10" spellcheck="false" aria-label="Rule JSON"></textarea>
           <p id="jsonStatus" class="status-line" role="status"></p>
         </section>
 
         <section class="section">
           <div class="section-title">
-            <h2>最近行为</h2>
-            <button id="resetButton" class="text-button" type="button">清空统计</button>
+            <h2>Recent activity</h2>
+            <button id="resetButton" class="text-button" type="button">Clear stats</button>
           </div>
           <div id="events" class="events"></div>
         </section>

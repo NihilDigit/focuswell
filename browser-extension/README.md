@@ -4,7 +4,7 @@ FocusWell Browser Gate is an independent Manifest V3 browser extension for Chrom
 
 When enabled, it works as a whitelist gate: only pages matching enabled regular expressions can open. Other `http` and `https` top-level navigations are redirected to the local blocked page.
 
-The popup keeps the focus-time controls on the first screen: today's enabled timer, one round on/off button, rule toggles rendered from the saved JSON rule list, and today's not-allowed count. Detailed stats and regex editing live in Settings.
+The popup keeps the focus-time controls on the first screen: today's enabled timer, one round on/off button, rule toggles rendered from the saved rule list, an "Allow current page" action, and today's not-allowed count. Detailed stats and regex editing live in Settings.
 
 ## Default Whitelist
 
@@ -24,7 +24,7 @@ Stats are stored locally in `chrome.storage.local`.
 
 The timer does not measure time spent on individual sites.
 
-The main popup renders its rule grid from the current JSON rule list. Regex editing is kept in the Settings view so the touch-first home screen stays small.
+The main popup renders its rule grid from the current rule list. Use "Allow current page" for ordinary page additions; regex editing is kept in the Settings view for advanced changes.
 
 ## Install For Development
 

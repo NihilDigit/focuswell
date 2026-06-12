@@ -43,6 +43,9 @@ internal fun CloudSyncUiState.cloudOAuthRejected(error: String): CloudSyncUiStat
 internal fun CloudSyncUiState.cloudOAuthStarted(): CloudSyncUiState =
   copy(syncing = true, message = "Finishing GitHub sign-in", error = null)
 
+internal fun CloudSyncUiState.cloudOAuthStateMismatch(): CloudSyncUiState =
+  copy(syncing = false, error = "GitHub sign-in failed because the browser response did not match this device")
+
 internal fun cloudOAuthSucceeded(userLogin: String): CloudSyncUiState =
   CloudSyncUiState(userLogin = userLogin, syncing = false, message = "Signed in as $userLogin")
 
@@ -106,8 +109,8 @@ internal fun cloudSignedOut(): CloudSyncUiState =
   CloudSyncUiState(message = "Signed out of cloud sync")
 
 internal sealed interface CloudSyncRedirect {
-  data class Code(val value: String) : CloudSyncRedirect
-  data class Rejected(val error: String) : CloudSyncRedirect
+  data class Code(val value: String, val state: String?) : CloudSyncRedirect
+  data class Rejected(val error: String, val state: String?) : CloudSyncRedirect
   data object Ignored : CloudSyncRedirect
 }
 
@@ -117,10 +120,11 @@ internal fun cloudSyncRedirect(
   path: String?,
   code: String?,
   error: String?,
+  state: String? = null,
 ): CloudSyncRedirect {
   if (scheme != "focuswell" || host != "sync" || path != "/oauth") return CloudSyncRedirect.Ignored
-  if (error != null) return CloudSyncRedirect.Rejected(error)
-  return code?.let(CloudSyncRedirect::Code) ?: CloudSyncRedirect.Ignored
+  if (error != null) return CloudSyncRedirect.Rejected(error, state)
+  return code?.let { CloudSyncRedirect.Code(it, state) } ?: CloudSyncRedirect.Ignored
 }
 
 internal fun Uri.toCloudSyncRedirect(): CloudSyncRedirect =
@@ -130,6 +134,7 @@ internal fun Uri.toCloudSyncRedirect(): CloudSyncRedirect =
     path = path,
     code = getQueryParameter("code"),
     error = getQueryParameter("error"),
+    state = getQueryParameter("state"),
   )
 
 internal fun cloudPayloadFromExport(exportedJson: String): JsonObject =

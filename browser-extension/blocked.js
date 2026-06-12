@@ -3,9 +3,9 @@ const blockedUrl = params.get("url") || "";
 const message = document.querySelector("#blockedUrl");
 
 if (blockedUrl) {
-  message.textContent = "这次访问没有放行。";
+  message.textContent = "This page was not allowed.";
 } else {
-  message.textContent = "这次访问不在当前白名单内。";
+  message.textContent = "This page is not in the current whitelist.";
 }
 
 chrome.runtime.sendMessage({ type: "record-blocked", url: blockedUrl || "blocked-page" });

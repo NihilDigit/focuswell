@@ -15,14 +15,23 @@ export class ReminderService {
   async registerDevice(args: {
     deviceId: string;
     installSecretHash: string;
+    installSecret?: string;
     fcmToken?: string;
     nowUtc: string;
   }): Promise<void> {
     const existing = await this.store.getDevice(args.deviceId);
+    if (existing) {
+      if (!args.installSecret || !(await verifyInstallSecret(args.installSecret, existing.installSecretHash))) {
+        throw new Error("unauthorized");
+      }
+      if (args.installSecretHash !== existing.installSecretHash) {
+        throw new Error("identity-rotation-required");
+      }
+    }
     const fcmToken = args.fcmToken ?? existing?.fcmToken;
     const device: Device = {
       deviceId: args.deviceId,
-      installSecretHash: args.installSecretHash,
+      installSecretHash: existing?.installSecretHash ?? args.installSecretHash,
       ...(fcmToken ? { fcmToken } : {}),
       createdAt: existing?.createdAt ?? args.nowUtc,
       lastSeenAt: args.nowUtc,
