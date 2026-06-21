@@ -50,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import kotlin.math.roundToInt
 
@@ -211,9 +212,6 @@ internal fun BalanceAdjustmentRow(entry: LedgerEntry) {
       entry.note?.let {
         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
-      entry.tagName?.let {
-        Text("Tag · $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
-      }
       Text(localRecordTime(entry.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }
@@ -224,16 +222,23 @@ internal fun BalanceAdjustmentRow(entry: LedgerEntry) {
 internal fun BalanceAdjustmentSheet(
   tags: List<TagConfig>,
   onDismiss: () -> Unit,
-  onAdd: (String, Double, String?, String?) -> Unit,
+  onAddAdjustment: (String, Double, String?) -> Unit,
+  onAddFocus: (String, Double, String?, SessionType, String?) -> Unit,
 ) {
   val activeTags = tags.filter { it.archivedAt == null }.ifEmpty { tags }
   var title by remember { mutableStateOf("Manual adjustment") }
   var minutes by remember { mutableStateOf("") }
   var note by remember { mutableStateOf("") }
+  var type by remember { mutableStateOf(SessionType.Input) }
   var tagId by remember { mutableStateOf<String?>(null) }
   var showTagPicker by remember { mutableStateOf(false) }
   val selectedTag = tagId?.let { selectedId -> activeTags.firstOrNull { it.id == selectedId } }
   val parsedMinutes = minutes.toDoubleOrNull()
+  val isManualFocus = selectedTag != null
+  val previewDelta =
+    parsedMinutes?.let { delta ->
+      if (selectedTag != null && delta > 0.0) delta * type.rate * selectedTag.multiplier else delta
+    }
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
     Column(
@@ -255,7 +260,7 @@ internal fun BalanceAdjustmentSheet(
       OutlinedTextField(
         value = minutes,
         onValueChange = { minutes = it },
-        label = { Text("Minutes") },
+        label = { Text(if (isManualFocus) "Focus minutes" else "Minutes") },
         placeholder = { Text("+15 or -10") },
         singleLine = true,
         modifier = Modifier.fillMaxWidth(),
@@ -274,7 +279,17 @@ internal fun BalanceAdjustmentSheet(
         onClick = { showTagPicker = true },
         modifier = Modifier.fillMaxWidth(),
       )
-      parsedMinutes?.takeIf { it != 0.0 }?.let { delta ->
+      if (selectedTag != null) {
+        ConnectedSessionTypeGroup(selected = type, onSelected = { type = it })
+        CalmPanel {
+          StartFocusSettlementPreview(
+            type = type,
+            tagName = selectedTag.name,
+            tagMultiplier = selectedTag.multiplier,
+          )
+        }
+      }
+      previewDelta?.takeIf { it != 0.0 }?.let { delta ->
         BalanceDeltaPreview(original = 0.0, updated = delta, delta = delta)
       }
       Row(horizontalArrangement = Arrangement.spacedBy(12.dp), modifier = Modifier.fillMaxWidth()) {
@@ -282,8 +297,15 @@ internal fun BalanceAdjustmentSheet(
           Text("Cancel")
         }
         Button(
-          enabled = title.isNotBlank() && parsedMinutes != null && parsedMinutes != 0.0,
-          onClick = { onAdd(title, parsedMinutes ?: 0.0, note.ifBlank { null }, tagId) },
+          enabled = title.isNotBlank() && parsedMinutes != null && parsedMinutes != 0.0 && (!isManualFocus || parsedMinutes > 0.0),
+          onClick = {
+            val parsed = parsedMinutes ?: 0.0
+            if (selectedTag != null) {
+              onAddFocus(title, parsed, note.ifBlank { null }, type, selectedTag.id)
+            } else {
+              onAddAdjustment(title, parsed, note.ifBlank { null })
+            }
+          },
           modifier = Modifier.weight(1f).height(54.dp),
           shape = ControlEndShape,
         ) {

@@ -27,6 +27,7 @@ import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.put
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
@@ -264,17 +265,35 @@ class FocusWellRepositoryTest {
   }
 
   @Test
-  fun addManualAdjustment_preservesTagSnapshotAndUpdatesRuleTrackerProgress() = runTest {
+  fun addManualFocusRecord_appliesFocusFormulaAndUpdatesRuleTrackerProgress() = runTest {
     val repo = newRepository(InMemoryFocusWellStore(baseState()), clock::now)
 
-    repo.addManualAdjustment("Catch-up", 180.0, "offline block", tagId = "math")
+    repo.addManualFocusRecord("Catch-up", 60.0, "offline block", SessionType.Input, tagId = "408")
 
     val state = repo.state.value
-    val entry = state.ledger.first()
-    assertEquals("math", entry.tagName)
-    assertEquals("offline block", entry.note)
-    assertEquals(true, state.trackers.first { it.id == "math-3h" }.completed)
-    assertEquals("3h 0m / 3h", state.trackers.first { it.id == "math-3h" }.progressLabel)
+    val record = state.focusRecords.first()
+    assertEquals("408", record.tagName)
+    assertEquals(1.5, record.tagMultiplier, 0.0001)
+    assertEquals(60.0, record.activeDurationMinutes, 0.0001)
+    assertEquals(45.0, record.earnedMinutes, 0.0001)
+    assertEquals(record.id, state.ledger.first().sourceId)
+    assertEquals(45.0, state.ledger.first().deltaMinutes, 0.0001)
+    assertEquals("1h 0m / 3h", state.trackers.first { it.id == "408-3h" }.progressLabel)
+  }
+
+  @Test
+  fun addManualFocusRecord_usesDefaultInputRateBeforeMathTagMultiplier() = runTest {
+    val repo = newRepository(InMemoryFocusWellStore(baseState()), clock::now)
+
+    repo.addManualFocusRecord("Math", 60.0, null, SessionType.Input, tagId = "math")
+
+    val state = repo.state.value
+    val record = state.focusRecords.first()
+    assertEquals("math", record.tagName)
+    assertEquals(60.0, record.activeDurationMinutes, 0.0001)
+    assertEquals(60.0, record.earnedMinutes, 0.0001)
+    assertEquals(60.0, state.ledger.first().deltaMinutes, 0.0001)
+    assertEquals("1h 0m / 3h", state.trackers.first { it.id == "math-3h" }.progressLabel)
   }
 
   @Test
@@ -411,7 +430,7 @@ class FocusWellRepositoryTest {
                 phoneUsageChargeFreePackages = setOf("app.words"),
               ),
             focusRecords = listOf(focusRecord()),
-            ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1", tagName = "math")),
+            ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1")),
           )
         ),
         clock::now,
@@ -425,12 +444,6 @@ class FocusWellRepositoryTest {
     assertEquals(exportedJson["dailyDate"]?.jsonPrimitive?.contentOrNull, roundTrip["dailyDate"]?.jsonPrimitive?.contentOrNull)
     assertEquals(exportedJson["focusRecords"]?.jsonArray?.size, roundTrip["focusRecords"]?.jsonArray?.size)
     assertEquals(exportedJson["ledger"]?.jsonArray?.size, roundTrip["ledger"]?.jsonArray?.size)
-    val taggedLedger =
-      roundTrip["ledger"]
-        ?.jsonArray
-        ?.first { it.jsonObject["id"]?.jsonPrimitive?.contentOrNull == "ledger-focus-1" }
-        ?.jsonObject
-    assertEquals("math", taggedLedger?.get("tagName")?.jsonPrimitive?.contentOrNull)
     assertEquals(
       exportedJson["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
       roundTrip["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
@@ -524,6 +537,41 @@ class FocusWellRepositoryTest {
     assertEquals(ActiveMode.None, imported.state.value.activeMode)
   }
 
+  @Test
+  fun importJson_migratesLegacyTaggedManualLedgerIntoFocusRecord() = runTest {
+    val legacy =
+      jsonObject(newRepository(InMemoryFocusWellStore(baseState()), clock::now).exportJson())
+        .withProperty(
+          "ledger",
+          buildJsonArray {
+            add(
+              buildJsonObject {
+                put("id", "manual-adjustment-1779253200000")
+                put("title", "Catch-up")
+                put("deltaMinutes", 60.0)
+                put("createdAt", "2026-05-20T05:00:00Z")
+                put("note", "offline")
+                put("tagName", "408")
+              }
+            )
+          },
+        )
+        .toString()
+
+    val imported = newRepository(InMemoryFocusWellStore(), clock::now)
+
+    assertTrue(imported.importJson(legacy))
+    val record = imported.state.value.focusRecords.single()
+    assertEquals("manual-focus-1779253200000", record.id)
+    assertEquals("Catch-up", record.task)
+    assertEquals("408", record.tagName)
+    assertEquals(60.0, record.activeDurationMinutes, 0.0001)
+    assertEquals(45.0, record.earnedMinutes, 0.0001)
+    val ledgerIds = imported.state.value.ledger.map { it.id }
+    assertTrue("ledger-manual-focus-1779253200000" in ledgerIds)
+    assertFalse("manual-adjustment-1779253200000" in ledgerIds)
+  }
+
   private fun baseState(
     activeMode: ActiveMode = ActiveMode.None,
     rules: FocusWellRules = FocusWellRules(dayBoundaryHour = 4),
@@ -566,7 +614,6 @@ class FocusWellRepositoryTest {
     title: String = "Focus",
     delta: Double,
     sourceId: String? = null,
-    tagName: String? = null,
   ): LedgerEntry =
     LedgerEntry(
       id = id,
@@ -574,7 +621,6 @@ class FocusWellRepositoryTest {
       deltaMinutes = delta,
       createdAt = Instant.parse("2026-05-20T05:00:00Z"),
       sourceId = sourceId,
-      tagName = tagName,
     )
 }
 

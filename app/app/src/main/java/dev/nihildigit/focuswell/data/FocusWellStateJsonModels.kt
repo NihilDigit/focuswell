@@ -125,5 +125,7 @@ internal data class SerializedLedgerEntry(
   val createdAt: String,
   val note: String? = null,
   val sourceId: String? = null,
+  // Legacy 26.6.7 field. New exports do not write it; imports use it once to
+  // convert tagged manual ledger adjustments into normal focus records.
   val tagName: String? = null,
 )

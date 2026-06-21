@@ -4,7 +4,6 @@ import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.FocusWellUiState
-import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.domain.TagConfig
 import java.time.Instant
@@ -130,50 +129,4 @@ class FocusWellPlanningMutationsTest {
     assertEquals("1h 30m / 90m", displayed.progressLabel)
   }
 
-  @Test
-  fun withComputedTrackers_countsTaggedManualPositiveTime() {
-    val state =
-      FocusWellUiState(
-        dailyDate = "2026-05-20",
-        trackers =
-          listOf(
-            DailyTracker(
-              id = "math-90m",
-              label = "Math",
-              completed = false,
-              ruleTagName = "math",
-              ruleTargetMinutes = 90.0,
-            )
-          ),
-        ledger =
-          listOf(
-            LedgerEntry(
-              id = "manual-math",
-              title = "Manual adjustment",
-              deltaMinutes = 90.0,
-              createdAt = Instant.parse("2026-05-20T05:00:00Z"),
-              tagName = "Math",
-            ),
-            LedgerEntry(
-              id = "manual-negative",
-              title = "Manual adjustment",
-              deltaMinutes = -30.0,
-              createdAt = Instant.parse("2026-05-20T06:00:00Z"),
-              tagName = "math",
-            ),
-            LedgerEntry(
-              id = "manual-old",
-              title = "Manual adjustment",
-              deltaMinutes = 60.0,
-              createdAt = Instant.parse("2026-05-19T05:00:00Z"),
-              tagName = "math",
-            ),
-          ),
-      )
-
-    val tracker = state.withComputedTrackers().trackers.single()
-
-    assertEquals(true, tracker.completed)
-    assertEquals("1h 30m / 90m", tracker.progressLabel)
-  }
 }

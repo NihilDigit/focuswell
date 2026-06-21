@@ -21,13 +21,15 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.SessionType
 
 @Composable
 internal fun ReserveScreen(
   state: FocusWellUiState,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
-  onAddManualAdjustment: (String, Double, String?, String?) -> Unit,
+  onAddManualAdjustment: (String, Double, String?) -> Unit,
+  onAddManualFocusRecord: (String, Double, String?, SessionType, String?) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
 ) {
   var filter by remember { mutableStateOf(BalanceRecordFilter.All) }
@@ -86,9 +88,13 @@ internal fun ReserveScreen(
     BalanceAdjustmentSheet(
       tags = state.tags,
       onDismiss = { addingAdjustment = false },
-      onAdd = { title, deltaMinutes, note, tagId ->
+      onAddAdjustment = { title, deltaMinutes, note ->
         addingAdjustment = false
-        onAddManualAdjustment(title, deltaMinutes, note, tagId)
+        onAddManualAdjustment(title, deltaMinutes, note)
+      },
+      onAddFocus = { task, minutes, note, type, tagId ->
+        addingAdjustment = false
+        onAddManualFocusRecord(task, minutes, note, type, tagId)
       },
     )
   }

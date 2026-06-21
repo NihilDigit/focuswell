@@ -1,7 +1,10 @@
 package dev.nihildigit.focuswell.data
 
 import dev.nihildigit.focuswell.domain.FocusWellUiState
+import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
+import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.domain.TagConfig
 import dev.nihildigit.focuswell.domain.TimeAccounting
 import dev.nihildigit.focuswell.domain.focusOutcomeMultiplier
 import java.time.Instant
@@ -90,11 +93,9 @@ internal fun FocusWellUiState.withAddedManualAdjustment(
   title: String,
   deltaMinutes: Double,
   note: String?,
-  tagName: String?,
   createdAt: Instant,
 ): FocusWellUiState {
   val trimmedTitle = title.trim().ifBlank { "Manual adjustment" }
-  val trimmedTagName = tagName?.trim()?.ifBlank { null }
   val safeDelta =
     if (deltaMinutes < 0.0) {
       deltaMinutes.coerceAtLeast(-reserveMinutes)
@@ -109,10 +110,59 @@ internal fun FocusWellUiState.withAddedManualAdjustment(
       deltaMinutes = safeDelta,
       createdAt = createdAt,
       note = note?.trim()?.ifBlank { null },
-      tagName = trimmedTagName,
     )
   return copy(
     reserveMinutes = (reserveMinutes + safeDelta).coerceAtLeast(0.0),
     ledger = listOf(adjustment) + ledger,
+  )
+}
+
+internal fun FocusWellUiState.withAddedManualFocusRecord(
+  task: String,
+  activeMinutes: Double,
+  note: String?,
+  type: SessionType,
+  tag: TagConfig?,
+  createdAt: Instant,
+): FocusWellUiState {
+  val safeMinutes = activeMinutes.coerceAtLeast(0.0)
+  if (safeMinutes == 0.0) return this
+  val savedResult = note?.trim()?.ifBlank { null }?.let { "As planned · $it" } ?: "As planned"
+  val tagMultiplier = tag?.multiplier ?: 1.0
+  val earned =
+    TimeAccounting.focusEarnedMinutes(
+      activeDurationMinutes = safeMinutes,
+      typeRate = type.rate,
+      tagMultiplier = tagMultiplier,
+      outcomeMultiplier = 1.0,
+    )
+  val record =
+    FocusRecord(
+      id = FocusWellIds.manualFocus(createdAt),
+      task = task.trim().ifBlank { "Manual focus" },
+      result = savedResult,
+      type = type,
+      tagName = tag?.name,
+      tagMultiplier = tagMultiplier,
+      typeRate = type.rate,
+      startedAt = createdAt.minusMillis((safeMinutes * 60_000.0).toLong().coerceAtLeast(0L)),
+      endedAt = createdAt,
+      activeDurationMinutes = safeMinutes,
+      earnedMinutes = earned,
+      dailyDate = TimeAccounting.dailyDate(createdAt, rules = rules).toString(),
+    )
+  val entry =
+    LedgerEntry(
+      id = FocusWellIds.ledger(record.id),
+      title = "Focus · ${type.label}${tag?.let { " ${it.name}" } ?: ""}",
+      deltaMinutes = earned,
+      createdAt = createdAt,
+      note = record.result,
+      sourceId = record.id,
+    )
+  return copy(
+    reserveMinutes = reserveMinutes + earned,
+    focusRecords = listOf(record) + focusRecords,
+    ledger = listOf(entry) + ledger,
   )
 }

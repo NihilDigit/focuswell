@@ -5,6 +5,7 @@ import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
 import dev.nihildigit.focuswell.domain.SessionType
+import dev.nihildigit.focuswell.domain.TagConfig
 import java.time.Instant
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertSame
@@ -92,7 +93,6 @@ class FocusWellRecordMutationsTest {
         title = "  Correction  ",
         deltaMinutes = -15.0,
         note = "  overcounted  ",
-        tagName = "  math  ",
         createdAt = changedAt,
       )
 
@@ -100,7 +100,6 @@ class FocusWellRecordMutationsTest {
     assertEquals("Correction", updated.ledger.first().title)
     assertEquals(-10.0, updated.ledger.first().deltaMinutes, 0.0001)
     assertEquals("overcounted", updated.ledger.first().note)
-    assertEquals("math", updated.ledger.first().tagName)
   }
 
   @Test
@@ -112,11 +111,35 @@ class FocusWellRecordMutationsTest {
         title = "Correction",
         deltaMinutes = 0.0,
         note = null,
-        tagName = "math",
         createdAt = changedAt,
       )
 
     assertSame(state, updated)
+  }
+
+  @Test
+  fun withAddedManualFocusRecord_writesFocusRecordAndLedgerUsingExistingFormula() {
+    val state = FocusWellUiState()
+
+    val updated =
+      state.withAddedManualFocusRecord(
+        task = "  Catch-up  ",
+        activeMinutes = 60.0,
+        note = "  offline block  ",
+        type = SessionType.Input,
+        tag = TagConfig(id = "408", name = "408", multiplier = 1.5),
+        createdAt = changedAt,
+      )
+
+    val record = updated.focusRecords.single()
+    assertEquals("Catch-up", record.task)
+    assertEquals("As planned · offline block", record.result)
+    assertEquals("408", record.tagName)
+    assertEquals(1.5, record.tagMultiplier, 0.0001)
+    assertEquals(60.0, record.activeDurationMinutes, 0.0001)
+    assertEquals(45.0, record.earnedMinutes, 0.0001)
+    assertEquals(record.id, updated.ledger.single().sourceId)
+    assertEquals(45.0, updated.ledger.single().deltaMinutes, 0.0001)
   }
 
   @Test

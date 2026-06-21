@@ -1,5 +1,6 @@
 package dev.nihildigit.focuswell.data.db
 
+import dev.nihildigit.focuswell.data.LegacyTaggedManualLedgerEntry
 import dev.nihildigit.focuswell.domain.ActiveMode
 import dev.nihildigit.focuswell.domain.DailyTracker
 import dev.nihildigit.focuswell.domain.FocusRecord
@@ -315,7 +316,7 @@ internal fun LedgerEntry.toEntity(): LedgerEntryEntity =
     createdAt = createdAt.toString(),
     note = note,
     sourceId = sourceId,
-    tagName = tagName,
+    tagName = null,
   )
 
 internal fun LedgerEntryEntity.toDomain(): LedgerEntry =
@@ -326,5 +327,17 @@ internal fun LedgerEntryEntity.toDomain(): LedgerEntry =
     createdAt = Instant.parse(createdAt),
     note = note,
     sourceId = sourceId,
-    tagName = tagName,
   )
+
+internal fun LedgerEntryEntity.toLegacyTaggedManualLedger(): LegacyTaggedManualLedgerEntry? {
+  val tag = tagName?.trim()?.ifBlank { null } ?: return null
+  if (sourceId != null || deltaMinutes <= 0.0) return null
+  return LegacyTaggedManualLedgerEntry(
+    id = id,
+    title = title,
+    rawMinutes = deltaMinutes,
+    createdAt = Instant.parse(createdAt),
+    note = note,
+    tagName = tag,
+  )
+}

@@ -380,8 +380,12 @@ class MainScreenViewModel(application: Application) : AndroidViewModel(applicati
     viewModelScope.launch { repository.updateFocusRecord(id, result, activeMinutes) }
   }
 
-  fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?, tagId: String?) {
-    viewModelScope.launch { repository.addManualAdjustment(title, deltaMinutes, note, tagId) }
+  fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?) {
+    viewModelScope.launch { repository.addManualAdjustment(title, deltaMinutes, note) }
+  }
+
+  fun addManualFocusRecord(task: String, activeMinutes: Double, note: String?, type: SessionType, tagId: String?) {
+    viewModelScope.launch { repository.addManualFocusRecord(task, activeMinutes, note, type, tagId) }
   }
 
   fun deleteLeisureRecord(id: String) {

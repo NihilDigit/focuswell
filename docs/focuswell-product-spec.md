@@ -271,10 +271,12 @@ compensating ledger adjustment.
 
 Manual balance adjustments are direct ledger entries for corrections or one-off
 credits/debits. Negative manual adjustments are capped at the current displayed
-reserve so the app still does not create spendable-time overdraft. A positive
-manual adjustment may snapshot an optional tag; tagged manual minutes count
-toward same-day rule tracker progress for that tag without becoming a focus
-record or applying the tag multiplier.
+reserve so the app still does not create spendable-time overdraft.
+
+When manually added time has a tag, it is saved as a normal focus record rather
+than a tagged ledger adjustment. The entered minutes are the raw active focus
+duration, the selected session type and tag multiplier use the normal focus
+earning formula, and rule trackers count those raw focus minutes for the tag.
 
 The app preserves the original calculation fields on records, including tag
 multiplier and type rate.

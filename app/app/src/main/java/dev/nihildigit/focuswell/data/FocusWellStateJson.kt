@@ -54,14 +54,15 @@ private fun FocusWellUiState.toSerialized(): SerializedFocusWellState =
     dailyGrantPausedUntilDate = dailyGrantPausedUntilDate,
   )
 
-private fun SerializedFocusWellState.toDomain(now: () -> Instant): FocusWellUiState =
-  FocusWellUiState(
+private fun SerializedFocusWellState.toDomain(now: () -> Instant): FocusWellUiState {
+  val domainTags = tags.map(SerializedTag::toDomain).ifEmpty { defaultTags }
+  return FocusWellUiState(
     reserveMinutes = reserveMinutes,
     dailyDate = dailyDate ?: TimeAccounting.dailyDate(now()).toString(),
     stateUpdatedAt = stateUpdatedAtUtc?.toInstantOrNull() ?: now(),
     rules = rules?.toDomain()?.normalized() ?: FocusWellRules(),
     activeMode = activeMode.toDomain(),
-    tags = tags.map(SerializedTag::toDomain).ifEmpty { defaultTags },
+    tags = domainTags,
     trackers = trackers.map(SerializedDailyTracker::toDomain).ifEmpty { defaultTrackers },
     focusRecords = focusRecords.map(SerializedFocusRecord::toDomain),
     leisureRecords = leisureRecords.map(SerializedLeisureRecord::toDomain),
@@ -70,7 +71,11 @@ private fun SerializedFocusWellState.toDomain(now: () -> Instant): FocusWellUiSt
     lastCheckInDailyDate = lastCheckInDailyDate,
     lastPhoneUsageSettlementAt = lastPhoneUsageSettlementAt?.toInstantOrNull(),
     dailyGrantPausedUntilDate = dailyGrantPausedUntilDate,
-  ).withComputedTrackers().withLedgerBackedReserve()
+  )
+    .withMigratedTaggedManualLedgerEntries(ledger.mapNotNull(SerializedLedgerEntry::toLegacyTaggedManualLedger))
+    .withComputedTrackers()
+    .withLedgerBackedReserve()
+}
 
 private fun FocusWellRules.toSerialized(): SerializedRules =
   SerializedRules(
@@ -283,7 +288,6 @@ private fun LedgerEntry.toSerialized(): SerializedLedgerEntry =
     createdAt = createdAt.toString(),
     note = note,
     sourceId = sourceId,
-    tagName = tagName,
   )
 
 private fun SerializedLedgerEntry.toDomain(): LedgerEntry =
@@ -294,8 +298,20 @@ private fun SerializedLedgerEntry.toDomain(): LedgerEntry =
     createdAt = Instant.parse(createdAt),
     note = note,
     sourceId = sourceId,
-    tagName = tagName,
   )
+
+private fun SerializedLedgerEntry.toLegacyTaggedManualLedger(): LegacyTaggedManualLedgerEntry? {
+  val tag = tagName?.trim()?.ifBlank { null } ?: return null
+  if (sourceId != null || deltaMinutes <= 0.0) return null
+  return LegacyTaggedManualLedgerEntry(
+    id = id,
+    title = title,
+    rawMinutes = deltaMinutes,
+    createdAt = Instant.parse(createdAt),
+    note = note,
+    tagName = tag,
+  )
+}
 
 private fun String.toInstantOrNull(): Instant? =
   runCatching { Instant.parse(this) }.getOrNull()

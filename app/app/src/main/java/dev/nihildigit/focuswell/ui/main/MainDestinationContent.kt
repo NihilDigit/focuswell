@@ -9,6 +9,7 @@ import dev.nihildigit.focuswell.domain.FocusWellRules
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.IdeaChecklistItem
 import dev.nihildigit.focuswell.domain.IdeaQuadrant
+import dev.nihildigit.focuswell.domain.SessionType
 import dev.nihildigit.focuswell.updates.AppUpdateUiState
 import dev.nihildigit.focuswell.theme.ThemeMode
 
@@ -30,7 +31,8 @@ internal fun DestinationContent(
   onEndDepleted: () -> Unit,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
-  onAddManualAdjustment: (String, Double, String?, String?) -> Unit,
+  onAddManualAdjustment: (String, Double, String?) -> Unit,
+  onAddManualFocusRecord: (String, Double, String?, SessionType, String?) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
   onMoveIdea: (String, IdeaQuadrant) -> Unit,
   onUpdateIdea: (String, String, List<IdeaChecklistItem>) -> Unit,
@@ -94,6 +96,7 @@ internal fun DestinationContent(
           onDeleteFocusRecord = onDeleteFocusRecord,
           onUpdateFocusRecord = onUpdateFocusRecord,
           onAddManualAdjustment = onAddManualAdjustment,
+          onAddManualFocusRecord = onAddManualFocusRecord,
           onDeleteLeisureRecord = onDeleteLeisureRecord,
         )
       Destination.Ideas ->

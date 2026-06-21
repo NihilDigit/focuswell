@@ -307,15 +307,28 @@ class FocusWellRepository internal constructor(
     mutate { state -> state.withUpdatedFocusRecord(id = id, result = result, activeMinutes = activeMinutes, updatedAt = updatedAt) }
   }
 
-  suspend fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?, tagId: String?) {
+  suspend fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?) {
     val createdAt = now()
     mutate { state ->
-      val tagName = tagId?.let { selectedId -> state.tags.firstOrNull { it.id == selectedId }?.name }
       state.withAddedManualAdjustment(
         title = title,
         deltaMinutes = deltaMinutes,
         note = note,
-        tagName = tagName,
+        createdAt = createdAt,
+      )
+    }
+  }
+
+  suspend fun addManualFocusRecord(task: String, activeMinutes: Double, note: String?, type: SessionType, tagId: String?) {
+    val createdAt = now()
+    mutate { state ->
+      val tag = tagId?.let { selectedId -> state.tags.firstOrNull { it.id == selectedId } }
+      state.withAddedManualFocusRecord(
+        task = task,
+        activeMinutes = activeMinutes,
+        note = note,
+        type = type,
+        tag = tag,
         createdAt = createdAt,
       )
     }

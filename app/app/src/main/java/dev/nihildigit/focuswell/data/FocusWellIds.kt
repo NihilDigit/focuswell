@@ -18,6 +18,8 @@ internal object FocusWellIds {
 
   fun focus(instant: Instant): String = "focus-${instant.toEpochMilli()}"
 
+  fun manualFocus(createdAt: Instant): String = "manual-focus-${createdAt.toEpochMilli()}"
+
   fun leisure(instant: Instant): String = "leisure-${instant.toEpochMilli()}"
 
   fun ledger(sourceId: String): String = "ledger-$sourceId"

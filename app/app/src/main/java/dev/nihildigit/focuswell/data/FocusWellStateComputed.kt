@@ -26,25 +26,15 @@ internal fun FocusWellUiState.withComputedTrackers(now: Instant? = null): FocusW
           activeFocusRecords
             .filter { it.tagName?.equals(tagName, ignoreCase = true) == true }
             .sumOf { it.activeDurationMinutes }
-        val manualMinutes =
-          ledger
-            .filter {
-              it.deltaMinutes > 0.0 &&
-                it.sourceId == null &&
-                it.tagName?.equals(tagName, ignoreCase = true) == true &&
-                TimeAccounting.dailyDate(it.createdAt, rules = rules).toString() == dailyDate
-            }
-            .sumOf { it.deltaMinutes }
         val activeMinutes =
           if (includeActiveFocus && activeFocus.tag?.name?.equals(tagName, ignoreCase = true) == true) {
             activeFocus.activeDurationMinutesUntil(now)
           } else {
             0.0
           }
-        val settledMinutes = recordMinutes + manualMinutes
-        val minutes = settledMinutes + activeMinutes
+        val minutes = recordMinutes + activeMinutes
         tracker.copy(
-          completed = settledMinutes >= target,
+          completed = recordMinutes >= target,
           progressLabel = "${minutes.roundMinutes()} / ${target.roundTarget()}",
         )
       }

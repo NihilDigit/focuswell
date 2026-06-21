@@ -3,6 +3,7 @@ package dev.nihildigit.focuswell.data.db
 import android.content.Context
 import dev.nihildigit.focuswell.data.FocusWellStore
 import dev.nihildigit.focuswell.data.withLedgerBackedReserve
+import dev.nihildigit.focuswell.data.withMigratedTaggedManualLedgerEntries
 import dev.nihildigit.focuswell.domain.FocusWellUiState
 import dev.nihildigit.focuswell.domain.FocusWellRules
 import kotlinx.coroutines.Dispatchers
@@ -17,7 +18,9 @@ internal class RoomFocusWellStore(
   override suspend fun loadState(): FocusWellUiState? =
     withContext(Dispatchers.IO) {
       val appState = dao.appState() ?: return@withContext null
-      FocusWellUiState(
+      val ledgerEntries = dao.ledger()
+      val loaded =
+        FocusWellUiState(
         dailyDate = appState.dailyDate,
         stateUpdatedAt = Instant.parse(appState.stateUpdatedAt),
         rules =
@@ -38,11 +41,28 @@ internal class RoomFocusWellStore(
         focusRecords = dao.focusRecords().map { it.toDomain() },
         leisureRecords = dao.leisureRecords().map { it.toDomain() },
         ideas = dao.ideas().map { it.toDomain() },
-        ledger = dao.ledger().map { it.toDomain() },
+        ledger = ledgerEntries.map { it.toDomain() },
         lastCheckInDailyDate = appState.lastCheckInDailyDate,
         lastPhoneUsageSettlementAt = appState.lastPhoneUsageSettlementAt?.let(Instant::parse),
         dailyGrantPausedUntilDate = appState.dailyGrantPausedUntilDate,
-      ).withLedgerBackedReserve()
+      )
+        .withLedgerBackedReserve()
+      val migrated =
+        loaded
+          .withMigratedTaggedManualLedgerEntries(ledgerEntries.mapNotNull { it.toLegacyTaggedManualLedger() })
+          .withLedgerBackedReserve()
+      if (migrated != loaded) {
+        dao.replaceState(
+          appState = migrated.toAppStateEntity(),
+          tags = migrated.tags.mapIndexed { index, tag -> tag.toEntity(index) },
+          trackers = migrated.trackers.mapIndexed { index, tracker -> tracker.toEntity(index) },
+          focusRecords = migrated.focusRecords.map { it.toEntity() },
+          leisureRecords = migrated.leisureRecords.map { it.toEntity() },
+          ideas = migrated.ideas.map { it.toEntity() },
+          ledger = migrated.ledger.map { it.toEntity() },
+        )
+      }
+      migrated
     }
 
   override suspend fun persistChange(previous: FocusWellUiState?, next: FocusWellUiState) {
