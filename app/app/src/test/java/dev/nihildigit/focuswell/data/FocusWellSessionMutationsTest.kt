@@ -65,6 +65,7 @@ class FocusWellSessionMutationsTest {
         dailyDate = "2026-05-20",
         rules = FocusWellRules(dayBoundaryHour = 4),
         dailyGrantPausedUntilDate = "2026-05-23",
+        lastPhoneUsageSettlementAt = Instant.parse("2026-05-20T04:00:00Z"),
         activeMode =
           ActiveMode.Focus(
             task = "Recovery",
@@ -79,6 +80,7 @@ class FocusWellSessionMutationsTest {
 
     requireNotNull(ended)
     assertEquals(null, ended.state.dailyGrantPausedUntilDate)
+    assertEquals(Instant.parse("2026-05-20T07:00:00Z"), ended.state.lastPhoneUsageSettlementAt)
     assertEquals(210.0, ended.state.reserveMinutes, 0.0001)
     assertEquals(listOf("Recovery focus", "Focus · Output"), ended.state.ledger.map { it.title })
   }

@@ -264,6 +264,20 @@ class FocusWellRepositoryTest {
   }
 
   @Test
+  fun addManualAdjustment_preservesTagSnapshotAndUpdatesRuleTrackerProgress() = runTest {
+    val repo = newRepository(InMemoryFocusWellStore(baseState()), clock::now)
+
+    repo.addManualAdjustment("Catch-up", 180.0, "offline block", tagId = "math")
+
+    val state = repo.state.value
+    val entry = state.ledger.first()
+    assertEquals("math", entry.tagName)
+    assertEquals("offline block", entry.note)
+    assertEquals(true, state.trackers.first { it.id == "math-3h" }.completed)
+    assertEquals("3h 0m / 3h", state.trackers.first { it.id == "math-3h" }.progressLabel)
+  }
+
+  @Test
   fun deleteLeisureRecord_restoresReserveWithLedgerAdjustment() = runTest {
     val leisure =
       LeisureRecord(
@@ -397,7 +411,7 @@ class FocusWellRepositoryTest {
                 phoneUsageChargeFreePackages = setOf("app.words"),
               ),
             focusRecords = listOf(focusRecord()),
-            ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1")),
+            ledger = listOf(ledger(id = "ledger-focus-1", delta = 30.0, sourceId = "focus-1", tagName = "math")),
           )
         ),
         clock::now,
@@ -411,6 +425,12 @@ class FocusWellRepositoryTest {
     assertEquals(exportedJson["dailyDate"]?.jsonPrimitive?.contentOrNull, roundTrip["dailyDate"]?.jsonPrimitive?.contentOrNull)
     assertEquals(exportedJson["focusRecords"]?.jsonArray?.size, roundTrip["focusRecords"]?.jsonArray?.size)
     assertEquals(exportedJson["ledger"]?.jsonArray?.size, roundTrip["ledger"]?.jsonArray?.size)
+    val taggedLedger =
+      roundTrip["ledger"]
+        ?.jsonArray
+        ?.first { it.jsonObject["id"]?.jsonPrimitive?.contentOrNull == "ledger-focus-1" }
+        ?.jsonObject
+    assertEquals("math", taggedLedger?.get("tagName")?.jsonPrimitive?.contentOrNull)
     assertEquals(
       exportedJson["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
       roundTrip["focusRecords"]?.jsonArray?.get(0)?.jsonObject?.get("id")?.jsonPrimitive?.contentOrNull,
@@ -546,6 +566,7 @@ class FocusWellRepositoryTest {
     title: String = "Focus",
     delta: Double,
     sourceId: String? = null,
+    tagName: String? = null,
   ): LedgerEntry =
     LedgerEntry(
       id = id,
@@ -553,6 +574,7 @@ class FocusWellRepositoryTest {
       deltaMinutes = delta,
       createdAt = Instant.parse("2026-05-20T05:00:00Z"),
       sourceId = sourceId,
+      tagName = tagName,
     )
 }
 

@@ -125,4 +125,5 @@ internal data class SerializedLedgerEntry(
   val createdAt: String,
   val note: String? = null,
   val sourceId: String? = null,
+  val tagName: String? = null,
 )

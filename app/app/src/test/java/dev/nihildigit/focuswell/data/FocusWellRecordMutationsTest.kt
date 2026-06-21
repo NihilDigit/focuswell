@@ -92,6 +92,7 @@ class FocusWellRecordMutationsTest {
         title = "  Correction  ",
         deltaMinutes = -15.0,
         note = "  overcounted  ",
+        tagName = "  math  ",
         createdAt = changedAt,
       )
 
@@ -99,6 +100,7 @@ class FocusWellRecordMutationsTest {
     assertEquals("Correction", updated.ledger.first().title)
     assertEquals(-10.0, updated.ledger.first().deltaMinutes, 0.0001)
     assertEquals("overcounted", updated.ledger.first().note)
+    assertEquals("math", updated.ledger.first().tagName)
   }
 
   @Test
@@ -110,6 +112,7 @@ class FocusWellRecordMutationsTest {
         title = "Correction",
         deltaMinutes = 0.0,
         note = null,
+        tagName = "math",
         createdAt = changedAt,
       )
 

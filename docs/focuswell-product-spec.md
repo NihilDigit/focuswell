@@ -218,6 +218,10 @@ card review as morning check-in, settles usage from the last phone-use
 settlement point through now, and advances that settlement point so morning
 check-in only reviews the remaining unsettled usage.
 
+When a locked reserve is unlocked by the required uninterrupted focus session,
+unsettled phone usage up to that unlock moment is treated as Fair Use and the
+phone-use settlement point advances without writing a deduction.
+
 The check-in UI is a three-step flow:
 
 1. Income: animate completed earning items into checked rows with `+Xm`
@@ -267,7 +271,10 @@ compensating ledger adjustment.
 
 Manual balance adjustments are direct ledger entries for corrections or one-off
 credits/debits. Negative manual adjustments are capped at the current displayed
-reserve so the app still does not create spendable-time overdraft.
+reserve so the app still does not create spendable-time overdraft. A positive
+manual adjustment may snapshot an optional tag; tagged manual minutes count
+toward same-day rule tracker progress for that tag without becoming a focus
+record or applying the tag multiplier.
 
 The app preserves the original calculation fields on records, including tag
 multiplier and type rate.

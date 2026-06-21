@@ -30,7 +30,7 @@ internal fun DestinationContent(
   onEndDepleted: () -> Unit,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
-  onAddManualAdjustment: (String, Double, String?) -> Unit,
+  onAddManualAdjustment: (String, Double, String?, String?) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
   onMoveIdea: (String, IdeaQuadrant) -> Unit,
   onUpdateIdea: (String, String, List<IdeaChecklistItem>) -> Unit,

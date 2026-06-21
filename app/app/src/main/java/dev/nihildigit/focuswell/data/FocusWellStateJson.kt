@@ -283,6 +283,7 @@ private fun LedgerEntry.toSerialized(): SerializedLedgerEntry =
     createdAt = createdAt.toString(),
     note = note,
     sourceId = sourceId,
+    tagName = tagName,
   )
 
 private fun SerializedLedgerEntry.toDomain(): LedgerEntry =
@@ -293,6 +294,7 @@ private fun SerializedLedgerEntry.toDomain(): LedgerEntry =
     createdAt = Instant.parse(createdAt),
     note = note,
     sourceId = sourceId,
+    tagName = tagName,
   )
 
 private fun String.toInstantOrNull(): Instant? =

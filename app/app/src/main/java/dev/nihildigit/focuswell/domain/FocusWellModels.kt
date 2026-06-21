@@ -162,6 +162,7 @@ data class LedgerEntry(
   val createdAt: Instant,
   val note: String? = null,
   val sourceId: String? = null,
+  val tagName: String? = null,
 )
 
 data class PhoneUsageApp(

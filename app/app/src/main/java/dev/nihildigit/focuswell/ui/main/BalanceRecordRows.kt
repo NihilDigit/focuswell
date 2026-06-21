@@ -22,6 +22,7 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.Edit
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Timer
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -32,6 +33,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -48,6 +50,7 @@ import androidx.compose.ui.unit.dp
 import dev.nihildigit.focuswell.domain.FocusRecord
 import dev.nihildigit.focuswell.domain.LedgerEntry
 import dev.nihildigit.focuswell.domain.LeisureRecord
+import dev.nihildigit.focuswell.domain.TagConfig
 import kotlin.math.roundToInt
 
 @Composable
@@ -208,6 +211,9 @@ internal fun BalanceAdjustmentRow(entry: LedgerEntry) {
       entry.note?.let {
         Text(it, style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
       }
+      entry.tagName?.let {
+        Text("Tag · $it", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+      }
       Text(localRecordTime(entry.createdAt), style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
     }
   }
@@ -216,12 +222,17 @@ internal fun BalanceAdjustmentRow(entry: LedgerEntry) {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 internal fun BalanceAdjustmentSheet(
+  tags: List<TagConfig>,
   onDismiss: () -> Unit,
-  onAdd: (String, Double, String?) -> Unit,
+  onAdd: (String, Double, String?, String?) -> Unit,
 ) {
+  val activeTags = tags.filter { it.archivedAt == null }.ifEmpty { tags }
   var title by remember { mutableStateOf("Manual adjustment") }
   var minutes by remember { mutableStateOf("") }
   var note by remember { mutableStateOf("") }
+  var tagId by remember { mutableStateOf<String?>(null) }
+  var showTagPicker by remember { mutableStateOf(false) }
+  val selectedTag = tagId?.let { selectedId -> activeTags.firstOrNull { it.id == selectedId } }
   val parsedMinutes = minutes.toDoubleOrNull()
   val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
   ModalBottomSheet(onDismissRequest = onDismiss, sheetState = sheetState) {
@@ -257,6 +268,12 @@ internal fun BalanceAdjustmentSheet(
         maxLines = 4,
         modifier = Modifier.fillMaxWidth(),
       )
+      TagPickerField(
+        selectedTag = selectedTag?.name ?: "No tag",
+        enabled = activeTags.isNotEmpty(),
+        onClick = { showTagPicker = true },
+        modifier = Modifier.fillMaxWidth(),
+      )
       parsedMinutes?.takeIf { it != 0.0 }?.let { delta ->
         BalanceDeltaPreview(original = 0.0, updated = delta, delta = delta)
       }
@@ -266,7 +283,7 @@ internal fun BalanceAdjustmentSheet(
         }
         Button(
           enabled = title.isNotBlank() && parsedMinutes != null && parsedMinutes != 0.0,
-          onClick = { onAdd(title, parsedMinutes ?: 0.0, note.ifBlank { null }) },
+          onClick = { onAdd(title, parsedMinutes ?: 0.0, note.ifBlank { null }, tagId) },
           modifier = Modifier.weight(1f).height(54.dp),
           shape = ControlEndShape,
         ) {
@@ -277,6 +294,43 @@ internal fun BalanceAdjustmentSheet(
       }
       Spacer(Modifier.height(16.dp))
     }
+  }
+  if (showTagPicker) {
+    AlertDialog(
+      onDismissRequest = { showTagPicker = false },
+      title = { Text("Choose tag") },
+      text = {
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+          Surface(
+            onClick = {
+              tagId = null
+              showTagPicker = false
+            },
+            shape = LedgerRowShape,
+            color = if (tagId == null) MaterialTheme.colorScheme.secondaryContainer else MaterialTheme.colorScheme.surfaceContainerHigh,
+            contentColor = if (tagId == null) MaterialTheme.colorScheme.onSecondaryContainer else MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.fillMaxWidth(),
+          ) {
+            Text("No tag", style = MaterialTheme.typography.titleMedium, modifier = Modifier.padding(horizontal = 14.dp, vertical = 14.dp))
+          }
+          activeTags.forEach { tag ->
+            TagPickerOption(
+              tag = tag,
+              selected = tag.id == tagId,
+              onClick = {
+                tagId = tag.id
+                showTagPicker = false
+              },
+            )
+          }
+        }
+      },
+      confirmButton = {
+        TextButton(onClick = { showTagPicker = false }) {
+          Text("Done")
+        }
+      },
+    )
   }
 }
 

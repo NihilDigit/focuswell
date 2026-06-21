@@ -155,6 +155,7 @@ internal fun FocusWellUiState.withEndedFocusSession(
         reserveMinutes = reserveMinutes + earned + (recoveryEntry?.deltaMinutes ?: 0.0),
         activeMode = ActiveMode.None,
         dailyGrantPausedUntilDate = if (unlocksReserve) null else dailyGrantPausedUntilDate,
+        lastPhoneUsageSettlementAt = if (unlocksReserve && (lastPhoneUsageSettlementAt == null || endedAt.isAfter(lastPhoneUsageSettlementAt))) endedAt else lastPhoneUsageSettlementAt,
         focusRecords = listOf(record) + focusRecords,
         ledger = listOfNotNull(recoveryEntry, entry) + ledger,
       ),

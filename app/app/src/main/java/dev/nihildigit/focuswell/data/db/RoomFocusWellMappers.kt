@@ -315,6 +315,7 @@ internal fun LedgerEntry.toEntity(): LedgerEntryEntity =
     createdAt = createdAt.toString(),
     note = note,
     sourceId = sourceId,
+    tagName = tagName,
   )
 
 internal fun LedgerEntryEntity.toDomain(): LedgerEntry =
@@ -325,4 +326,5 @@ internal fun LedgerEntryEntity.toDomain(): LedgerEntry =
     createdAt = Instant.parse(createdAt),
     note = note,
     sourceId = sourceId,
+    tagName = tagName,
   )

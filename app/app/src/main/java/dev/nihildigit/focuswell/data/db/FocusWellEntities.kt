@@ -105,4 +105,5 @@ internal data class LedgerEntryEntity(
   val createdAt: String,
   val note: String?,
   val sourceId: String?,
+  val tagName: String?,
 )

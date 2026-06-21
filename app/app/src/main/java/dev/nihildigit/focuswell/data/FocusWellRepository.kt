@@ -307,13 +307,15 @@ class FocusWellRepository internal constructor(
     mutate { state -> state.withUpdatedFocusRecord(id = id, result = result, activeMinutes = activeMinutes, updatedAt = updatedAt) }
   }
 
-  suspend fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?) {
+  suspend fun addManualAdjustment(title: String, deltaMinutes: Double, note: String?, tagId: String?) {
     val createdAt = now()
     mutate { state ->
+      val tagName = tagId?.let { selectedId -> state.tags.firstOrNull { it.id == selectedId }?.name }
       state.withAddedManualAdjustment(
         title = title,
         deltaMinutes = deltaMinutes,
         note = note,
+        tagName = tagName,
         createdAt = createdAt,
       )
     }

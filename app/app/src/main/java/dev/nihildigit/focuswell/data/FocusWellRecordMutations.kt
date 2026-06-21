@@ -90,9 +90,11 @@ internal fun FocusWellUiState.withAddedManualAdjustment(
   title: String,
   deltaMinutes: Double,
   note: String?,
+  tagName: String?,
   createdAt: Instant,
 ): FocusWellUiState {
   val trimmedTitle = title.trim().ifBlank { "Manual adjustment" }
+  val trimmedTagName = tagName?.trim()?.ifBlank { null }
   val safeDelta =
     if (deltaMinutes < 0.0) {
       deltaMinutes.coerceAtLeast(-reserveMinutes)
@@ -107,6 +109,7 @@ internal fun FocusWellUiState.withAddedManualAdjustment(
       deltaMinutes = safeDelta,
       createdAt = createdAt,
       note = note?.trim()?.ifBlank { null },
+      tagName = trimmedTagName,
     )
   return copy(
     reserveMinutes = (reserveMinutes + safeDelta).coerceAtLeast(0.0),

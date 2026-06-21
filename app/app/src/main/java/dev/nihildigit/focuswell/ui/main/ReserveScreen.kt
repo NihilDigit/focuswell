@@ -27,7 +27,7 @@ internal fun ReserveScreen(
   state: FocusWellUiState,
   onDeleteFocusRecord: (String) -> Unit,
   onUpdateFocusRecord: (String, String, Double) -> Unit,
-  onAddManualAdjustment: (String, Double, String?) -> Unit,
+  onAddManualAdjustment: (String, Double, String?, String?) -> Unit,
   onDeleteLeisureRecord: (String) -> Unit,
 ) {
   var filter by remember { mutableStateOf(BalanceRecordFilter.All) }
@@ -84,10 +84,11 @@ internal fun ReserveScreen(
   }
   if (addingAdjustment) {
     BalanceAdjustmentSheet(
+      tags = state.tags,
       onDismiss = { addingAdjustment = false },
-      onAdd = { title, deltaMinutes, note ->
+      onAdd = { title, deltaMinutes, note, tagId ->
         addingAdjustment = false
-        onAddManualAdjustment(title, deltaMinutes, note)
+        onAddManualAdjustment(title, deltaMinutes, note, tagId)
       },
     )
   }
